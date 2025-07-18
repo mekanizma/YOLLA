@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /individual/chat/
+Disallow: /corporate/settings/
+Disallow: /individual/notifications/
+Disallow: /corporate/notifications/
+
+# Sitemap
+Sitemap: https://www.yollabi.com.tr/sitemap.xml 

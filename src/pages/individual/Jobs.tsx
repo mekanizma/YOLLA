@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, MapPin, Filter, ChevronDown, Star, Clock } from 'lucide-react';
 import Header from '../../components/layout/Header';
 import Footer from '../../components/layout/Footer';
 import Button from '../../components/ui/Button';
-import { jobCategories, cities, experienceLevels, workTypes } from '../../lib/utils';
-import { useNavigate } from 'react-router-dom';
+import { jobCategories, cities, experienceLevels, workTypes, updateMetaTags, pageSEOContent } from '../../lib/utils';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const Jobs = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -17,6 +17,22 @@ const Jobs = () => {
   const [workType, setWorkType] = useState('');
   
   const navigate = useNavigate();
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const initialSearchTerm = queryParams.get('search') || '';
+  const initialCity = queryParams.get('city') || '';
+
+  useEffect(() => {
+    // Sayfa SEO meta etiketlerini güncelle
+    const { title, description, keywords } = pageSEOContent.jobs;
+    updateMetaTags(
+      title,
+      description,
+      keywords,
+      undefined,
+      `https://www.isbul.com.tr${location.pathname}${location.search}`
+    );
+  }, [location]);
   
   // Mock job listings data
   const jobs = [

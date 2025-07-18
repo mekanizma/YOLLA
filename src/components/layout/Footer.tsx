@@ -9,10 +9,10 @@ const Footer = () => {
           <div className="space-y-4">
             <div className="flex items-center space-x-2">
               <Briefcase className="w-8 h-8 text-primary" />
-              <span className="font-bold text-xl">JobNest</span>
+              <span className="font-bold text-xl">YOLLABİ</span>
             </div>
             <p className="text-gray-300 text-sm">
-              JoBNest, iş arayanlar ve işverenler için Kıbrıs'in en kapsamlı kariyer platformudur. Hayalinizdeki işi bulmak veya en iyi yetenekleri keşfetmek için doğru yerdesiniz.
+              YOLLABİ, iş arayanlar ve işverenler için Kıbrıs'in en kapsamlı kariyer platformudur. Hayalinizdeki işi bulmak veya en iyi yetenekleri keşfetmek için doğru yerdesiniz.
             </p>
             <div className="flex space-x-3 pt-2">
               <a href="#" className="text-gray-300 hover:text-primary transition-colors">
@@ -63,21 +63,13 @@ const Footer = () => {
               </li>
               <li className="flex items-center space-x-3">
                 <Mail size={18} className="text-primary flex-shrink-0" />
-                <span className="text-gray-300">info@isbul.com.tr</span>
+                <span className="text-gray-300">info@yollabi.com.tr</span>
               </li>
             </ul>
           </div>
         </div>
-        
-        <div className="mt-12 pt-4 border-t border-gray-800 text-gray-300 text-sm">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <p>© 2025 JoBNest. Tüm hakları saklıdır.</p>
-            <div className="flex space-x-6 mt-4 md:mt-0">
-              <Link to="/privacy" className="hover:text-primary transition-colors">Gizlilik Politikası</Link>
-              <Link to="/terms" className="hover:text-primary transition-colors">Kullanım Şartları</Link>
-              <Link to="/cookies" className="hover:text-primary transition-colors">Çerezler</Link>
-            </div>
-          </div>
+        <div className="mt-12 pt-8 border-t border-gray-800 text-center text-gray-400">
+          <p>© 2025 YOLLABİ. Tüm hakları saklıdır.</p>
         </div>
       </div>
     </footer>

@@ -1,16 +1,17 @@
 import React from 'react';
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Search, Briefcase, Users, Building, TrendingUp, ChevronRight, MapPin, User } from 'lucide-react';
 import CountUp from 'react-countup';
 import Header from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
-import { jobCategories, cities } from '../lib/utils';
+import { jobCategories, cities, updateMetaTags, pageSEOContent } from '../lib/utils';
 
 const LandingPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCity, setSelectedCity] = useState('');
   const [scrolled, setScrolled] = useState(false);
@@ -28,6 +29,18 @@ const LandingPage = () => {
       window.removeEventListener('scroll', handleScroll);
     };
   }, [scrolled]);
+
+  useEffect(() => {
+    // Sayfa SEO meta etiketlerini güncelle
+    const { title, description, keywords } = pageSEOContent.home;
+    updateMetaTags(
+      title,
+      description,
+      keywords,
+      '/src/assets/logo.png',
+      'https://www.isbul.com.tr'
+    );
+  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

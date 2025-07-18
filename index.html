@@ -4,7 +4,52 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>İşBul - İş Arama ve Kariyer Platformu</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Temel SEO Meta Etiketleri -->
+    <title>YOLLABİ - Kıbrıs'ın En Kapsamlı İş Arama ve Kariyer Platformu</title>
+    <meta name="description" content="YOLLABİ ile hayalinizdeki işi bulun! Kıbrıs'ın en kapsamlı iş ilanları, CV oluşturma, kariyer tavsiyeleri ve daha fazlası." />
+    <meta name="keywords" content="iş ilanları, kariyer, cv oluşturma, iş arama, kıbrıs iş ilanları, işveren, özgeçmiş, istihdam, iş başvurusu" />
+    <meta name="author" content="YOLLABİ" />
+    <meta name="robots" content="index, follow" />
+    
+    <!-- Open Graph / Facebook Meta Etiketleri -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://www.yollabi.com.tr/" />
+    <meta property="og:title" content="YOLLABİ - Kıbrıs'ın En Kapsamlı İş Arama Platformu" />
+    <meta property="og:description" content="YOLLABİ ile hayalinizdeki işi bulun! Kıbrıs'ın en kapsamlı iş ilanları, CV oluşturma, kariyer tavsiyeleri ve daha fazlası." />
+    <meta property="og:image" content="/src/assets/logo.png" />
+    
+    <!-- Twitter Meta Etiketleri -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://www.yollabi.com.tr/" />
+    <meta property="twitter:title" content="YOLLABİ - Kıbrıs'ın En Kapsamlı İş Arama Platformu" />
+    <meta property="twitter:description" content="YOLLABİ ile hayalinizdeki işi bulun! Kıbrıs'ın en kapsamlı iş ilanları, CV oluşturma, kariyer tavsiyeleri ve daha fazlası." />
+    <meta property="twitter:image" content="/src/assets/logo.png" />
+    
+    <!-- Ek Meta Etiketleri -->
+    <meta name="theme-color" content="#1a56db" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="msapplication-TileColor" content="#1a56db" />
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="/src/assets/logo.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/src/assets/logo.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/src/assets/logo.png" />
+    <link rel="apple-touch-icon" sizes="167x167" href="/src/assets/logo.png" />
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://www.yollabi.com.tr/" />
+    
+    <!-- DNS Prefetch -->
+    <link rel="dns-prefetch" href="//fonts.googleapis.com" />
+    <link rel="dns-prefetch" href="//fonts.gstatic.com" />
+    
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -12,5 +57,21 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- Yapısal Veri (JSON-LD) -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "url": "https://www.yollabi.com.tr/",
+        "name": "YOLLABİ - Kıbrıs'ın En Kapsamlı İş Arama Platformu",
+        "description": "YOLLABİ ile hayalinizdeki işi bulun! Kıbrıs'ın en kapsamlı iş ilanları, CV oluşturma ve kariyer fırsatları.",
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": "https://www.yollabi.com.tr/individual/jobs?search={search_term}",
+          "query-input": "required name=search_term"
+        }
+      }
+    </script>
   </body>
 </html>
