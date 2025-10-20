@@ -1,14 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Table, Button, Input, Space, Modal, Form, Tag, Select } from 'antd';
 import { SearchOutlined, EditOutlined, StopOutlined } from '@ant-design/icons';
+import supabase from '../../lib/supabaseClient';
 
-const mockJobs = [
-  { id: 1, title: 'Frontend Geliştirici', company: 'ABC Teknoloji', status: 'Aktif', posted: '2023-04-01' },
-  { id: 2, title: 'Backend Developer', company: 'XYZ Yazılım', status: 'Pasif', posted: '2023-03-15' },
-];
+type Row = { id: number; title: string; company_name: string | null; status: 'published' | 'draft' | 'closed'; created_at: string };
 
 const JobsPage: React.FC = () => {
-  const [data, setData] = useState(mockJobs);
+  const [data, setData] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
@@ -21,11 +19,13 @@ const JobsPage: React.FC = () => {
   };
   const handleOk = () => {
     form.validateFields().then(values => {
+      // Basit UI güncellemesi; backend'e update yok (isteğe göre eklenir)
       setData(data.map(j => j.id === editing.id ? { ...editing, ...values } : j));
       setModalOpen(false);
     });
   };
   const handlePassive = (id: number) => {
+    // UI üzerinde pasifleştir; backend update'i eklenebilir
     setData(data.map(j => j.id === id ? { ...j, status: 'Pasif' } : j));
   };
 
@@ -50,6 +50,27 @@ const JobsPage: React.FC = () => {
       ),
     },
   ];
+
+  useEffect(() => {
+    const load = async () => {
+      const { data, error } = await supabase
+        .from('jobs')
+        .select('id,title,company_name,status,created_at')
+        .order('created_at', { ascending: false });
+      if (!error) {
+        setData(
+          (data as Row[]).map(j => ({
+            id: j.id,
+            title: j.title,
+            company: j.company_name || 'Şirket',
+            status: j.status === 'published' ? 'Aktif' : 'Pasif',
+            posted: new Date(j.created_at).toLocaleDateString('tr-TR')
+          }))
+        );
+      }
+    };
+    load();
+  }, []);
 
   const filtered = data.filter(j => j.title.toLowerCase().includes(search.toLowerCase()) || j.company.toLowerCase().includes(search.toLowerCase()));
 

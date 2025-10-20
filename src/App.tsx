@@ -26,6 +26,7 @@ import Chats from './pages/individual/Chats';
 import Jobs from './pages/corporate/Jobs';
 import JobDetail from './pages/corporate/JobDetail';
 import JobEdit from './pages/corporate/JobEdit';
+import IndividualJobDetail from './pages/individual/JobDetail';
 
 function App() {
   return (
@@ -40,6 +41,7 @@ function App() {
       {/* Individual user routes */}
       <Route path="/individual/dashboard" element={<IndividualDashboard />} />
       <Route path="/individual/jobs" element={<IndividualJobs />} />
+      <Route path="/individual/jobs/:id" element={<IndividualJobDetail />} />
       <Route path="/individual/applications" element={<IndividualApplications />} />
       <Route path="/individual/notifications" element={<IndividualNotifications />} />
       <Route path="/individual/profile" element={<IndividualProfile />} />

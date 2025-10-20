@@ -37,7 +37,7 @@ const LandingPage = () => {
       title,
       description,
       keywords,
-      '/src/assets/logo.png',
+      '/src/assets/yollabi-logo.svg',
       'https://www.isbul.com.tr'
     );
   }, []);
@@ -79,7 +79,7 @@ const LandingPage = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
+      <Header scrolled={scrolled} />
       
       {/* Hero Section */}
       <section className="pt-16 relative">

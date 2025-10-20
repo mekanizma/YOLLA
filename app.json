@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "d2e19d4d-a2a0-48ae-a704-48552087adec"
+      }
+    },
+    "android": {
+      "package": "com.spontanee.yollabi"
+    }
+  }
+}

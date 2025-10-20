@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import {
   Button, MenuItem, TextField, Select, InputLabel, FormControl, FormHelperText, Card, CardContent, Typography, Box, Divider
 } from '@mui/material';
+import Checkbox from '@mui/material/Checkbox';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import { Link } from 'react-router-dom';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { tr } from 'date-fns/locale';
@@ -48,6 +51,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSubmit }) => {
   });
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [loading, setLoading] = useState(false);
+  const [agree, setAgree] = useState(false);
 
   const validate = () => {
     const newErrors: { [key: string]: string } = {};
@@ -66,6 +70,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSubmit }) => {
     if (!form.education) newErrors.education = 'Eğitim seviyesi zorunlu';
     if (!form.job) newErrors.job = 'Meslek zorunlu';
     if (!form.experience) newErrors.experience = 'Deneyim yılı zorunlu';
+    if (!agree) newErrors.agree = 'Kullanım şartlarını ve gizlilik politikasını kabul etmelisiniz.';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -86,6 +91,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSubmit }) => {
     const data = {
       ...form,
       birthDate: form.birthDate ? form.birthDate.toISOString().split('T')[0] : null,
+      agree
     };
     if (onSubmit) onSubmit(data);
     setLoading(false);
@@ -283,6 +289,21 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSubmit }) => {
             </Grid>
           </Grid>
           <Divider sx={{ my: 2 }} />
+          <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
+            <FormControlLabel
+              control={<Checkbox checked={agree} onChange={(e) => setAgree(e.target.checked)} />}
+              label={
+                <Typography variant="body2">
+                  <Link to="/terms" className="text-primary">Kullanım Şartları</Link> ve <Link to="/privacy" className="text-primary">Gizlilik Politikası</Link>'nı okudum ve kabul ediyorum.
+                </Typography>
+              }
+            />
+          </Box>
+          {errors.agree && (
+            <Typography variant="caption" color="error" sx={{ mt: -1, mb: 1, display: 'block' }}>
+              {errors.agree}
+            </Typography>
+          )}
           <Button
             type="submit"
             variant="contained"

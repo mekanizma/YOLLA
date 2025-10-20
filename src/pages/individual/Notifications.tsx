@@ -2,10 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Container, Typography, Box, Tabs, Tab, Paper, Avatar, Button, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import { Bell, CalendarCheck, Lightbulb, Award, Eye, CheckCircle, Briefcase, Trash2 } from 'lucide-react';
 import Header from '../../components/layout/Header';
+import Footer from '../../components/layout/Footer';
 import Snackbar from '@mui/material/Snackbar';
 import Checkbox from '@mui/material/Checkbox';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import { useNavigate } from 'react-router-dom';
+import supabase from '../../lib/supabaseClient';
+import { getMyNotifications, markNotificationRead } from '../../lib/notificationsService';
 
 interface Notification {
   id: number;
@@ -17,40 +20,6 @@ interface Notification {
   applicationId?: number;
 }
 
-const mockNotifications: Notification[] = [
-  {
-    id: 1,
-    type: 'job',
-    title: 'Yeni iş ilanı: Frontend Geliştirici',
-    desc: 'TechSoft A.Ş. yeni bir ilan yayınladı.',
-    date: '2 saat önce',
-    read: false,
-  },
-  {
-    id: 2,
-    type: 'application',
-    title: 'Başvuru Sonucu: Görüşmeye Çağrıldınız',
-    desc: 'Dijital Vizyon başvurunuz için sizi görüşmeye davet etti.',
-    date: '1 gün önce',
-    read: false,
-  },
-  {
-    id: 3,
-    type: 'badge',
-    title: 'Rozet Kazandınız!',
-    desc: '“5 ilana başvurdu” rozetini kazandınız.',
-    date: '3 gün önce',
-    read: true,
-  },
-  {
-    id: 4,
-    type: 'application',
-    title: 'Başvuru Sonucu: Kabul Edildiniz',
-    desc: 'Tebrikler! Başvurunuz kabul edildi.',
-    date: '5 dakika önce',
-    read: false,
-  },
-];
 
 const iconMap = {
   job: <Briefcase className="w-6 h-6 text-primary" />,
@@ -65,7 +34,7 @@ const tabOptions = [
 ];
 
 const IndividualNotifications: React.FC = () => {
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [tab, setTab] = useState<'all' | 'unread' | 'read'>('all');
   const [openDetail, setOpenDetail] = useState<Notification | null>(null);
   const [contractDialogOpen, setContractDialogOpen] = useState(false);
@@ -74,29 +43,30 @@ const IndividualNotifications: React.FC = () => {
   const [acceptedOffer, setAcceptedOffer] = useState(false); // mock kayıt
   const navigate = useNavigate();
 
-  // Bildirimleri localStorage'dan da oku
-  const [externalNotifications, setExternalNotifications] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem('individual_notifications') || '[]');
-    } catch {
-      return [];
-    }
-  });
-
-  // Bildirimler güncellendiğinde localStorage'dan tekrar oku
   useEffect(() => {
-    const interval = setInterval(() => {
-      try {
-        setExternalNotifications(JSON.parse(localStorage.getItem('individual_notifications') || '[]'));
-      } catch {
-        setExternalNotifications([]);
+    const load = async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      const user = auth.user;
+      if (!user?.id) {
+        setNotifications([]);
+        return;
       }
-    }, 1000); // Her saniye kontrol et
-    return () => clearInterval(interval);
+      const rows = await getMyNotifications(user.id);
+      const mapped = rows.map((n: any) => ({
+        id: n.id,
+        type: (n.type as any) || 'job',
+        title: n.title || '-',
+        desc: n.description || '-',
+        date: new Date(n.created_at).toLocaleString('tr-TR'),
+        read: !!n.is_read,
+        applicationId: n.application_id || undefined
+      }));
+      setNotifications(mapped);
+    };
+    load();
   }, []);
 
-  // Bildirimleri birleştir
-  const allNotifications = [...externalNotifications, ...notifications];
+  const allNotifications = notifications;
 
   const filtered = allNotifications.filter(n =>
     tab === 'all' ? true : tab === 'unread' ? !n.read : n.read
@@ -105,8 +75,12 @@ const IndividualNotifications: React.FC = () => {
   // Bildirimleri en yeni en üstte olacak şekilde sırala
   const sortedNotifications = [...filtered].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  const markAsRead = (id: number) => {
-    setNotifications((prev) => prev.map(n => n.id === id ? { ...n, read: true } : n));
+  const markAsRead = async (id: number) => {
+    try {
+      await markNotificationRead(id);
+    } finally {
+      setNotifications((prev) => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    }
   };
 
   const markAllAsRead = () => {
@@ -145,18 +119,15 @@ const IndividualNotifications: React.FC = () => {
     }
   };
 
-  // Bildirimi sil fonksiyonu
+  // Bildirimi sil fonksiyonu (opsiyonel: supabase'de soft delete/flag)
   const handleDeleteNotification = (id: number) => {
-    // localStorage'dan sil
-    const updated = externalNotifications.filter((n: any) => n.id !== id);
-    setExternalNotifications(updated);
-    localStorage.setItem('individual_notifications', JSON.stringify(updated));
+    setNotifications(prev => prev.filter(n => n.id !== id));
   };
 
   return (
-    <>
+    <div className="min-h-screen flex flex-col">
       <Header userType="individual" />
-      <Container maxWidth="lg" sx={{ py: 4, pt: { xs: 8, md: 10 } }}>
+      <Container maxWidth="lg" sx={{ py: 4, pt: { xs: 8, md: 10 }, flex: 1 }}>
         <Box className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
           <Typography variant="h5" fontWeight={700}>Bildirimler</Typography>
           <Box className="flex items-center gap-4">
@@ -266,7 +237,8 @@ const IndividualNotifications: React.FC = () => {
           anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
         />
       </Container>
-    </>
+      <Footer />
+    </div>
   );
 };
 

@@ -1,25 +1,16 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Table, Row, Col, Select, DatePicker, Space, Tag, Button } from 'antd';
 import { Pie, Line } from '@ant-design/charts';
 import dayjs, { Dayjs } from 'dayjs';
 import * as XLSX from 'xlsx';
+import supabase from '../../lib/supabaseClient';
 
-// MOCK DATA
-const jobPosts = [
-  { id: 1, title: 'Frontend Developer', companyName: 'ABC Teknoloji' },
-  { id: 2, title: 'Backend Developer', companyName: 'XYZ Yazılım' },
-  { id: 3, title: 'UI/UX Designer', companyName: 'ABC Teknoloji' },
-];
-const applications = [
-  { jobPostId: 1, userId: 101, status: 'approved', createdAt: '2024-06-01' },
-  { jobPostId: 1, userId: 102, status: 'pending', createdAt: '2024-06-02' },
-  { jobPostId: 1, userId: 103, status: 'rejected', createdAt: '2024-06-03' },
-  { jobPostId: 2, userId: 104, status: 'approved', createdAt: '2024-06-01' },
-  { jobPostId: 2, userId: 105, status: 'approved', createdAt: '2024-06-02' },
-  { jobPostId: 2, userId: 106, status: 'pending', createdAt: '2024-06-03' },
-  { jobPostId: 3, userId: 107, status: 'rejected', createdAt: '2024-06-01' },
-  { jobPostId: 3, userId: 108, status: 'approved', createdAt: '2024-06-02' },
-];
+type JobRow = { id: number; title: string; company_name: string };
+type AppRow = { job_id: number; user_id: string; status: 'approved' | 'pending' | 'rejected'; created_at: string };
+
+const ReportsPage: React.FC = () => {
+  const [jobPosts, setJobPosts] = useState<JobRow[]>([]);
+  const [applications, setApplications] = useState<AppRow[]>([]);
 
 const statusColors: Record<string, string> = {
   approved: 'green',
@@ -33,20 +24,34 @@ const statusLabels: Record<string, string> = {
   rejected: 'Reddedildi',
 };
 
-const ReportsPage: React.FC = () => {
   // Filtreler
   const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
   const [company, setCompany] = useState<string | undefined>(undefined);
   const [status, setStatus] = useState<string | undefined>(undefined);
 
+  useEffect(() => {
+    const load = async () => {
+      const { data: jobs } = await supabase
+        .from('jobs')
+        .select('id,title,company_name')
+        .eq('status', 'published');
+      setJobPosts((jobs as any) || []);
+
+      const { data: apps } = await supabase
+        .from('applications')
+        .select('job_id,user_id,status,created_at');
+      setApplications((apps as any) || []);
+    };
+    load();
+  }, []);
   // Filtrelenmiş başvurular
   const filteredApplications = useMemo(() => {
     return applications.filter(app => {
-      const job = jobPosts.find(j => j.id === app.jobPostId);
-      if (company && job?.companyName !== company) return false;
-      if (status && app.status !== status) return false;
+      const job = jobPosts.find(j => j.id === app.job_id);
+      if (company && job && job.company_name !== company) return false;
+      if (status && app.status !== (status as any)) return false;
       if (dateRange) {
-        const appDate = dayjs(app.createdAt);
+        const appDate = dayjs(app.created_at);
         if (appDate.isBefore(dateRange[0], 'day') || appDate.isAfter(dateRange[1], 'day')) return false;
       }
       return true;
@@ -57,7 +62,7 @@ const ReportsPage: React.FC = () => {
   const jobApplicationCounts = useMemo(() => {
     return jobPosts.map(job => ({
       ...job,
-      total: filteredApplications.filter(a => a.jobPostId === job.id).length,
+      total: filteredApplications.filter(a => a.job_id === job.id).length,
     }));
   }, [filteredApplications]);
 
@@ -65,7 +70,7 @@ const ReportsPage: React.FC = () => {
   const jobApprovedCounts = useMemo(() => {
     return jobPosts.map(job => ({
       ...job,
-      approved: filteredApplications.filter(a => a.jobPostId === job.id && a.status === 'approved').length,
+      approved: filteredApplications.filter(a => a.job_id === job.id && a.status === 'approved').length,
     }));
   }, [filteredApplications]);
 
@@ -73,7 +78,8 @@ const ReportsPage: React.FC = () => {
   const timelineData = useMemo(() => {
     const grouped: Record<string, number> = {};
     filteredApplications.forEach(a => {
-      grouped[a.createdAt] = (grouped[a.createdAt] || 0) + 1;
+      const key = dayjs(a.created_at).format('YYYY-MM-DD');
+      grouped[key] = (grouped[key] || 0) + 1;
     });
     return Object.entries(grouped).map(([date, count]) => ({ date, count }));
   }, [filteredApplications]);
@@ -82,8 +88,8 @@ const ReportsPage: React.FC = () => {
   const companyApplicationCounts = useMemo(() => {
     const grouped: Record<string, number> = {};
     filteredApplications.forEach(a => {
-      const job = jobPosts.find(j => j.id === a.jobPostId);
-      if (job) grouped[job.companyName] = (grouped[job.companyName] || 0) + 1;
+      const job = jobPosts.find(j => j.id === a.job_id);
+      if (job) grouped[job.company_name] = (grouped[job.company_name] || 0) + 1;
     });
     return Object.entries(grouped).map(([company, count]) => ({ company, count }));
   }, [filteredApplications]);
@@ -102,7 +108,7 @@ const ReportsPage: React.FC = () => {
   }, [filteredApplications]);
 
   // Şirketler listesi
-  const companyOptions = Array.from(new Set(jobPosts.map(j => j.companyName)));
+  const companyOptions = Array.from(new Set(jobPosts.map(j => j.company_name)));
 
   // Excel'e Aktar fonksiyonu
   const handleExportExcel = () => {
@@ -110,17 +116,17 @@ const ReportsPage: React.FC = () => {
     // Şirket bazlı başvuru verisi
     const rows = filteredApplications
       .filter(a => {
-        const job = jobPosts.find(j => j.id === a.jobPostId);
-        return job && job.companyName === company;
+        const job = jobPosts.find(j => j.id === a.job_id);
+        return job && job.company_name === company;
       })
       .map(a => {
-        const job = jobPosts.find(j => j.id === a.jobPostId);
+        const job = jobPosts.find(j => j.id === a.job_id);
         return {
           'İlan': job?.title,
-          'Şirket': job?.companyName,
-          'Kullanıcı ID': a.userId,
+          'Şirket': job?.company_name,
+          'Kullanıcı ID': a.user_id,
           'Durum': statusLabels[a.status],
-          'Başvuru Tarihi': a.createdAt,
+          'Başvuru Tarihi': a.created_at,
         };
       });
     const ws = XLSX.utils.json_to_sheet(rows);

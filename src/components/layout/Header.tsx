@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, Bell, User, Briefcase, LogOut, Building, MessageCircle } from 'lucide-react';
+import { Menu, X, Bell, User, Briefcase, LogOut, Building } from 'lucide-react';
 import Button from '../ui/Button';
-import logo from '../../assets/logo.png';
+import yollabiLogo from '../../assets/yollabi-logo.svg';
 
 interface HeaderProps {
   userType?: 'individual' | 'corporate' | null;
+  scrolled?: boolean;
 }
 
-const Header: React.FC<HeaderProps> = ({ userType }) => {
+const Header: React.FC<HeaderProps> = ({ userType, scrolled }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -51,15 +52,20 @@ const Header: React.FC<HeaderProps> = ({ userType }) => {
   return (
     <header className={cn(
       "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
-      isLandingPage 
-        ? "bg-transparent text-white" 
+      isLandingPage && !scrolled
+        ? "bg-transparent text-white"
         : "bg-white shadow-sm text-foreground"
     )}>
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <div className="flex items-center space-x-2 cursor-pointer select-none">
-            <img src={logo} alt="Logo" className="w-16 h-16 object-contain" />
+            <img 
+              src={yollabiLogo} 
+              alt="YOLLABİ Logo" 
+              className="h-12 w-auto object-contain transition-all"
+              style={{ filter: isLandingPage && !scrolled ? 'brightness(0) invert(1)' : 'none' }}
+            />
           </div>
           
           {/* Desktop Nav */}
@@ -73,7 +79,7 @@ const Header: React.FC<HeaderProps> = ({ userType }) => {
                     "text-sm font-medium flex items-center space-x-1 transition-colors",
                     location.pathname === link.path 
                       ? "text-primary" 
-                      : isLandingPage 
+                      : isLandingPage && !scrolled
                         ? "text-white hover:text-white/80" 
                         : "text-muted-foreground hover:text-foreground"
                   )}
@@ -86,7 +92,7 @@ const Header: React.FC<HeaderProps> = ({ userType }) => {
                 onClick={handleLogout}
                 className={cn(
                   "text-sm font-medium flex items-center space-x-1 transition-colors",
-                  isLandingPage 
+                  isLandingPage && !scrolled
                     ? "text-white hover:text-white/80" 
                     : "text-muted-foreground hover:text-foreground"
                 )}
@@ -101,7 +107,7 @@ const Header: React.FC<HeaderProps> = ({ userType }) => {
                 <Button
                   onClick={() => navigate('/login/individual')}
                   variant="outline"
-                  className="group relative px-6 py-2 text-base font-semibold border-2 border-primary text-primary rounded-lg hover:bg-primary/5 transform hover:scale-105 transition-all duration-300"
+                  className="group relative px-6 py-2 text-base font-semibold border-2 border-primary text-primary hover:text-primary rounded-lg hover:bg-primary/5 transform hover:scale-105 transition-all duration-300"
                 >
                   <span className="relative z-10 flex items-center justify-center gap-2">
                     <User className="w-5 h-5" />
@@ -129,9 +135,9 @@ const Header: React.FC<HeaderProps> = ({ userType }) => {
             aria-label="Toggle menu"
           >
             {mobileMenuOpen ? (
-              <X className={isLandingPage && !mobileMenuOpen ? "text-white" : "text-foreground"} />
+              <X className={isLandingPage && !mobileMenuOpen && !scrolled ? "text-white" : "text-foreground"} />
             ) : (
-              <Menu className={isLandingPage && !mobileMenuOpen ? "text-white" : "text-foreground"} />
+              <Menu className={isLandingPage && !mobileMenuOpen && !scrolled ? "text-white" : "text-foreground"} />
             )}
           </button>
         </div>
@@ -182,7 +188,7 @@ const Header: React.FC<HeaderProps> = ({ userType }) => {
                       setMobileMenuOpen(false);
                     }}
                     variant="outline"
-                    className="group relative px-6 py-2 text-base font-semibold border-2 border-primary text-primary rounded-lg hover:bg-primary/5 transform hover:scale-105 transition-all duration-300"
+                    className="group relative px-6 py-2 text-base font-semibold border-2 border-primary text-primary hover:text-primary rounded-lg hover:bg-primary/5 transform hover:scale-105 transition-all duration-300"
                   >
                     <span className="relative z-10 flex items-center justify-center gap-2">
                       <User className="w-5 h-5" />

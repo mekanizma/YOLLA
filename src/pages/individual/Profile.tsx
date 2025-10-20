@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   Container,
@@ -29,6 +29,8 @@ import LanguageIcon from '@mui/icons-material/Language';
 import PhotoCamera from '@mui/icons-material/PhotoCamera';
 import DeleteIcon from '@mui/icons-material/Delete';
 import Header from '../../components/layout/Header';
+import Footer from '../../components/layout/Footer';
+import { getCurrentUserProfile, updateCurrentUserProfile } from '../../lib/profileService';
 import { PDFDownloadLink, PDFViewer } from '@react-pdf/renderer';
 import { ModernCV } from '../../components/cv-templates/ModernCV';
 import { MinimalCV } from '../../components/cv-templates/MinimalCV';
@@ -38,54 +40,14 @@ import { CreativeCV } from '../../components/cv-templates/CreativeCV';
 import Radio from '@mui/material/Radio';
 import RadioGroup from '@mui/material/RadioGroup';
 import FormControlLabel from '@mui/material/FormControlLabel';
-import BadgesSection from '../../components/BadgesSection';
 import ProfileCompletionBox from '../../components/ProfileCompletionBox';
+import supabase from '../../lib/supabaseClient';
+import Slide from '@mui/material/Slide';
+import type { TransitionProps } from '@mui/material/transitions';
 
-const skills = [
-  'JavaScript', 'React', 'Node.js', 'TypeScript', 'HTML5', 'CSS3', 'MongoDB', 'Express.js', 'Git', 'RESTful API', 'UI/UX', 'Responsive Design'
-];
-const languages = [
-  { name: 'Türkçe', level: 'Anadil', percent: 100 },
-  { name: 'İngilizce', level: 'İleri Seviye', percent: 85 },
-  { name: 'Almanca', level: 'Orta Seviye', percent: 50 }
-];
-const experiences = [
-  {
-    title: 'Kıdemli Frontend Geliştirici',
-    company: 'ABC Teknoloji',
-    desc: 'Şirketin ana ürünü olan SaaS platformunun frontend mimarisini yeniden tasarladım ve geliştirme sürecinde liderlik yaptım. React ve TypeScript kullanarak performans ve kullanıcı deneyimini önemli ölçüde iyileştirdim.',
-    date: 'Ocak 2023 - Günümüz'
-  },
-  {
-    title: 'Frontend Geliştirici',
-    company: 'XYZ Dijital',
-    desc: "E-ticaret web sitelerinin geliştirilmesi ve bakımında görev aldım. Responsive tasarımlar ve modern JavaScript frameworkleri kullanarak kullanıcı arayüzleri oluşturdum.",
-    date: 'Mart 2020 - Aralık 2022'
-  },
-  {
-    title: 'Junior Web Geliştirici',
-    company: 'Tech Solutions',
-    desc: 'HTML, CSS ve JavaScript kullanarak web siteleri geliştirdim. jQuery ve Bootstrap gibi kütüphanelerle çalıştım ve temel backend entegrasyonları gerçekleştirdim.',
-    date: 'Haziran 2018 - Şubat 2020'
-  }
-];
-const educations = [
-  {
-    degree: 'Bilgisayar Mühendisliği, Yüksek Lisans',
-    school: 'İstanbul Teknik Üniversitesi',
-    desc: 'Yapay Zeka ve Veri Bilimi odaklı çalışmalar yaptım. Tezim "Derin Öğrenme Algoritmaları ile Görüntü İşleme" üzerindeydi.',
-    date: '2016 - 2018'
-  },
-  {
-    degree: 'Bilgisayar Mühendisliği, Lisans',
-    school: 'Boğaziçi Üniversitesi',
-    desc: 'Yazılım geliştirme, algoritma tasarımı ve veri yapıları üzerine kapsamlı eğitim aldım. Bitirme projemde web tabanlı bir öğrenme yönetim sistemi geliştirdim.',
-    date: '2012 - 2016'
-  }
-];
+// Boş başlangıç dizileri: kullanıcı kendi dolduracak (state içinde tutulur)
 
-const profileCompletion = 75;
-const missingFields = ['Telefon', 'Lokasyon', 'Hakkında'];
+// Mock veriler kaldırıldı: kullanıcı boş başlayacak ve kendi dolduracak
 
 const cvTemplates = [
   { key: 'modern', label: 'Modern', component: ModernCV },
@@ -95,39 +57,58 @@ const cvTemplates = [
   { key: 'creative', label: 'Creative', component: CreativeCV },
 ];
 
-const badges = [
-  {
-    id: 1,
-    icon: '🏆',
-    title: '5 ilana başvurdu',
-    desc: 'İlk 5 iş başvurunu tamamladın!'
-  },
-  {
-    id: 3,
-    icon: '💯',
-    title: 'Profilini %100 doldurdu',
-    desc: 'Profilini eksiksiz doldurdun.'
-  }
-];
+// Rozetler artık Dashboard'da gerçek verilerle gösteriliyor
 
 const Profile = () => {
   const [editMode, setEditMode] = useState(false);
   const [avatarDialogOpen, setAvatarDialogOpen] = useState(false);
-  const [profileImage, setProfileImage] = useState('https://randomuser.me/api/portraits/men/32.jpg');
+  const [profileImage, setProfileImage] = useState('');
   const [newImage, setNewImage] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [form, setForm] = useState({
-    name: 'Ahmet Yılmaz',
-    title: 'Yazılım Geliştirici',
-    email: 'ahmet.yilmaz@email.com',
-    phone: '+90 555 123 45 67',
-    location: 'İstanbul, Türkiye',
-    about: `5 yıllık deneyime sahip bir Yazılım Geliştirici olarak, modern web teknolojileri ve geliştirme konusunda uzmanlık sahibiyim. Frontend ve backend teknolojilerinde geniş bir bilgi birikimine sahibim ve çevik metodolojileri benimseyen takım çalışmalarında verimli bir şekilde çalışabiliyorum.\n\nKarmaşık problemleri çözme, temiz ve sürdürülebilir kod yazma konusunda tutkulu bir yaklaşımım var. Sürekli öğrenmeye ve kendimi geliştirmeye odaklanıyorum, yeni teknolojileri takip ediyor ve projelerime entegre ediyorum.`
+    name: '',
+    title: '',
+    email: '',
+    phone: '',
+    location: '',
+    about: ''
   });
+  const [skillsState, setSkillsState] = useState<string[]>([]);
+  const [languagesState, setLanguagesState] = useState<{ name: string; level?: string; percent?: number }[]>([]);
+  const [experiencesState, setExperiencesState] = useState<{ title: string; company: string; desc: string; date: string }[]>([]);
+  const [educationsState, setEducationsState] = useState<{ degree: string; school: string; desc: string; date: string }[]>([]);
   const [formBackup, setFormBackup] = useState(form);
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
   const [cvDialogOpen, setCvDialogOpen] = useState(false);
   const [cvType, setCvType] = useState('modern');
+  const [completion, setCompletion] = useState(0);
+  // Dialog states for add forms
+  const [skillDialogOpen, setSkillDialogOpen] = useState(false);
+  const [languageDialogOpen, setLanguageDialogOpen] = useState(false);
+  const [experienceDialogOpen, setExperienceDialogOpen] = useState(false);
+  const [educationDialogOpen, setEducationDialogOpen] = useState(false);
+  // Temp form states
+  const [newSkill, setNewSkill] = useState('');
+  const [newLangName, setNewLangName] = useState('');
+  const [newLangPercent, setNewLangPercent] = useState<number | ''>('');
+  const [newExpTitle, setNewExpTitle] = useState('');
+  const [newExpCompany, setNewExpCompany] = useState('');
+  const [newExpDate, setNewExpDate] = useState('');
+  const [newExpDesc, setNewExpDesc] = useState('');
+  const [newEduDegree, setNewEduDegree] = useState('');
+  const [newEduSchool, setNewEduSchool] = useState('');
+  const [newEduDate, setNewEduDate] = useState('');
+  const [newEduDesc, setNewEduDesc] = useState('');
+
+  const Transition = React.useMemo(
+    () => React.forwardRef(function Transition(
+      props: TransitionProps & { children: React.ReactElement<any, any> }, ref: React.Ref<unknown>
+    ) {
+      return <Slide direction="up" ref={ref} {...props} />;
+    }),
+    []
+  );
 
   const handleAvatarClick = () => setAvatarDialogOpen(true);
   const handleDialogClose = () => {
@@ -137,22 +118,39 @@ const Profile = () => {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        setNewImage(ev.target?.result as string);
-      };
-      reader.readAsDataURL(file);
+      setSelectedFile(file);
+      setNewImage(URL.createObjectURL(file));
     }
   };
-  const handleSaveImage = () => {
-    if (newImage) setProfileImage(newImage);
-    setAvatarDialogOpen(false);
-    setNewImage(null);
+  const handleSaveImage = async () => {
+    try {
+      if (selectedFile) {
+        const { data: auth } = await supabase.auth.getUser();
+        const user = auth.user;
+        if (!user?.id) throw new Error('Giriş yapılmamış.');
+        const path = `user-${user.id}/${Date.now()}-${selectedFile.name}`;
+        const { error: upErr } = await supabase
+          .storage
+          .from('avatars')
+          .upload(path, selectedFile, { contentType: selectedFile.type, upsert: true });
+        if (upErr) throw upErr;
+        const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path);
+        const publicUrl = pub.publicUrl;
+        setProfileImage(publicUrl);
+        await updateCurrentUserProfile({ avatar: publicUrl });
+      }
+    } finally {
+      setAvatarDialogOpen(false);
+      setNewImage(null);
+      setSelectedFile(null);
+    }
   };
   const handleRemoveImage = () => {
     setProfileImage('');
+    updateCurrentUserProfile({ avatar: '' }).catch(() => {});
     setAvatarDialogOpen(false);
     setNewImage(null);
+    setSelectedFile(null);
   };
   const handleEditClick = () => {
     setFormBackup(form);
@@ -165,8 +163,20 @@ const Profile = () => {
     setForm(formBackup);
     setEditMode(false);
   };
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
+    await updateCurrentUserProfile({ 
+      name: form.name, 
+      title: form.title, 
+      phone: form.phone, 
+      location: form.location,
+      about: form.about,
+      skills: skillsState,
+      languages: languagesState,
+      experiences: experiencesState,
+      educations: educationsState
+    });
     setEditMode(false);
+    recomputeCompletion();
   };
   const handleOpenCvDialog = () => setCvDialogOpen(true);
   const handleCloseCvDialog = () => setCvDialogOpen(false);
@@ -178,18 +188,41 @@ const Profile = () => {
     phone: form.phone,
     location: form.location,
     about: form.about,
-    skills,
-    languages,
-    experiences,
-    educations,
+    skills: [],
+    languages: [],
+    experiences: [],
+    educations: [],
     photo: profileImage,
   };
   const SelectedCV = cvTemplates.find(t => t.key === cvType)?.component;
+
+  const recomputeCompletion = () => {
+    const checks = [
+      !!form.name,
+      !!form.title,
+      !!form.phone,
+      !!form.location,
+      !!form.about,
+      skillsState.length > 0,
+      languagesState.length > 0,
+      experiencesState.length > 0,
+      educationsState.length > 0,
+    ];
+    const pct = Math.round((checks.filter(Boolean).length / checks.length) * 100);
+    setCompletion(pct);
+  };
+
+  useEffect(() => {
+    recomputeCompletion();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.name, form.title, form.phone, form.location, form.about, skillsState, languagesState, experiencesState, educationsState]);
 
   return (
     <>
       <Header userType="individual" />
       <Container maxWidth="lg" sx={{ py: 4, pt: { xs: 8, md: 10 } }}>
+        {/* Supabase profilini yükle */}
+        <LoadProfile setForm={setForm} setProfileImage={setProfileImage} setSkills={setSkillsState} setLanguages={setLanguagesState} setExperiences={setExperiencesState} setEducations={setEducationsState} />
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={3}>
           {/* Left Column */}
           <Box sx={{ width: { xs: '100%', md: '33%' } }}>
@@ -230,18 +263,14 @@ const Profile = () => {
                   <LocationOnIcon fontSize="small" color="action" />
                   <Typography fontSize={15}>{form.location}</Typography>
                 </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <LanguageIcon fontSize="small" color="action" />
-                  <Typography fontSize={15}>ahmetyilmaz.com</Typography>
-                </Box>
               </Stack>
               <Divider sx={{ my: 2 }} />
               <Typography fontWeight={500} fontSize={15} mb={1}>Profil Tamamlama</Typography>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                 <Button size="small" variant="outlined">İLERLEME</Button>
-                <Box sx={{ flex: 1, ml: 2, fontWeight: 600 }}>{profileCompletion}%</Box>
+                <Box sx={{ flex: 1, ml: 2, fontWeight: 600 }}>{completion}%</Box>
               </Box>
-              <LinearProgress variant="determinate" value={profileCompletion} sx={{ height: 8, borderRadius: 5, mb: 2 }} />
+              <LinearProgress variant="determinate" value={completion} sx={{ height: 8, borderRadius: 5, mb: 2 }} />
               {!editMode && (
                 <>
                   <Button variant="contained" fullWidth sx={{ mt: 1 }} onClick={handleEditClick}>Profili Düzenle</Button>
@@ -288,37 +317,7 @@ const Profile = () => {
                 </Stack>
               )}
             </Paper>
-            <BadgesSection badges={badges} />
-
-            <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                <Typography fontWeight={600}>Beceriler</Typography>
-                <Button size="small" startIcon={<AddIcon />} sx={{ textTransform: 'none' }}>Beceri Ekle</Button>
-              </Box>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                {skills.map((skill, i) => (
-                  <Chip key={i} label={skill} />
-                ))}
-              </Box>
-            </Paper>
-
-            <Paper elevation={2} sx={{ p: 3 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                <Typography fontWeight={600}>Diller</Typography>
-                <Button size="small" startIcon={<AddIcon />} sx={{ textTransform: 'none' }}>Dil Ekle</Button>
-              </Box>
-              <Stack spacing={2}>
-                {languages.map((lang, i) => (
-                  <Box key={i}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Typography fontWeight={500}>{lang.name}</Typography>
-                      <Typography color="text.secondary" fontSize={14}>{lang.level}</Typography>
-                    </Box>
-                    <LinearProgress variant="determinate" value={lang.percent} sx={{ height: 8, borderRadius: 5, mt: 0.5 }} />
-                  </Box>
-                ))}
-              </Stack>
-            </Paper>
+            {/* Rozetler artık Dashboard'da gösteriliyor */}
           </Box>
 
           {/* Right Column */}
@@ -344,7 +343,7 @@ const Profile = () => {
                   />
                 ) : (
                   <Typography color="text.secondary" fontSize={15}>
-                    {form.about.split('\n').map((line, i) => <span key={i}>{line}<br /></span>)}
+                    {(form.about || '').split('\n').map((line, i) => <span key={i}>{line}<br /></span>)}
                   </Typography>
                 )}
               </Paper>
@@ -352,10 +351,10 @@ const Profile = () => {
               <Paper elevation={2} sx={{ p: 3, position: 'relative' }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                   <Typography fontWeight={600}>İş Deneyimi</Typography>
-                  <Button size="small" startIcon={<AddIcon />} sx={{ textTransform: 'none' }}>Deneyim Ekle</Button>
+                  <Button size="small" startIcon={<AddIcon />} sx={{ textTransform: 'none' }} onClick={() => { if (!editMode) setEditMode(true); setExperienceDialogOpen(true); }}>Deneyim Ekle</Button>
                 </Box>
                 <Stack spacing={2}>
-                  {experiences.map((exp, i) => (
+                  {experiencesState.map((exp, i) => (
                     <Box key={i}>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Typography fontWeight={600}>{exp.title}</Typography>
@@ -363,6 +362,9 @@ const Profile = () => {
                       </Box>
                       <Typography color="text.secondary" fontSize={15} fontWeight={500}>{exp.company}</Typography>
                       <Typography color="text.secondary" fontSize={15}>{exp.desc}</Typography>
+                      {editMode && (
+                        <Button size="small" color="error" onClick={() => setExperiencesState(prev => prev.filter((_, idx) => idx !== i))} sx={{ mt: 0.5 }}>Sil</Button>
+                      )}
                     </Box>
                   ))}
                 </Stack>
@@ -371,10 +373,10 @@ const Profile = () => {
               <Paper elevation={2} sx={{ p: 3, position: 'relative' }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                   <Typography fontWeight={600}>Eğitim</Typography>
-                  <Button size="small" startIcon={<AddIcon />} sx={{ textTransform: 'none' }}>Eğitim Ekle</Button>
+                  <Button size="small" startIcon={<AddIcon />} sx={{ textTransform: 'none' }} onClick={() => { if (!editMode) setEditMode(true); setEducationDialogOpen(true); }}>Eğitim Ekle</Button>
                 </Box>
                 <Stack spacing={2}>
-                  {educations.map((edu, i) => (
+                  {educationsState.map((edu, i) => (
                     <Box key={i}>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Typography fontWeight={600}>{edu.degree}</Typography>
@@ -382,6 +384,44 @@ const Profile = () => {
                       </Box>
                       <Typography color="text.secondary" fontSize={15} fontWeight={500}>{edu.school}</Typography>
                       <Typography color="text.secondary" fontSize={15}>{edu.desc}</Typography>
+                      {editMode && (
+                        <Button size="small" color="error" onClick={() => setEducationsState(prev => prev.filter((_, idx) => idx !== i))} sx={{ mt: 0.5 }}>Sil</Button>
+                      )}
+                    </Box>
+                  ))}
+                </Stack>
+              </Paper>
+
+              {/* Skills moved under Education */}
+              <Paper elevation={2} sx={{ p: 3, position: 'relative' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                  <Typography fontWeight={600}>Beceriler</Typography>
+                  <Button size="small" startIcon={<AddIcon />} sx={{ textTransform: 'none' }} onClick={() => { if (!editMode) setEditMode(true); setSkillDialogOpen(true); }}>Beceri Ekle</Button>
+                </Box>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                  {skillsState.map((skill, i) => (
+                    <Chip key={i} label={skill} onDelete={editMode ? () => setSkillsState(prev => prev.filter((_, idx) => idx !== i)) : undefined} />
+                  ))}
+                </Box>
+              </Paper>
+
+              {/* Languages moved under Education */}
+              <Paper elevation={2} sx={{ p: 3, position: 'relative' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                  <Typography fontWeight={600}>Diller</Typography>
+                  <Button size="small" startIcon={<AddIcon />} sx={{ textTransform: 'none' }} onClick={() => { if (!editMode) setEditMode(true); setLanguageDialogOpen(true); }}>Dil Ekle</Button>
+                </Box>
+                <Stack spacing={2}>
+                  {languagesState.map((lang, i) => (
+                    <Box key={i}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography fontWeight={500}>{lang.name}</Typography>
+                        <Typography color="text.secondary" fontSize={14}>{lang.level || ''}</Typography>
+                      </Box>
+                      <LinearProgress variant="determinate" value={lang.percent || 0} sx={{ height: 8, borderRadius: 5, mt: 0.5 }} />
+                      {editMode && (
+                        <Button size="small" color="error" onClick={() => setLanguagesState(prev => prev.filter((_, idx) => idx !== i))} sx={{ mt: 0.5 }}>Sil</Button>
+                      )}
                     </Box>
                   ))}
                 </Stack>
@@ -428,8 +468,95 @@ const Profile = () => {
           </DialogActions>
         </Dialog>
       </Container>
+      {/* Add Skill Dialog */}
+      <Dialog open={skillDialogOpen} onClose={() => setSkillDialogOpen(false)} maxWidth="xs" fullWidth TransitionComponent={Transition} PaperProps={{ sx: { borderRadius: 3, backdropFilter: 'saturate(180%) blur(6px)' } }}>
+        <DialogTitle sx={{ fontWeight: 700 }}>Yeni Beceri Ekle</DialogTitle>
+        <DialogContent dividers>
+          <TextField label="Beceri" placeholder="Örn: React" fullWidth value={newSkill} onChange={e => setNewSkill(e.target.value)} autoFocus />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSkillDialogOpen(false)} variant="text">İptal</Button>
+          <Button disabled={!newSkill.trim()} onClick={() => { if (newSkill.trim()) setSkillsState(prev => Array.from(new Set([...prev, newSkill.trim()]))); setNewSkill(''); setSkillDialogOpen(false); }} variant="contained">Ekle</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Add Language Dialog */}
+      <Dialog open={languageDialogOpen} onClose={() => setLanguageDialogOpen(false)} maxWidth="xs" fullWidth TransitionComponent={Transition} PaperProps={{ sx: { borderRadius: 3, backdropFilter: 'saturate(180%) blur(6px)' } }}>
+        <DialogTitle sx={{ fontWeight: 700 }}>Yeni Dil Ekle</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField label="Dil" placeholder="Örn: İngilizce" fullWidth value={newLangName} onChange={e => setNewLangName(e.target.value)} autoFocus />
+            <TextField label="Yüzde (0-100)" type="number" fullWidth value={newLangPercent} onChange={e => setNewLangPercent(e.target.value === '' ? '' : Number(e.target.value))} inputProps={{ min: 0, max: 100 }} helperText="Yeterlilik yüzdesi" />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setLanguageDialogOpen(false)} variant="text">İptal</Button>
+          <Button disabled={!newLangName.trim()} onClick={() => { if (newLangName.trim()) setLanguagesState(prev => [...prev, { name: newLangName.trim(), percent: typeof newLangPercent === 'number' ? Math.max(0, Math.min(100, newLangPercent)) : 0 }]); setNewLangName(''); setNewLangPercent(''); setLanguageDialogOpen(false); }} variant="contained">Ekle</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Add Experience Dialog */}
+      <Dialog open={experienceDialogOpen} onClose={() => setExperienceDialogOpen(false)} maxWidth="sm" fullWidth TransitionComponent={Transition} PaperProps={{ sx: { borderRadius: 3, backdropFilter: 'saturate(180%) blur(6px)' } }}>
+        <DialogTitle sx={{ fontWeight: 700 }}>Deneyim Ekle</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField label="Pozisyon" placeholder="Örn: Frontend Geliştirici" fullWidth value={newExpTitle} onChange={e => setNewExpTitle(e.target.value)} autoFocus />
+            <TextField label="Şirket" placeholder="Örn: ABC Teknoloji" fullWidth value={newExpCompany} onChange={e => setNewExpCompany(e.target.value)} />
+            <TextField label="Tarih aralığı" placeholder="Örn: 2022 - 2024" fullWidth value={newExpDate} onChange={e => setNewExpDate(e.target.value)} />
+            <TextField label="Açıklama" placeholder="Sorumluluklar ve başarılar" multiline minRows={3} fullWidth value={newExpDesc} onChange={e => setNewExpDesc(e.target.value)} />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setExperienceDialogOpen(false)} variant="text">İptal</Button>
+          <Button disabled={!newExpTitle.trim()} onClick={() => { if (newExpTitle.trim()) setExperiencesState(prev => [...prev, { title: newExpTitle.trim(), company: newExpCompany.trim(), date: newExpDate.trim(), desc: newExpDesc.trim() }]); setNewExpTitle(''); setNewExpCompany(''); setNewExpDate(''); setNewExpDesc(''); setExperienceDialogOpen(false); }} variant="contained">Ekle</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Add Education Dialog */}
+      <Dialog open={educationDialogOpen} onClose={() => setEducationDialogOpen(false)} maxWidth="sm" fullWidth TransitionComponent={Transition} PaperProps={{ sx: { borderRadius: 3, backdropFilter: 'saturate(180%) blur(6px)' } }}>
+        <DialogTitle sx={{ fontWeight: 700 }}>Eğitim Ekle</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField label="Bölüm/Program" placeholder="Örn: Bilgisayar Mühendisliği" fullWidth value={newEduDegree} onChange={e => setNewEduDegree(e.target.value)} autoFocus />
+            <TextField label="Okul" placeholder="Örn: ABC Üniversitesi" fullWidth value={newEduSchool} onChange={e => setNewEduSchool(e.target.value)} />
+            <TextField label="Tarih aralığı" placeholder="Örn: 2018 - 2022" fullWidth value={newEduDate} onChange={e => setNewEduDate(e.target.value)} />
+            <TextField label="Açıklama" placeholder="Öne çıkan dersler / projeler" multiline minRows={3} fullWidth value={newEduDesc} onChange={e => setNewEduDesc(e.target.value)} />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEducationDialogOpen(false)} variant="text">İptal</Button>
+          <Button disabled={!newEduDegree.trim()} onClick={() => { if (newEduDegree.trim()) setEducationsState(prev => [...prev, { degree: newEduDegree.trim(), school: newEduSchool.trim(), date: newEduDate.trim(), desc: newEduDesc.trim() }]); setNewEduDegree(''); setNewEduSchool(''); setNewEduDate(''); setNewEduDesc(''); setEducationDialogOpen(false); }} variant="contained">Ekle</Button>
+        </DialogActions>
+      </Dialog>
+      <Footer />
     </>
   );
 };
 
 export default Profile; 
+
+// Yardımcı alt bileşen: yükleme sırasında profil bilgisini getirir
+function LoadProfile({ setForm, setProfileImage, setSkills, setLanguages, setExperiences, setEducations }: { setForm: (v: any) => void; setProfileImage: (v: string) => void; setSkills: (v: string[]) => void; setLanguages: (v: any[]) => void; setExperiences: (v: any[]) => void; setEducations: (v: any[]) => void; }) {
+  useEffect(() => {
+    (async () => {
+      const p = await getCurrentUserProfile();
+      if (p) {
+        setForm((prev: any) => ({
+          ...prev,
+          name: p.name || (p.email ? (p.email.split('@')[0]) : ''),
+          email: p.email || '',
+          phone: p.phone || '',
+          location: p.location || '',
+          title: p.title || '',
+          about: (p as any).about || ''
+        }));
+        if (p.avatar) setProfileImage(p.avatar);
+        if (p.skills) setSkills(p.skills as string[]);
+        if (p.languages) setLanguages(p.languages as any[]);
+        if (p.experiences) setExperiences(p.experiences as any[]);
+        if (p.educations) setEducations(p.educations as any[]);
+      }
+    })();
+  }, [setForm, setProfileImage, setSkills, setLanguages, setExperiences, setEducations]);
+  return null;
+}

@@ -1,47 +1,60 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ChevronRight, Clock, Building, MapPin, Search, Filter, CheckCircle, UserCheck, Handshake, Flag } from 'lucide-react';
 import Header from '../../components/layout/Header';
 import Footer from '../../components/layout/Footer';
 import Button from '../../components/ui/Button';
+import supabase from '../../lib/supabaseClient';
+import { getMyApplications } from '../../lib/applicationsService';
 
 const Applications = () => {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
 
-  const applications = [
-    {
-      id: 1,
-      position: 'Senior Frontend Geliştirici',
-      company: 'TechSoft A.Ş.',
-      location: 'İstanbul',
-      appliedDate: '15 Mart 2024',
-      status: 'Değerlendiriliyor',
-      statusColor: 'bg-yellow-100 text-yellow-800',
-      logo: 'https://images.pexels.com/photos/15144262/pexels-photo-15144262.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1',
-    },
-    {
-      id: 3,
-      position: 'Backend Geliştirici',
-      company: 'Yazılım Evi A.Ş.',
-      location: 'İzmir',
-      appliedDate: '10 Mart 2024',
-      status: 'Reddedildi',
-      statusColor: 'bg-error/10 text-error',
-      logo: 'https://images.pexels.com/photos/3585088/pexels-photo-3585088.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1',
-    },
-    {
-      id: 4,
-      position: 'Mobil Uygulama Geliştirici',
-      company: 'Mobil Teknoloji Ltd.',
-      location: 'İstanbul (Uzaktan)',
-      appliedDate: '8 Mart 2024',
-      status: 'Kabul Edildi',
-      statusColor: 'bg-success/10 text-success',
-      logo: 'https://images.pexels.com/photos/3861958/pexels-photo-3861958.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1',
-    },
-  ];
+  const [applications, setApplications] = useState<any[]>([]);
+
+  const mapStatusToUi = (status: string) => {
+    switch (status) {
+      case 'pending':
+      case 'reviewing':
+        return { text: 'Değerlendiriliyor', color: 'bg-yellow-100 text-yellow-800' };
+      case 'accepted':
+      case 'approved':
+        return { text: 'Kabul Edildi', color: 'bg-success/10 text-success' };
+      case 'rejected':
+        return { text: 'Reddedildi', color: 'bg-error/10 text-error' };
+      default:
+        return { text: status, color: 'bg-gray-100 text-gray-700' };
+    }
+  };
+
+  useEffect(() => {
+    const load = async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      const user = auth.user;
+      if (!user?.id) {
+        setApplications([]);
+        return;
+      }
+      const rows = await getMyApplications(user.id);
+      const mapped = rows.map((a: any) => {
+        const ui = mapStatusToUi(a.status as string);
+        return {
+          id: a.id,
+          position: a.jobs?.title || 'İş İlanı',
+          company: a.jobs?.company_name || 'Şirket',
+          location: a.jobs?.location || '-',
+          appliedDate: new Date(a.created_at).toLocaleDateString('tr-TR'),
+          status: ui.text,
+          statusColor: ui.color,
+          logo: a.jobs?.company_logo || 'https://images.pexels.com/photos/1181671/pexels-photo-1181671.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1',
+        };
+      });
+      setApplications(mapped);
+    };
+    load();
+  }, []);
 
   const filteredApplications = applications.filter(app => {
     const matchesSearch = app.position.toLowerCase().includes(searchTerm.toLowerCase()) ||

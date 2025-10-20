@@ -1,94 +1,31 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Briefcase, Clock, MapPin, ChevronRight, User, FileText, MessageCircle } from 'lucide-react';
+import { Clock, MapPin, ChevronRight, User, MessageCircle } from 'lucide-react';
 import Header from '../../components/layout/Header';
 import Footer from '../../components/layout/Footer';
 import Button from '../../components/ui/Button';
 import { jobCategories, cities } from '../../lib/utils';
 import BadgesSection from '../../components/BadgesSection';
-import ProfileCompletionBox from '../../components/ProfileCompletionBox';
+import { fetchPublishedJobs } from '../../lib/jobsService';
+import { getMyApplications } from '../../lib/applicationsService';
+import { getUserBadges, checkApplicationBadges, checkProfileCompletionBadges } from '../../lib/badgesService';
+import supabase from '../../lib/supabaseClient';
 
 const Dashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedCity, setSelectedCity] = useState('');
+  const [displayName, setDisplayName] = useState<string>('');
   
-  // Mock data for recommended jobs
-  const recommendedJobs = [
-    {
-      id: 1,
-      title: 'Frontend Geliştirici',
-      company: 'TechSoft A.Ş.',
-      location: 'İstanbul',
-      type: 'Tam Zamanlı',
-      salary: '20.000₺ - 35.000₺',
-      postedDate: '2 gün önce',
-      logo: 'https://images.pexels.com/photos/15144262/pexels-photo-15144262.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1',
-      category: 'Bilgi Teknolojileri',
-    },
-    {
-      id: 2,
-      title: 'Backend Geliştirici',
-      company: 'Dijital Vizyon',
-      location: 'İstanbul (Uzaktan)',
-      type: 'Tam Zamanlı',
-      salary: '25.000₺ - 40.000₺',
-      postedDate: '1 gün önce',
-      logo: 'https://images.pexels.com/photos/11288118/pexels-photo-11288118.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1',
-      category: 'Bilgi Teknolojileri',
-    },
-    {
-      id: 3,
-      title: 'UI/UX Tasarımcı',
-      company: 'Kreatif Ajans',
-      location: 'Ankara',
-      type: 'Tam Zamanlı',
-      salary: '18.000₺ - 30.000₺',
-      postedDate: '3 gün önce',
-      logo: 'https://images.pexels.com/photos/3585088/pexels-photo-3585088.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1',
-      category: 'Tasarım',
-    },
-  ];
+  const [recommendedJobs, setRecommendedJobs] = useState<any[]>([]);
   
-  // Mock data for applications
-  const recentApplications = [
-    {
-      id: 101,
-      jobTitle: 'Yazılım Mimarı',
-      company: 'Teknoloji Ltd.',
-      status: 'Değerlendiriliyor',
-      appliedDate: '2 gün önce',
-      statusColor: 'bg-yellow-100 text-yellow-800',
-    },
-    {
-      id: 102,
-      jobTitle: 'Veri Analisti',
-      company: 'Veri Merkezi A.Ş.',
-      status: 'Görüşmeye Çağrıldı',
-      appliedDate: '5 gün önce',
-      statusColor: 'bg-green-100 text-green-800',
-    },
-  ];
+  const [recentApplications, setRecentApplications] = useState<any[]>([]);
 
-  // Mock data for badges/achievements
-  const badges = [
-    {
-      id: 1,
-      icon: '🏆',
-      title: '5 ilana başvurdu',
-      desc: 'İlk 5 iş başvurunu tamamladın!'
-    },
-    {
-      id: 3,
-      icon: '💯',
-      title: 'Profilini %100 doldurdu',
-      desc: 'Profilini eksiksiz doldurdun.'
-    }
-  ];
+  const [badges, setBadges] = useState<any[]>([]);
 
-  // Mock profile completion
-  const profileCompletion = 75; // örnek yüzde
-  const missingFields = ['Telefon', 'Lokasyon', 'Hakkında'];
+  // Profil tamamlama ve eksik alanlar ileride kullanılacak
+  // const [profileCompletion, setProfileCompletion] = useState(0);
+  // const [missingFields, setMissingFields] = useState<string[]>([]);
 
   const navigate = useNavigate();
 
@@ -106,6 +43,101 @@ const Dashboard = () => {
     return matchesSearch && matchesCategory && matchesCity;
   });
 
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const { data: auth } = await supabase.auth.getUser();
+        const user = auth.user;
+        if (user) {
+          const meta: any = user.user_metadata || {};
+          const fullName: string = meta.full_name || meta.name || `${meta.first_name || ''} ${meta.last_name || ''}`.trim();
+          setDisplayName(fullName || (user.email ? user.email.split('@')[0] : ''));
+        }
+        // Önerilen işler (şimdilik son yayınlanan 6 ilan)
+        const jobs = await fetchPublishedJobs();
+        const mappedJobs = jobs.slice(0, 6).map((j: any) => ({
+          id: j.id,
+          title: j.title,
+          company: j.company_name || 'Şirket',
+          location: j.location,
+          type: j.type,
+          salary: j.salary ? `${j.salary.min} - ${j.salary.max} ${j.salary.currency}` : '',
+          postedDate: new Date(j.created_at).toLocaleDateString('tr-TR'),
+          logo: j.company_logo || 'https://images.pexels.com/photos/1181671/pexels-photo-1181671.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1',
+          category: j.department || ''
+        }));
+        setRecommendedJobs(mappedJobs);
+
+        // Son başvurular
+        if (user?.id) {
+          const apps = await getMyApplications(user.id);
+          const mappedApps = apps.slice(0, 5).map((a: any) => ({
+            id: a.id,
+            jobTitle: a.jobs?.title || 'İş İlanı',
+            company: a.jobs?.company_name || 'Şirket',
+            status: a.status,
+            appliedDate: new Date(a.created_at).toLocaleDateString('tr-TR'),
+            statusColor: a.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : a.status === 'approved' || a.status === 'accepted' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+          }));
+          setRecentApplications(mappedApps);
+        }
+
+        // Rozetler/profil tamamlanma (gerçek verilerle)
+        if (user?.id) {
+          try {
+            // Başvuru sayısına göre rozet kontrolü
+            await checkApplicationBadges(user.id);
+            
+            // Profil tamamlanma oranını hesapla (basit hesaplama)
+            const { data: profileData } = await supabase
+              .from('users')
+              .select('about, skills, languages, experiences, educations, phone, location, title')
+              .eq('user_id', user.id)
+              .single();
+            
+            let completionPercent = 0;
+            if (profileData) {
+              const fields = [
+                profileData.about,
+                profileData.phone,
+                profileData.location,
+                profileData.title,
+                profileData.skills?.length > 0,
+                profileData.languages?.length > 0,
+                profileData.experiences?.length > 0,
+                profileData.educations?.length > 0
+              ];
+              const filledFields = fields.filter(field => field).length;
+              completionPercent = Math.round((filledFields / fields.length) * 100);
+            }
+            
+            // Profil tamamlanma rozetlerini kontrol et
+            await checkProfileCompletionBadges(user.id, completionPercent);
+            
+            // Kullanıcının rozetlerini getir
+            const userBadges = await getUserBadges(user.id);
+            const mappedBadges = userBadges.map((ub: any) => ({
+              id: ub.badge.id,
+              icon: ub.badge.icon,
+              title: ub.badge.name,
+              desc: ub.badge.description
+            }));
+            setBadges(mappedBadges);
+          } catch (e) {
+            console.warn('Rozet yükleme hatası:', e);
+            setBadges([]);
+          }
+        } else {
+          setBadges([]);
+        }
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn(e);
+      }
+    };
+    load();
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Header userType="individual" />
@@ -114,7 +146,7 @@ const Dashboard = () => {
         {/* Welcome Banner */}
         <section className="bg-gradient-to-r from-primary to-primary/80 text-white py-10 rounded-b-3xl shadow-lg mb-6">
           <div className="container mx-auto px-4 text-center">
-            <h1 className="text-3xl md:text-4xl font-bold mb-2 animate-fadeIn">Hoş Geldiniz, Ahmet! 👋</h1>
+            <h1 className="text-3xl md:text-4xl font-bold mb-2 animate-fadeIn">Hoş Geldiniz{displayName ? `, ${displayName}` : ''}! 👋</h1>
             <p className="text-white/90 text-lg max-w-xl mx-auto animate-fadeIn delay-100">Kariyer yolculuğunuzda size yardımcı olmaktan memnuniyet duyarız. Hemen aramaya başlayın!</p>
           </div>
         </section>

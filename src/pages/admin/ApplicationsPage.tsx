@@ -1,14 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Table, Button, Input, Space, Modal } from 'antd';
 import { SearchOutlined, EyeOutlined, DeleteOutlined } from '@ant-design/icons';
+import supabase from '../../lib/supabaseClient';
 
-const mockApplications = [
-  { id: 1, user: 'Ahmet Yılmaz', job: 'Frontend Geliştirici', company: 'ABC Teknoloji', date: '2023-04-10' },
-  { id: 2, user: 'Zeynep Kaya', job: 'Backend Developer', company: 'XYZ Yazılım', date: '2023-04-12' },
-];
+type Row = { id: number; created_at: string; users: { full_name?: string } | null; jobs: { title?: string; company_name?: string | null } | null };
 
 const ApplicationsPage: React.FC = () => {
-  const [data, setData] = useState(mockApplications);
+  const [data, setData] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [detail, setDetail] = useState<any>(null);
 
@@ -32,6 +30,27 @@ const ApplicationsPage: React.FC = () => {
       ),
     },
   ];
+
+  useEffect(() => {
+    const load = async () => {
+      const { data, error } = await supabase
+        .from('applications')
+        .select('id,created_at, users(full_name), jobs(title,company_name)')
+        .order('created_at', { ascending: false });
+      if (!error) {
+        setData(
+          (data as Row[]).map(r => ({
+            id: r.id,
+            user: r.users?.full_name || 'Kullanıcı',
+            job: r.jobs?.title || 'İş İlanı',
+            company: r.jobs?.company_name || 'Şirket',
+            date: new Date(r.created_at).toLocaleDateString('tr-TR')
+          }))
+        );
+      }
+    };
+    load();
+  }, []);
 
   const filtered = data.filter(a => a.user.toLowerCase().includes(search.toLowerCase()) || a.job.toLowerCase().includes(search.toLowerCase()) || a.company.toLowerCase().includes(search.toLowerCase()));
 

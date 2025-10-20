@@ -5,6 +5,7 @@ import Header from '../../components/layout/Header';
 import Footer from '../../components/layout/Footer';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
+import { signIn } from '../../lib/authService';
 
 const IndividualLogin = () => {
   const navigate = useNavigate();
@@ -21,13 +22,10 @@ const IndividualLogin = () => {
     setIsLoading(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // For demo purposes, always succeed
+      await signIn(email, password);
       navigate('/individual/dashboard');
-    } catch (err) {
-      setError('Giriş yapılamadı. Lütfen bilgilerinizi kontrol edin.');
+    } catch (err: any) {
+      setError(err.message || 'Giriş yapılamadı. Lütfen bilgilerinizi kontrol edin.');
     } finally {
       setIsLoading(false);
     }

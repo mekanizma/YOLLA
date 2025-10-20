@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Container, Paper, Typography, Box, TextField, Button, FormControl, InputLabel, Select, MenuItem, Grid, RadioGroup, FormControlLabel, Radio, Stepper, Step, StepLabel, IconButton, Switch } from '@mui/material';
+import { Container, Paper, Typography, Box, TextField, Button, FormControl, InputLabel, Select, MenuItem, Grid, RadioGroup, FormControlLabel, Radio, Stepper, Step, StepLabel, IconButton, Switch, Divider, SelectChangeEvent } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import { MapPin, Building, Clock, Users, Calendar } from 'lucide-react';
 import Header from '../../components/layout/Header';
 import { useNavigate } from 'react-router-dom';
 
@@ -47,23 +48,81 @@ const experienceLevels = [
 ];
 const employmentTypes = ['Tam Zamanlı', 'Yarı Zamanlı', 'Sözleşmeli', 'Staj', 'Geçici'];
 
+const commonBenefits = [
+  'Özel Sağlık Sigortası',
+  'Yemek Kartı',
+  'Servis',
+  'Esnek Çalışma Saatleri',
+  'Uzaktan Çalışma',
+  'Yıllık İzin',
+  'Performans Primi',
+  'Eğitim Desteği',
+  'Yabancı Dil Kursu',
+  'Spor Salonu Üyeliği',
+  'Kreş Desteği',
+  'Telefon Hattı',
+  'Şirket Telefonu',
+  'Şirket Bilgisayarı',
+  'Doğum Günü İzni'
+];
+
 const steps = ['Temel Bilgiler', 'İş Detayları', 'İnceleme'];
+
+interface JobForm {
+  title: string;
+  department: string;
+  location: string;
+  experience: string;
+  employment: string;
+  description: string;
+  requirements: string;
+  deadline: string;
+  salary: {
+    min: string;
+    max: string;
+    showSalary: boolean;
+  };
+  benefits: string[];
+  extraRequirements: boolean[];
+}
 
 const JobPost: React.FC = () => {
   const [activeStep, setActiveStep] = useState(0);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<JobForm>({
     title: '',
     department: '',
     location: '',
     experience: '',
     employment: '',
+    description: '',
+    requirements: '',
+    deadline: '',
+    salary: {
+      min: '',
+      max: '',
+      showSalary: false
+    },
+    benefits: [],
     extraRequirements: [false, false, false, false, false]
   });
   const navigate = useNavigate();
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | React.ChangeEvent<{ name?: string; value: unknown }>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | SelectChangeEvent) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name as string]: value }));
+    if (name?.includes('.')) {
+      const [parent, child] = name.split('.');
+      if (parent === 'salary') {
+        setForm(prev => ({
+          ...prev,
+          salary: {
+            ...prev.salary,
+            [child]: value
+          }
+        }));
+      }
+    } else {
+      setForm(prev => ({ ...prev, [name as keyof JobForm]: value }));
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -76,6 +135,11 @@ const JobPost: React.FC = () => {
       location: form.location,
       experience: form.experience,
       employment: form.employment,
+      description: form.description,
+      requirements: form.requirements,
+      deadline: form.deadline,
+      salary: form.salary,
+      benefits: form.benefits,
       status: 'active' as 'active' | 'closed',
       createdAt: new Date().toISOString(),
       applications: 0
@@ -93,6 +157,253 @@ const JobPost: React.FC = () => {
     navigate('/corporate/jobs');
   };
 
+  const getExperienceLabel = (value: string) => {
+    const exp = experienceLevels.find(e => e.value === value);
+    return exp ? exp.label : '';
+  };
+
+  // İş Detayları Adımı
+  const renderJobDetailsStep = () => (
+    <Paper elevation={0} sx={{ borderRadius: 4, p: { xs: 2, md: 4 }, boxShadow: '0 2px 8px #ececec' }}>
+      <Typography variant="h6" fontWeight={700} mb={2}>
+        İş Detayları
+      </Typography>
+      <Grid container spacing={2}>
+        {/* İş Tanımı */}
+        <Grid item xs={12}>
+          <TextField
+            fullWidth
+            required
+            label="İş Tanımı"
+            name="description"
+            placeholder="İş tanımını detaylı bir şekilde yazın..."
+            multiline
+            minRows={5}
+            value={form.description}
+            onChange={handleChange}
+            margin="dense"
+          />
+          <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+            Pozisyonun sorumluluklarını, beklentileri ve görevleri detaylı bir şekilde açıklayın
+          </Typography>
+        </Grid>
+
+        {/* Gereksinimler */}
+        <Grid item xs={12}>
+          <TextField
+            fullWidth
+            required
+            label="Aranan Nitelikler"
+            name="requirements"
+            placeholder="Adaylarda aradığınız nitelikleri yazın..."
+            multiline
+            minRows={5}
+            value={form.requirements}
+            onChange={handleChange}
+            margin="dense"
+          />
+          <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+            Adaylarda olmasını beklediğiniz teknik ve kişisel becerileri, deneyimleri ve eğitim gereksinimlerini belirtin
+          </Typography>
+        </Grid>
+
+        {/* Son Başvuru Tarihi */}
+        <Grid item xs={12} sm={6}>
+          <TextField
+            fullWidth
+            required
+            label="Son Başvuru Tarihi"
+            name="deadline"
+            type="date"
+            value={form.deadline}
+            onChange={handleChange}
+            margin="dense"
+            InputLabelProps={{ shrink: true }}
+            inputProps={{ min: new Date().toISOString().split('T')[0] }}
+          />
+          <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+            İlanın yayında kalacağı son tarihi belirtin
+          </Typography>
+        </Grid>
+
+        {/* Maaş Bilgisi */}
+        <Grid item xs={12}>
+          <Typography variant="subtitle1" fontWeight={600} mb={1}>
+            Maaş Aralığı
+          </Typography>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Minimum Maaş"
+                name="salary.min"
+                type="number"
+                placeholder="30000"
+                value={form.salary.min}
+                onChange={handleChange}
+                InputProps={{
+                  endAdornment: <Typography variant="body2">₺</Typography>
+                }}
+                margin="dense"
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Maksimum Maaş"
+                name="salary.max"
+                type="number"
+                placeholder="45000"
+                value={form.salary.max}
+                onChange={handleChange}
+                InputProps={{
+                  endAdornment: <Typography variant="body2">₺</Typography>
+                }}
+                margin="dense"
+              />
+            </Grid>
+          </Grid>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={form.salary.showSalary}
+                onChange={(e) => {
+                  setForm(prev => ({
+                    ...prev,
+                    salary: {
+                      ...prev.salary,
+                      showSalary: e.target.checked
+                    }
+                  }));
+                }}
+                size="small"
+              />
+            }
+            label="Maaş bilgisini adaylara göster"
+          />
+        </Grid>
+
+        {/* Yan Haklar */}
+        <Grid item xs={12}>
+          <Typography variant="subtitle1" fontWeight={600} mb={1}>
+            Yan Haklar
+          </Typography>
+          
+          {/* Hazır Yan Haklar */}
+          <Box mb={2}>
+            <Typography variant="body2" color="text.secondary" mb={1}>
+              Sık Kullanılan Yan Haklar
+            </Typography>
+            <Box display="flex" gap={1} flexWrap="wrap">
+              {commonBenefits.map((benefit) => (
+                <Button
+                  key={benefit}
+                  variant={form.benefits.includes(benefit) ? "contained" : "outlined"}
+                  size="small"
+                  onClick={() => {
+                    setForm(prev => ({
+                      ...prev,
+                      benefits: prev.benefits.includes(benefit)
+                        ? prev.benefits.filter(b => b !== benefit)
+                        : [...prev.benefits, benefit]
+                    }));
+                  }}
+                  sx={{
+                    borderRadius: 2,
+                    textTransform: 'none',
+                    fontSize: '0.8rem'
+                  }}
+                >
+                  {benefit}
+                </Button>
+              ))}
+            </Box>
+          </Box>
+
+          {/* Özel Yan Hak Ekleme */}
+          <TextField
+            fullWidth
+            label="Özel Yan Hak Ekle"
+            placeholder="Yan hak eklemek için yazın ve Enter'a basın"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.target as HTMLInputElement).value.trim()) {
+                e.preventDefault();
+                const value = (e.target as HTMLInputElement).value.trim();
+                if (!form.benefits.includes(value)) {
+                  setForm(prev => ({
+                    ...prev,
+                    benefits: [...prev.benefits, value]
+                  }));
+                }
+                (e.target as HTMLInputElement).value = '';
+              }
+            }}
+            margin="dense"
+          />
+          
+          {/* Seçilen Yan Haklar */}
+          {form.benefits.length > 0 && (
+            <Box mt={2}>
+              <Typography variant="body2" color="text.secondary" mb={1}>
+                Seçilen Yan Haklar
+              </Typography>
+              <Box display="flex" gap={1} flexWrap="wrap">
+                {form.benefits.map((benefit, index) => (
+                  <Box
+                    key={index}
+                    sx={{
+                      bgcolor: 'primary.50',
+                      color: 'primary.main',
+                      px: 2,
+                      py: 0.5,
+                      borderRadius: 2,
+                      fontSize: '0.875rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1
+                    }}
+                  >
+                    {benefit}
+                    <IconButton
+                      size="small"
+                      onClick={() => {
+                        setForm(prev => ({
+                          ...prev,
+                          benefits: prev.benefits.filter((_, i) => i !== index)
+                        }));
+                      }}
+                      sx={{ p: 0.5, color: 'primary.main' }}
+                    >
+                      <ArrowBackIcon style={{ transform: 'rotate(45deg)' }} />
+                    </IconButton>
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+          )}
+        </Grid>
+
+        {/* Butonlar */}
+        <Grid item xs={12} display="flex" justifyContent="space-between" mt={2}>
+          <Button
+            variant="outlined"
+            onClick={() => setActiveStep((prev) => prev - 1)}
+            sx={{ borderRadius: 2, px: 4 }}
+          >
+            Geri Dön
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => setActiveStep((prev) => prev + 1)}
+            sx={{ borderRadius: 2, px: 4, bgcolor: '#1746a2', '&:hover': { bgcolor: '#12306b' } }}
+          >
+            Sonraki Adım
+          </Button>
+        </Grid>
+      </Grid>
+    </Paper>
+  );
+
   return (
     <>
       <Header userType="corporate" />
@@ -102,14 +413,15 @@ const JobPost: React.FC = () => {
             {/* Üst Bar */}
             <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
               <Box display="flex" alignItems="center" gap={1}>
-                <IconButton size="small" sx={{ mr: 1 }}>
+                <IconButton size="small" sx={{ mr: 1 }} onClick={() => navigate(-1)}>
                   <ArrowBackIcon />
                 </IconButton>
                 <Typography variant="h5" fontWeight={700}>
-        Yeni İş İlanı Oluştur
-      </Typography>
+                  Yeni İş İlanı Oluştur
+                </Typography>
               </Box>
             </Box>
+            
             {/* Stepper */}
             <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 4 }}>
               {steps.map((label, idx) => (
@@ -118,7 +430,8 @@ const JobPost: React.FC = () => {
                 </Step>
               ))}
             </Stepper>
-            {/* Temel Bilgiler Formu */}
+
+            {/* Form Steps */}
             {activeStep === 0 && (
               <Paper elevation={0} sx={{ borderRadius: 4, p: { xs: 2, md: 4 }, boxShadow: '0 2px 8px #ececec' }}>
                 <Typography variant="h6" fontWeight={700} mb={2}>
@@ -249,191 +562,148 @@ const JobPost: React.FC = () => {
                 </Grid>
               </Paper>
             )}
-            {/* İş Detayları Adımı */}
-            {activeStep === 1 && (
-              <Paper elevation={0} sx={{ borderRadius: 4, p: { xs: 2, md: 4 }, boxShadow: '0 2px 8px #ececec', mt: 4 }}>
-                <Typography variant="h6" fontWeight={700} mb={2}>
-                  İş Detayları
+            {activeStep === 1 && renderJobDetailsStep()}
+            {activeStep === 2 && (
+              <Paper elevation={0} sx={{ borderRadius: 4, p: { xs: 2, md: 4 }, boxShadow: '0 2px 8px #ececec' }}>
+                <Typography variant="h6" fontWeight={700} mb={4}>
+                  İlan Önizleme
                 </Typography>
-                <Grid container spacing={2}>
-                  <Grid item xs={12}>
-                    <Typography fontWeight={600} mb={1}>Maaş Aralığı</Typography>
+
+                {/* İlan Başlığı ve Temel Bilgiler */}
+                <Box mb={4}>
+                  <Typography variant="h5" fontWeight={600} color="primary" mb={2}>
+                    {form.title}
+                  </Typography>
+                  
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={6} md={3}>
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <Building size={18} className="text-gray-500" />
+                        <Typography variant="body2" color="text.secondary">
+                          {form.department}
+                        </Typography>
+                      </Box>
+                    </Grid>
+                    <Grid item xs={12} sm={6} md={3}>
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <MapPin size={18} className="text-gray-500" />
+                        <Typography variant="body2" color="text.secondary">
+                          {form.location}
+                        </Typography>
+                      </Box>
+                    </Grid>
+                    <Grid item xs={12} sm={6} md={3}>
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <Clock size={18} className="text-gray-500" />
+                        <Typography variant="body2" color="text.secondary">
+                          {form.employment}
+                        </Typography>
+                      </Box>
+                    </Grid>
+                    <Grid item xs={12} sm={6} md={3}>
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <Users size={18} className="text-gray-500" />
+                        <Typography variant="body2" color="text.secondary">
+                          {getExperienceLabel(form.experience)}
+                        </Typography>
+                      </Box>
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <Calendar size={18} className="text-gray-500" />
+                        <Typography variant="body2" color="text.secondary">
+                          Son Başvuru: {new Date(form.deadline).toLocaleDateString('tr-TR', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })}
+                        </Typography>
+                      </Box>
+                    </Grid>
                   </Grid>
-                  <Grid item xs={12} md={6}>
-                    <TextField
-                      fullWidth
-                      name="salaryMin"
-                      placeholder="Minimum"
-                      margin="dense"
-                      InputProps={{ startAdornment: <span style={{ color: '#bdbdbd', marginRight: 8 }}>₺</span> }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-                      name="salaryMax"
-                      placeholder="Maksimum"
-                      margin="dense"
-                      InputProps={{ startAdornment: <span style={{ color: '#bdbdbd', marginRight: 8 }}>₺</span> }}
-                    />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <Box display="flex" alignItems="center" gap={1} mb={2}>
-                      <Switch size="small" />
-                      <Typography variant="body2">Maaş bilgisini adaylara gösterme</Typography>
-                    </Box>
-                  </Grid>
-                  <Grid item xs={12}>
-            <TextField
-              fullWidth
-              required
-              label="İş Tanımı"
-              name="description"
-                      placeholder="İş tanımını, sorumlulukları ve gereksinimleri detaylı olarak açıklayın..."
-                      margin="dense"
-              multiline
-                      minRows={5}
-                    />
-                    <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-                      Aday profilinizi, günlük sorumlulukları ve pozisyonun şirketinizdeki rolünü açıklayın
+                </Box>
+
+                <Divider sx={{ my: 3 }} />
+
+                {/* İş Tanımı */}
+                <Box mb={4}>
+                  <Typography variant="h6" fontWeight={600} mb={2}>
+                    İş Tanımı
+                  </Typography>
+                  <Typography variant="body1" whiteSpace="pre-line">
+                    {form.description}
+                  </Typography>
+                </Box>
+
+                {/* Gereksinimler */}
+                <Box mb={4}>
+                  <Typography variant="h6" fontWeight={600} mb={2}>
+                    Aranan Nitelikler
+                  </Typography>
+                  <Typography variant="body1" whiteSpace="pre-line">
+                    {form.requirements}
+                  </Typography>
+                </Box>
+
+                {/* Maaş Bilgisi */}
+                {form.salary.showSalary && form.salary.min && form.salary.max && (
+                  <Box mb={4}>
+                    <Typography variant="h6" fontWeight={600} mb={2}>
+                      Maaş Aralığı
                     </Typography>
-                  </Grid>
-                  <Grid item xs={12}>
-                <TextField
-                      fullWidth
-                      label="Gerekli Beceriler"
-                      name="skills"
-                      placeholder="Beceri eklemek için yazın ve Enter'a basın"
-                      margin="dense"
-                />
-                    <Box mt={1} display="flex" gap={1} flexWrap="wrap">
-                      {/* Örnek chipler */}
-                      <Button size="small" variant="outlined">JavaScript</Button>
-                      <Button size="small" variant="outlined">React</Button>
-                      <Button size="small" variant="outlined">Node.js</Button>
-                    </Box>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                <TextField
-                      fullWidth
-                      label="Son Başvuru Tarihi"
-                      name="deadline"
-                      placeholder="mm/dd/yyyy"
-                      margin="dense"
-                      type="date"
-                      InputLabelProps={{ shrink: true }}
-                    />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <Typography fontWeight={600} mb={1} mt={2}>Ek Gereksinimler</Typography>
-                    <Box display="flex" flexDirection="column" gap={1}>
-                      {[
-                        'Üniversite mezunu',
-                        'Seyahat edebilir',
-                        'Sertifika sahibi',
-                        'Yabancı dil bilgisi',
-                        'Askerlik durumunu tamamlamış (Erkek adaylar için)'
-                      ].map((label, idx) => {
-                        const checked = (form.extraRequirements || [])[idx];
-                        return (
+                    <Typography variant="body1">
+                      {form.salary.min} ₺ - {form.salary.max} ₺
+                    </Typography>
+                  </Box>
+                )}
+
+                {/* Yan Haklar */}
+                {form.benefits.length > 0 && (
+                  <Box mb={4}>
+                    <Typography variant="h6" fontWeight={600} mb={2}>
+                      Yan Haklar
+                    </Typography>
+                    <Grid container spacing={1}>
+                      {form.benefits.map((benefit, index) => (
+                        <Grid item key={index}>
                           <Box
-                            key={label}
                             sx={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              border: 1,
-                              borderColor: checked ? '#1746a2' : '#e0e3e7',
-                              bgcolor: checked ? '#f5f8ff' : '#fff',
-                              borderRadius: 2,
+                              bgcolor: 'primary.50',
+                              color: 'primary.main',
                               px: 2,
-                              py: 1,
-                              transition: 'all 0.2s',
-                              cursor: 'pointer',
-                            }}
-                            onClick={() => {
-                              const arr = [...(form.extraRequirements || [false, false, false, false, false])];
-                              arr[idx] = !arr[idx];
-                              setForm((prev) => ({ ...prev, extraRequirements: arr }));
+                              py: 0.5,
+                              borderRadius: 2,
+                              fontSize: '0.875rem'
                             }}
                           >
-                            <input
-                              type="checkbox"
-                              checked={!!checked}
-                              readOnly
-                              style={{ marginRight: 12 }}
-                            />
-                            <Typography>{label}</Typography>
+                            {benefit}
                           </Box>
-                        );
-                      })}
-                    </Box>
-                  </Grid>
-                </Grid>
-                {/* Butonlar kutunun en altında, tam sola ve tam sağa hizalı */}
-                <Box mt={5} display="flex" justifyContent="space-between" alignItems="center">
-                  <Button variant="outlined" size="small" sx={{ borderRadius: 2, minWidth: 120 }} onClick={() => setActiveStep((prev) => prev - 1)}>
-                    Önceki Adım
+                        </Grid>
+                      ))}
+                    </Grid>
+                  </Box>
+                )}
+
+                {/* Butonlar */}
+                <Box display="flex" justifyContent="space-between" mt={4}>
+                  <Button
+                    variant="outlined"
+                    onClick={() => setActiveStep(prev => prev - 1)}
+                    sx={{ borderRadius: 2, px: 4 }}
+                  >
+                    Geri Dön
                   </Button>
-                  <Button variant="contained" size="small" sx={{ borderRadius: 2, minWidth: 140, bgcolor: '#1746a2', '&:hover': { bgcolor: '#12306b' } }} onClick={() => setActiveStep((prev) => prev + 1)}>
-                    Sonraki Adım
+                  <Button
+                    variant="contained"
+                    onClick={handleSubmit}
+                    sx={{ borderRadius: 2, px: 4, bgcolor: '#1746a2', '&:hover': { bgcolor: '#12306b' } }}
+                  >
+                    İlanı Yayınla
                   </Button>
                 </Box>
               </Paper>
             )}
-            {/* İnceleme ve Yayınlama Adımı */}
-            {activeStep === 2 && (
-              <Paper elevation={0} sx={{ borderRadius: 4, p: { xs: 2, md: 4 }, boxShadow: '0 2px 8px #ececec', mt: 4 }}>
-                <Typography variant="h6" fontWeight={700} mb={2}>
-                  İnceleme ve Yayınlama
-                </Typography>
-                <Typography variant="subtitle1" fontWeight={500} mb={2}>
-                  İlan Önizleme
-                  <Button size="small" sx={{ float: 'right' }}>Tam Önizleme</Button>
-                </Typography>
-                <Paper elevation={0} sx={{ borderRadius: 3, p: 3, background: '#fafbfc', mb: 2 }}>
-                  <Typography variant="h5" fontWeight={700} mb={1}>Kıdemli Yazılım Geliştirici</Typography>
-                  <Box display="flex" alignItems="center" gap={2} mb={1}>
-                    <Typography variant="body2">Teknoloji A.Ş.</Typography>
-                    <Typography variant="body2">• İstanbul</Typography>
-                    <Typography variant="body2">• Tam Zamanlı</Typography>
-                    <Typography variant="body2">• Kıdemli (5+ yıl)</Typography>
-                  </Box>
-                  <Typography variant="body2" color="text.secondary" mb={1}>Son Başvuru: 07.07.2025</Typography>
-                  <Box mt={2} mb={2}>
-                    <Typography variant="subtitle1" fontWeight={600}>İş Tanımı</Typography>
-                    <Typography variant="body2" mb={1}>
-                      Teknoloji A.Ş. olarak, yazılım ekibimize katılacak deneyimli bir Kıdemli Yazılım Geliştirici arıyoruz. Bu pozisyonda, modern web uygulamaları geliştirmek, mevcut sistemleri optimize etmek ve teknik ekibe liderlik etmek için çalışacaksınız.
-                    </Typography>
-                    <Typography variant="subtitle2" fontWeight={600}>Sorumluluklar:</Typography>
-                    <ul style={{ margin: 0, paddingLeft: 20 }}>
-                      <li>Frontend ve backend sistemlerin geliştirilmesi</li>
-                      <li>Kod kalitesinin ve performansının optimize edilmesi</li>
-                      <li>Junior geliştiricilere mentorluk yapılması</li>
-                      <li>Teknik gereksinimlerin analiz edilmesi ve çözüm önerileri sunulması</li>
-                    </ul>
-                  </Box>
-                  <Typography variant="subtitle1" fontWeight={600} mb={1}>Gerekli Beceriler</Typography>
-                  <Box display="flex" gap={1} flexWrap="wrap" mb={2}>
-                    <Button size="small" variant="outlined">JavaScript</Button>
-                    <Button size="small" variant="outlined">React</Button>
-                    <Button size="small" variant="outlined">Node.js</Button>
-                    <Button size="small" variant="outlined">SQL</Button>
-                    <Button size="small" variant="outlined">Git</Button>
-          </Box>
-                  <Typography variant="body2" fontWeight={600}>Maaş Aralığı</Typography>
-                  <Typography variant="body2" mb={1}>₺30,000 - ₺45,000 / ay</Typography>
-                </Paper>
-                <Box display="flex" justifyContent="space-between" mt={2}>
-                  <Button variant="outlined" sx={{ borderRadius: 2, px: 4 }} onClick={() => setActiveStep((prev) => prev - 1)}>
-                    Önceki Adım
-            </Button>
-                  <Button variant="contained" sx={{ borderRadius: 2, px: 4, bgcolor: '#1746a2', '&:hover': { bgcolor: '#12306b' } }}>
-                    Oluştur
-            </Button>
-          </Box>
-              </Paper>
-            )}
-    </Container>
+          </Container>
         </Box>
       </Box>
     </>

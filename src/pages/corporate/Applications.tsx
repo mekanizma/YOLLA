@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Container,
   Paper,
@@ -30,6 +30,8 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import Snackbar from '@mui/material/Snackbar';
 import { Link } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
+import supabase from '../../lib/supabaseClient';
+import { JobRecord } from '../../lib/jobsService';
 
 // Styled components for mobile responsiveness
 const StyledPaper = styled(Paper)(({ theme }) => ({
@@ -60,38 +62,13 @@ interface Application {
   rejectDate?: string;
 }
 
-const mockApplications: Application[] = [
-  {
-    id: 1,
-    applicantName: 'Ahmet Yılmaz',
-    position: 'Senior Frontend Developer',
-    appliedDate: '2024-03-20',
-    status: 'pending',
-    experience: '5 yıl',
-    skills: ['React', 'TypeScript', 'Node.js'],
-    avatar: '/path-to-avatar.jpg',
-  },
-  {
-    id: 2,
-    applicantName: 'Ayşe Demir',
-    position: 'UI/UX Designer',
-    appliedDate: '2024-03-19',
-    status: 'reviewing',
-    experience: '3 yıl',
-    skills: ['Figma', 'Adobe XD', 'UI Design'],
-    avatar: '/path-to-avatar.jpg',
-  },
-  {
-    id: 3,
-    applicantName: 'Mehmet Kaya',
-    position: 'Backend Developer',
-    appliedDate: '2024-03-18',
-    status: 'accepted',
-    experience: '4 yıl',
-    skills: ['Python', 'Django', 'PostgreSQL'],
-    avatar: '/path-to-avatar.jpg',
-  },
-];
+type ApplicationRow = {
+  id: number;
+  status: 'pending' | 'reviewing' | 'accepted' | 'rejected' | 'approved';
+  created_at: string;
+  users: { full_name?: string; avatar_url?: string } | null;
+  jobs: Pick<JobRecord, 'title'> | null;
+};
 
 const statusColors = {
   pending: 'warning',
@@ -115,7 +92,44 @@ const CorporateApplications: React.FC = () => {
   const [currentTab, setCurrentTab] = useState(0);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
-  const [applications, setApplications] = useState(mockApplications);
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        const { data: auth } = await supabase.auth.getUser();
+        const user = auth.user;
+        if (!user) {
+          setApplications([]);
+          return;
+        }
+        // Kurumsal kullanıcıya ait şirketin ilanlarına gelen başvurular
+        const { data, error } = await supabase
+          .from('applications')
+          .select('id,status,created_at, users(full_name,avatar_url), jobs(title)')
+          .order('created_at', { ascending: false });
+        if (error) throw error;
+        const mapped: Application[] = (data as unknown as ApplicationRow[]).map((r) => ({
+          id: r.id,
+          applicantName: r.users?.full_name || 'Aday',
+          position: r.jobs?.title || 'Pozisyon',
+          appliedDate: new Date(r.created_at).toLocaleDateString('tr-TR'),
+          status: r.status,
+          experience: '-',
+          skills: [],
+          avatar: r.users?.avatar_url || undefined,
+        }));
+        setApplications(mapped);
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn(e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [acceptDialogOpen, setAcceptDialogOpen] = useState(false);

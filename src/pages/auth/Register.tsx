@@ -1,16 +1,15 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Briefcase, Eye, EyeOff, User, ChevronLeft } from 'lucide-react';
 import Header from '../../components/layout/Header';
 import Footer from '../../components/layout/Footer';
-import Button from '../../components/ui/Button';
-import Input from '../../components/ui/Input';
+// Kullanılmayan bileşen importlarını kaldırdım
 import RegisterForm from '../../components/RegisterForm';
+import { signUp } from '../../lib/authService';
 
 const Register = () => {
   const navigate = useNavigate();
-  const [userType, setUserType] = useState<'individual' | 'corporate' | null>(null);
-  const [formData, setFormData] = useState({
+  const [userType] = useState<'individual' | 'corporate' | null>(null);
+  const [formData] = useState({
     name: '',
     email: '',
     password: '',
@@ -18,45 +17,37 @@ const Register = () => {
     companyName: '',
     phone: '',
   });
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  // isLoading kullanılmadığı için kaldırıldı
   const [error, setError] = useState('');
-  const [agreeTerms, setAgreeTerms] = useState(false);
+  
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!agreeTerms) {
+  const handleRegisterFormSubmit = async (data: any) => {
+    if (!data.agree) {
       setError('Kullanım şartlarını ve gizlilik politikasını kabul etmelisiniz.');
       return;
     }
-    
-    if (formData.password !== formData.confirmPassword) {
-      setError('Şifreler eşleşmiyor.');
-      return;
-    }
-    
     setError('');
-    setIsLoading(true);
-    
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Navigate to the appropriate dashboard
-      navigate('/individual/dashboard');
-    } catch (err) {
-      setError('Kayıt işlemi başarısız oldu. Lütfen tekrar deneyin.');
-    } finally {
-      setIsLoading(false);
+      const res = await signUp(data.email, data.password, {
+        userType: userType || 'individual',
+        name: `${data.name} ${data.surname}`.trim(),
+        phone: data.phone,
+        birthDate: data.birthDate,
+        city: data.city,
+        gender: data.gender,
+        education: data.education,
+        job: data.job,
+        experience: data.experience,
+        companyName: formData.companyName
+      });
+      if ((res as any)?.session) {
+        navigate('/individual/dashboard');
+      } else {
+        alert('Kayıt başarılı! Lütfen e-posta adresinize gelen doğrulama linkine tıklayın ardından giriş yapın.');
+        navigate('/login/individual');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Kayıt işlemi başarısız oldu. Lütfen tekrar deneyin.');
     }
   };
 
@@ -76,7 +67,7 @@ const Register = () => {
               </div>
             )}
             
-            <RegisterForm />
+            <RegisterForm onSubmit={handleRegisterFormSubmit} />
             
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">

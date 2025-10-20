@@ -1,17 +1,36 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Table, Button, Input, Space, Modal } from 'antd';
 import { SearchOutlined, EyeOutlined, DeleteOutlined } from '@ant-design/icons';
+import supabase from '../../lib/supabaseClient';
 
-const mockUsers = [
-  { id: 1, name: 'Ahmet Yılmaz', email: 'ahmet@email.com', phone: '555-1234', registered: '2023-01-10' },
-  { id: 2, name: 'Zeynep Kaya', email: 'zeynep@email.com', phone: '555-5678', registered: '2023-02-15' },
-  { id: 3, name: 'Mehmet Demir', email: 'mehmet@email.com', phone: '555-8765', registered: '2023-03-20' },
-];
+type UserProfile = { id: number; email: string; first_name?: string; last_name?: string; phone?: string; created_at?: string };
 
 const UsersPage: React.FC = () => {
-  const [data, setData] = useState(mockUsers);
+  const [data, setData] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [detail, setDetail] = useState<any>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      // auth.users (admin api olmadığı için, users tablosunu baz alıyoruz)
+      const { data, error } = await supabase
+        .from('users')
+        .select('id,email,first_name,last_name,phone,created_at')
+        .order('created_at', { ascending: false });
+      if (!error) {
+        setData(
+          (data as UserProfile[]).map(u => ({
+            id: u.id,
+            name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email,
+            email: u.email,
+            phone: u.phone || '-',
+            registered: u.created_at ? new Date(u.created_at).toLocaleDateString('tr-TR') : '-',
+          }))
+        );
+      }
+    };
+    load();
+  }, []);
 
   const handleDelete = (id: number) => {
     setData(data.filter(u => u.id !== id));

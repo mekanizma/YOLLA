@@ -1,14 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Table, Button, Input, Space, Modal, Form } from 'antd';
 import { SearchOutlined, EditOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import supabase from '../../lib/supabaseClient';
 
-const mockCorporates = [
-  { id: 1, name: 'ABC Teknoloji', email: 'info@abc.com', phone: '212-1234', created: '2022-12-01' },
-  { id: 2, name: 'XYZ Yazılım', email: 'iletisim@xyz.com', phone: '312-5678', created: '2023-01-20' },
-];
+type CorporateRow = { id: number; name: string; email: string; phone?: string | null; created_at: string };
 
 const CorporatesPage: React.FC = () => {
-  const [data, setData] = useState(mockCorporates);
+  const [data, setData] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
@@ -56,6 +54,27 @@ const CorporatesPage: React.FC = () => {
   ];
 
   const filtered = data.filter(c => c.name.toLowerCase().includes(search.toLowerCase()) || c.email.toLowerCase().includes(search.toLowerCase()));
+
+  useEffect(() => {
+    const load = async () => {
+      const { data, error } = await supabase
+        .from('companies')
+        .select('id,name,email,phone,created_at')
+        .order('created_at', { ascending: false });
+      if (!error) {
+        setData(
+          (data as CorporateRow[]).map(c => ({
+            id: c.id,
+            name: c.name,
+            email: c.email,
+            phone: c.phone || '-',
+            created: new Date(c.created_at).toLocaleDateString('tr-TR')
+          }))
+        );
+      }
+    };
+    load();
+  }, []);
 
   return (
     <div>

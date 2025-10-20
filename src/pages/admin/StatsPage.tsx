@@ -1,16 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, Row, Col, Statistic, Table } from 'antd';
+import supabase from '../../lib/supabaseClient';
 
-const stats = [
-  { title: 'Toplam Kullanıcı', value: 1240 },
-  { title: 'Toplam İlan', value: 320 },
-  { title: 'Toplam Başvuru', value: 980 },
-];
-
-const recentApplications = [
-  { id: 1, user: 'Ahmet Yılmaz', job: 'Frontend Geliştirici', company: 'ABC Teknoloji', date: '2023-04-10' },
-  { id: 2, user: 'Zeynep Kaya', job: 'Backend Developer', company: 'XYZ Yazılım', date: '2023-04-12' },
-];
+type AppRow = { id: number; created_at: string; users: { full_name?: string } | null; jobs: { title?: string; company_name?: string | null } | null };
 
 const columns = [
   { title: 'Kullanıcı', dataIndex: 'user', key: 'user' },
@@ -19,21 +11,65 @@ const columns = [
   { title: 'Başvuru Tarihi', dataIndex: 'date', key: 'date' },
 ];
 
-const StatsPage: React.FC = () => (
-  <div>
-    <Row gutter={16} style={{ marginBottom: 24 }}>
-      {stats.map(stat => (
-        <Col xs={24} sm={12} md={8} key={stat.title}>
+const StatsPage: React.FC = () => {
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [totalJobs, setTotalJobs] = useState(0);
+  const [totalApplications, setTotalApplications] = useState(0);
+  const [recentApplications, setRecentApplications] = useState<any[]>([]);
+
+  useEffect(() => {
+    const load = async () => {
+      const [{ count: usersCount }, { count: jobsCount }, { count: appsCount }] = await Promise.all([
+        supabase.from('users').select('*', { count: 'exact', head: true }),
+        supabase.from('jobs').select('*', { count: 'exact', head: true }),
+        supabase.from('applications').select('*', { count: 'exact', head: true })
+      ]);
+      setTotalUsers(usersCount || 0);
+      setTotalJobs(jobsCount || 0);
+      setTotalApplications(appsCount || 0);
+
+      const { data } = await supabase
+        .from('applications')
+        .select('id,created_at, users(full_name), jobs(title,company_name)')
+        .order('created_at', { ascending: false })
+        .limit(10);
+      setRecentApplications(
+        (data as AppRow[] | null || []).map(a => ({
+          id: a.id,
+          user: a.users?.full_name || 'Kullanıcı',
+          job: a.jobs?.title || 'İş İlanı',
+          company: a.jobs?.company_name || 'Şirket',
+          date: new Date(a.created_at).toLocaleDateString('tr-TR')
+        }))
+      );
+    };
+    load();
+  }, []);
+
+  return (
+    <div>
+      <Row gutter={16} style={{ marginBottom: 24 }}>
+        <Col xs={24} sm={12} md={8}>
           <Card>
-            <Statistic title={stat.title} value={stat.value} />
+            <Statistic title="Toplam Kullanıcı" value={totalUsers} />
           </Card>
         </Col>
-      ))}
-    </Row>
-    <Card title="Son Başvurular">
-      <Table rowKey="id" columns={columns} dataSource={recentApplications} pagination={false} />
-    </Card>
-  </div>
-);
+        <Col xs={24} sm={12} md={8}>
+          <Card>
+            <Statistic title="Toplam İlan" value={totalJobs} />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={8}>
+          <Card>
+            <Statistic title="Toplam Başvuru" value={totalApplications} />
+          </Card>
+        </Col>
+      </Row>
+      <Card title="Son Başvurular">
+        <Table rowKey="id" columns={columns} dataSource={recentApplications} pagination={false} />
+      </Card>
+    </div>
+  );
+};
 
-export default StatsPage; 
+export default StatsPage;
