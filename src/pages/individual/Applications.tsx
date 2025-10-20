@@ -10,6 +10,7 @@ import { getMyApplications } from '../../lib/applicationsService';
 const Applications = () => {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   const [applications, setApplications] = useState<any[]>([]);
@@ -17,41 +18,51 @@ const Applications = () => {
   const mapStatusToUi = (status: string) => {
     switch (status) {
       case 'pending':
-      case 'reviewing':
-        return { text: 'Değerlendiriliyor', color: 'bg-yellow-100 text-yellow-800' };
+        return { text: 'Beklemede', color: 'bg-blue-100 text-blue-800' };
+      case 'in_review':
+        return { text: 'İncelemede', color: 'bg-yellow-100 text-yellow-800' };
       case 'accepted':
       case 'approved':
-        return { text: 'Kabul Edildi', color: 'bg-success/10 text-success' };
+        return { text: 'Kabul Edildi', color: 'bg-green-100 text-green-800' };
       case 'rejected':
-        return { text: 'Reddedildi', color: 'bg-error/10 text-error' };
+        return { text: 'Reddedildi', color: 'bg-red-100 text-red-800' };
       default:
-        return { text: status, color: 'bg-gray-100 text-gray-700' };
+        return { text: 'Beklemede', color: 'bg-blue-100 text-blue-800' };
     }
   };
 
   useEffect(() => {
     const load = async () => {
-      const { data: auth } = await supabase.auth.getUser();
-      const user = auth.user;
-      if (!user?.id) {
+      try {
+        setLoading(true);
+        const { data: auth } = await supabase.auth.getUser();
+        const user = auth.user;
+        if (!user?.id) {
+          setApplications([]);
+          return;
+        }
+        const rows = await getMyApplications(user.id);
+        console.log('Applications verisi:', rows);
+        const mapped = rows.map((a: any) => {
+          const ui = mapStatusToUi(a.status as string);
+          return {
+            id: a.id,
+            position: a.jobs?.title || 'İş İlanı',
+            company: a.jobs?.companies?.name || 'Şirket',
+            location: a.jobs?.location || '-',
+            appliedDate: new Date(a.created_at).toLocaleDateString('tr-TR'),
+            status: ui.text,
+            statusColor: ui.color,
+            logo: a.jobs?.companies?.logo || 'https://images.pexels.com/photos/1181671/pexels-photo-1181671.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1',
+          };
+        });
+        setApplications(mapped);
+      } catch (error) {
+        console.error('Applications yüklenirken hata:', error);
         setApplications([]);
-        return;
+      } finally {
+        setLoading(false);
       }
-      const rows = await getMyApplications(user.id);
-      const mapped = rows.map((a: any) => {
-        const ui = mapStatusToUi(a.status as string);
-        return {
-          id: a.id,
-          position: a.jobs?.title || 'İş İlanı',
-          company: a.jobs?.company_name || 'Şirket',
-          location: a.jobs?.location || '-',
-          appliedDate: new Date(a.created_at).toLocaleDateString('tr-TR'),
-          status: ui.text,
-          statusColor: ui.color,
-          logo: a.jobs?.company_logo || 'https://images.pexels.com/photos/1181671/pexels-photo-1181671.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1',
-        };
-      });
-      setApplications(mapped);
     };
     load();
   }, []);
@@ -74,9 +85,9 @@ const Applications = () => {
   // Her başvuru için ilerleme yüzdesi (gerçek veriyle)
   const getProgressPercent = (status: string) => {
     switch (status) {
-      case 'Değerlendiriliyor':
+      case 'Beklemede':
         return 25;
-      case 'Teklif':
+      case 'İncelemede':
         return 50;
       case 'Kabul Edildi':
       case 'Reddedildi':
@@ -99,7 +110,7 @@ const Applications = () => {
                 <p className="text-gray-600 mt-1">Tüm iş başvurularınızı buradan takip edebilirsiniz</p>
               </div>
               <Button 
-                onClick={() => {/* Navigate to jobs */}}
+                onClick={() => navigate('/individual/jobs')}
                 className="md:w-auto w-full justify-center"
               >
                 Yeni İş İlanlarını Keşfet
@@ -107,6 +118,30 @@ const Applications = () => {
             </div>
           </div>
         </div>
+
+        {loading ? (
+          <div className="container mx-auto px-4 py-8">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Başvurularınız yükleniyor...</p>
+            </div>
+          </div>
+        ) : filteredApplications.length === 0 ? (
+          <div className="container mx-auto px-4 py-8">
+            <div className="text-center py-12">
+              <div className="text-gray-400 mb-4">
+                <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Henüz başvuru yapmadınız</h3>
+              <p className="text-gray-600 mb-6">İş ilanlarına göz atın ve ilk başvurunuzu yapın!</p>
+              <Button onClick={() => navigate('/individual/jobs')}>
+                İş İlanlarını Görüntüle
+              </Button>
+            </div>
+          </div>
+        ) : (
         
         <div className="container mx-auto px-4 py-8">
           {/* Filters */}
@@ -131,7 +166,8 @@ const Applications = () => {
                   onChange={(e) => setFilterStatus(e.target.value)}
                 >
                   <option value="all">Tüm Başvurular</option>
-                  <option value="Değerlendiriliyor">Değerlendiriliyor</option>
+                  <option value="Beklemede">Beklemede</option>
+                  <option value="İncelemede">İncelemede</option>
                   <option value="Kabul Edildi">Kabul Edildi</option>
                   <option value="Reddedildi">Reddedildi</option>
                 </select>
@@ -281,6 +317,7 @@ const Applications = () => {
             )}
           </div>
         </div>
+        )}
       </main>
       
       <Footer />

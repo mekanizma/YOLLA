@@ -6,7 +6,7 @@ import * as XLSX from 'xlsx';
 import supabase from '../../lib/supabaseClient';
 
 type JobRow = { id: number; title: string; company_name: string };
-type AppRow = { job_id: number; user_id: string; status: 'approved' | 'pending' | 'rejected'; created_at: string };
+type AppRow = { job_id: number; user_id: string; status: 'approved' | 'pending' | 'rejected' | 'in_review' | 'accepted'; created_at: string };
 
 const ReportsPage: React.FC = () => {
   const [jobPosts, setJobPosts] = useState<JobRow[]>([]);
@@ -16,12 +16,16 @@ const statusColors: Record<string, string> = {
   approved: 'green',
   pending: 'blue',
   rejected: 'red',
+  in_review: 'orange',
+  accepted: 'green',
 };
 
 const statusLabels: Record<string, string> = {
   approved: 'Onaylandı',
   pending: 'Beklemede',
   rejected: 'Reddedildi',
+  in_review: 'İnceleniyor',
+  accepted: 'Kabul Edildi',
 };
 
   // Filtreler
@@ -94,17 +98,29 @@ const statusLabels: Record<string, string> = {
     return Object.entries(grouped).map(([company, count]) => ({ company, count }));
   }, [filteredApplications]);
 
-  // 5. Onaylanmış - Reddedilmiş başvuru oranı
+  // 5. Başvuru durumu dağılımı
   const statusPieData = useMemo(() => {
-    const grouped: Record<string, number> = { approved: 0, rejected: 0 };
+    const grouped: Record<string, number> = { 
+      approved: 0, 
+      rejected: 0, 
+      pending: 0, 
+      in_review: 0, 
+      accepted: 0 
+    };
     filteredApplications.forEach(a => {
       if (a.status === 'approved') grouped.approved++;
       if (a.status === 'rejected') grouped.rejected++;
+      if (a.status === 'pending') grouped.pending++;
+      if (a.status === 'in_review') grouped.in_review++;
+      if (a.status === 'accepted') grouped.accepted++;
     });
     return [
       { type: 'Onaylandı', value: grouped.approved },
       { type: 'Reddedildi', value: grouped.rejected },
-    ];
+      { type: 'Beklemede', value: grouped.pending },
+      { type: 'İnceleniyor', value: grouped.in_review },
+      { type: 'Kabul Edildi', value: grouped.accepted },
+    ].filter(item => item.value > 0);
   }, [filteredApplications]);
 
   // Şirketler listesi
@@ -160,6 +176,8 @@ const statusLabels: Record<string, string> = {
               { value: 'approved', label: 'Onaylandı' },
               { value: 'pending', label: 'Beklemede' },
               { value: 'rejected', label: 'Reddedildi' },
+              { value: 'in_review', label: 'İnceleniyor' },
+              { value: 'accepted', label: 'Kabul Edildi' },
             ]}
             onChange={setStatus}
             value={status}

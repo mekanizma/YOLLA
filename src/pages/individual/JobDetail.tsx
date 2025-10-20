@@ -3,9 +3,12 @@ import { useNavigate, useParams } from 'react-router-dom';
 import Header from '../../components/layout/Header';
 import Footer from '../../components/layout/Footer';
 import Button from '../../components/ui/Button';
-import { ArrowLeft, MapPin, Clock, Briefcase } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, Briefcase, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { pageSEOContent, updateMetaTags } from '../../lib/utils';
 import { fetchJobById } from '../../lib/jobsService';
+import { applyToJob } from '../../lib/applicationsService';
+import { createNotification } from '../../lib/notificationsService';
+import supabase from '../../lib/supabaseClient';
 
 type UiJob = {
   id: number;
@@ -32,6 +35,98 @@ const JobDetail = () => {
   }, [id]);
 
   const [job, setJob] = useState<UiJob | null>(null);
+  const [applicationStatus, setApplicationStatus] = useState<string | null>(null);
+  const [isApplying, setIsApplying] = useState(false);
+
+  // Başvuru yapma fonksiyonu
+  const handleApply = async () => {
+    if (!jobId) return;
+    
+    try {
+      setIsApplying(true);
+      
+      // Kullanıcı giriş kontrolü
+      const { data: auth } = await supabase.auth.getUser();
+      
+      if (!auth.user?.id) {
+        alert('Başvuru yapmak için giriş yapmalısınız.');
+        navigate('/login/individual');
+        return;
+      }
+
+      // Başvuru yap
+      await applyToJob(jobId.toString(), auth.user.id, {
+        cover_letter: '',
+        resume_url: null,
+        answers: null
+      });
+
+      // Şirkete bildirim gönder
+      try {
+        
+        const { data: jobData } = await supabase
+          .from('jobs')
+          .select('title, company_id')
+          .eq('id', jobId)
+          .single();
+
+
+        // Başvuru yapan kullanıcının bilgilerini al
+        const { data: userData } = await supabase
+          .from('users')
+          .select('first_name, last_name, email')
+          .eq('user_id', auth.user.id)
+          .single();
+
+
+        if (jobData?.company_id && userData) {
+          const applicantName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || userData.email?.split('@')[0] || 'Kullanıcı';
+          
+          
+          await createNotification({
+            company_id: jobData.company_id,
+            title: 'Yeni Başvuru',
+            message: `${applicantName} adlı kullanıcı "${jobData.title}" pozisyonu için başvuru yaptı.`,
+            type: 'info'
+          });
+          
+        } else {
+        }
+      } catch (notificationError) {
+        console.warn('Bildirim gönderilemedi:', notificationError);
+      }
+
+      // Başvuru durumunu güncelle
+      setApplicationStatus('pending');
+      alert('Başvurunuz başarıyla gönderildi!');
+      
+    } catch (error: any) {
+      console.error('Başvuru hatası:', error);
+      alert(error.message || 'Başvuru gönderilemedi. Lütfen tekrar deneyin.');
+    } finally {
+      setIsApplying(false);
+    }
+  };
+
+  // Başvuru durumunu kontrol et
+  const checkApplicationStatus = async () => {
+    if (!jobId) return;
+    
+    const { data: auth } = await supabase.auth.getUser();
+    const user = auth.user;
+    if (!user?.id) return;
+
+    const { data: application } = await supabase
+      .from('applications')
+      .select('status')
+      .eq('job_id', jobId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (application) {
+      setApplicationStatus(application.status || 'pending');
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -62,6 +157,51 @@ const JobDetail = () => {
     load();
     return () => { isMounted = false; };
   }, [jobId]);
+
+  useEffect(() => {
+    if (job) {
+      checkApplicationStatus();
+    }
+  }, [job]);
+
+  // Başvuru durumunu UI'da göster
+  const getApplicationStatusUI = () => {
+    if (!applicationStatus) return null;
+
+    switch (applicationStatus) {
+      case 'pending':
+        return {
+          text: 'Beklemede',
+          color: 'bg-blue-100 text-blue-800 border-blue-200',
+          icon: <AlertCircle size={16} />
+        };
+      case 'in_review':
+        return {
+          text: 'İncelemede',
+          color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+          icon: <AlertCircle size={16} />
+        };
+      case 'accepted':
+      case 'approved':
+        return {
+          text: 'Kabul Edildi',
+          color: 'bg-green-100 text-green-800 border-green-200',
+          icon: <CheckCircle size={16} />
+        };
+      case 'rejected':
+        return {
+          text: 'Reddedildi',
+          color: 'bg-red-100 text-red-800 border-red-200',
+          icon: <XCircle size={16} />
+        };
+      default:
+        return {
+          text: 'Beklemede',
+          color: 'bg-blue-100 text-blue-800 border-blue-200',
+          icon: <AlertCircle size={16} />
+        };
+    }
+  };
 
   useEffect(() => {
     const { title, description, keywords } = pageSEOContent.jobs;
@@ -135,7 +275,28 @@ const JobDetail = () => {
             </div>
 
             <div className="mt-6 flex gap-3">
-              <Button variant="primary">Başvur</Button>
+              {applicationStatus ? (
+                <div className="flex items-center gap-2">
+                  {(() => {
+                    const statusUI = getApplicationStatusUI();
+                    if (!statusUI) return null;
+                    return (
+                      <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border ${statusUI.color}`}>
+                        {statusUI.icon}
+                        <span className="font-medium">{statusUI.text}</span>
+                      </div>
+                    );
+                  })()}
+                </div>
+              ) : (
+                <Button 
+                  variant="primary" 
+                  onClick={handleApply}
+                  disabled={isApplying}
+                >
+                  {isApplying ? 'Başvuru Yapılıyor...' : 'Başvur'}
+                </Button>
+              )}
               <Button variant="outline" onClick={() => navigate('/individual/jobs')}>Diğer İlanlar</Button>
             </div>
           </div>

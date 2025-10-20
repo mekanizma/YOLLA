@@ -39,8 +39,8 @@ const Dashboard = () => {
 
         // İlanlar ve başvurular
         const [jobs, applications] = await Promise.all([
-          fetchCorporateJobs(company.id.toString()),
-          getCorporateApplications(company.id.toString()),
+          fetchCorporateJobs(company.id),
+          getCorporateApplications(company.id as number),
         ]);
 
         const activeCount = jobs.filter((j: any) => j.status === 'published').length;
@@ -184,7 +184,7 @@ const Dashboard = () => {
                             {application.date}
                           </span>
                           <Link
-                            to={`/corporate/application/${application.id}`}
+                            to={`/corporate/applications/${application.id}`}
                             className="text-xs md:text-sm text-primary hover:text-primary/80 font-medium"
                           >
                             Detayları Gör

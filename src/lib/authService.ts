@@ -1,7 +1,7 @@
 import supabase from './supabaseClient';
 
 // Bu fonksiyonlar minimum ortak kolonlarla (email, first_name, last_name, role) çalışır
-async function ensureUserRowByEmail(payload: { email: string; first_name?: string | null; last_name?: string | null; role?: string | null }) {
+async function ensureUserRowByEmail(payload: { email: string; first_name?: string | null; last_name?: string | null; role?: string | null; auth_user_id?: string | null }) {
   const email = payload.email;
   // 1) Var mı?
   const { data: existing, error: selErr } = await supabase
@@ -17,7 +17,8 @@ async function ensureUserRowByEmail(payload: { email: string; first_name?: strin
         email,
         first_name: payload.first_name || null,
         last_name: payload.last_name || null,
-        role: payload.role || 'individual'
+        role: payload.role || 'individual',
+        auth_user_id: payload.auth_user_id || null
       });
     if (insErr) throw insErr;
   } else {
@@ -48,7 +49,8 @@ async function ensureUserRowByUserId(payload: { user_id: string; email: string; 
         email: payload.email,
         first_name: payload.first_name || null,
         last_name: payload.last_name || null,
-        role: payload.role || 'individual'
+        role: payload.role || 'individual',
+        auth_user_id: payload.user_id
       });
     if (insErr) throw insErr;
   } else {

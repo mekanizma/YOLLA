@@ -56,7 +56,7 @@ interface Application {
   applicantName: string;
   position: string;
   appliedDate: string;
-  status: 'pending' | 'reviewing' | 'accepted' | 'rejected' | 'approved';
+  status: 'Beklemede' | 'İnceleniyor' | 'Kabul Edildi' | 'Reddedildi' | 'Onaylandı';
   experience: string;
   skills: string[];
   avatar?: string;
@@ -66,7 +66,7 @@ interface Application {
 
 type ApplicationRow = {
   id: number;
-  status: 'pending' | 'reviewing' | 'accepted' | 'rejected' | 'approved';
+  status: 'pending' | 'in_review' | 'accepted' | 'rejected' | 'approved';
   created_at: string;
   users: { full_name?: string; avatar_url?: string } | null;
   jobs: Pick<JobRecord, 'title'> | null;
@@ -74,7 +74,7 @@ type ApplicationRow = {
 
 const statusColors = {
   pending: 'warning',
-  reviewing: 'info',
+  in_review: 'info',
   accepted: 'success',
   rejected: 'error',
   approved: 'success',
@@ -82,7 +82,7 @@ const statusColors = {
 
 const statusLabels = {
   pending: 'Beklemede',
-  reviewing: 'İnceleniyor',
+  in_review: 'İnceleniyor',
   accepted: 'Kabul Edildi',
   rejected: 'Reddedildi',
   approved: 'Onaylandı',
@@ -118,7 +118,7 @@ const CorporateApplications: React.FC = () => {
           applicantName: r.users?.full_name || 'Aday',
           position: r.jobs?.title || 'Pozisyon',
           appliedDate: new Date(r.created_at).toLocaleDateString('tr-TR'),
-          status: r.status,
+          status: statusLabels[r.status as keyof typeof statusLabels] || 'Beklemede',
           experience: '-',
           skills: [],
           avatar: r.users?.avatar_url || undefined,
@@ -155,12 +155,16 @@ const CorporateApplications: React.FC = () => {
     setSelectedApplication(null);
   };
 
-  const handleStatusChange = async (newStatus: Application['status']) => {
+  const handleStatusChange = async (newStatus: 'pending' | 'in_review' | 'accepted' | 'rejected' | 'approved') => {
     if (selectedApplication) {
       try {
         await updateApplicationStatus(selectedApplication.id, newStatus, rejectReason);
+        
+        // UI'da gösterilecek Türkçe status
+        const turkishStatus = statusLabels[newStatus];
+        
         setApplications(prev => prev.map(app =>
-          app.id === selectedApplication.id ? { ...app, status: newStatus } : app
+          app.id === selectedApplication.id ? { ...app, status: turkishStatus } : app
         ));
         setSnackbar({ open: true, message: 'Başvuru durumu güncellendi.' });
       } catch (e: any) {
@@ -184,7 +188,7 @@ const CorporateApplications: React.FC = () => {
       try {
         await updateApplicationStatus(selectedApplication.id, 'rejected', rejectReason);
         setApplications(prev => prev.map(app =>
-          app.id === selectedApplication.id ? { ...app, status: 'rejected', rejectReason, rejectDate: new Date().toISOString() } : app
+          app.id === selectedApplication.id ? { ...app, status: 'Reddedildi', rejectReason, rejectDate: new Date().toISOString() } : app
         ));
         setSnackbar({ open: true, message: 'Red sebebiniz başarıyla iletildi.' });
       } catch (e: any) {
@@ -206,7 +210,7 @@ const CorporateApplications: React.FC = () => {
       try {
         await updateApplicationStatus(selectedApplication.id, 'accepted');
         setApplications(prev => prev.map(app =>
-          app.id === selectedApplication.id ? { ...app, status: 'accepted', acceptDate: new Date().toISOString(), contractAccepted: true } : app
+          app.id === selectedApplication.id ? { ...app, status: 'Kabul Edildi', acceptDate: new Date().toISOString(), contractAccepted: true } : app
         ));
         setSnackbar({ open: true, message: 'İşe alımınız tamamlanmıştır.' });
       } catch (e: any) {
@@ -222,11 +226,11 @@ const CorporateApplications: React.FC = () => {
   // Başvuruları filtrele (localStorage kaldırıldı)
   const filteredApplications = applications.filter(app => {
     switch (currentTab) {
-      case 0: return app.status === 'pending';
-      case 1: return app.status === 'reviewing';
-      case 2: return app.status === 'accepted';
-      case 3: return app.status === 'rejected';
-      case 4: return app.status === 'approved';
+      case 0: return app.status === 'Beklemede';
+      case 1: return app.status === 'İnceleniyor';
+      case 2: return app.status === 'Kabul Edildi';
+      case 3: return app.status === 'Reddedildi';
+      case 4: return app.status === 'Onaylandı';
       default: return true;
     }
   });
@@ -359,13 +363,13 @@ const CorporateApplications: React.FC = () => {
             open={Boolean(anchorEl)}
             onClose={handleMenuClose}
           >
-            {selectedApplication?.status === 'pending' && (
-              <MenuItem onClick={() => handleStatusChange('reviewing')}>İncelemeye Al</MenuItem>
+            {selectedApplication?.status === 'Beklemede' && (
+              <MenuItem onClick={() => handleStatusChange('in_review')}>İncelemeye Al</MenuItem>
             )}
-            {selectedApplication?.status === 'pending' || selectedApplication?.status === 'reviewing' ? (
+            {selectedApplication?.status === 'Beklemede' || selectedApplication?.status === 'İnceleniyor' ? (
               <MenuItem onClick={() => handleStatusChange('accepted')}>Kabul Et</MenuItem>
             ) : null}
-            {selectedApplication?.status !== 'rejected' && (
+            {selectedApplication?.status !== 'Reddedildi' && (
               <MenuItem onClick={() => handleStatusChange('rejected')}>Reddet</MenuItem>
             )}
           </Menu>

@@ -1,95 +1,186 @@
-import { useState } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { User, Mail, Phone, MapPin, Calendar, X, Check, Award } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Mail, Phone, MapPin, Calendar, X, Check, Award } from 'lucide-react';
 import Header from '../../components/layout/Header';
 import Button from '../../components/ui/Button';
-import avatar from '../../assets/avatar-user.png';
+import supabase from '../../lib/supabaseClient';
 
 const ApplicationDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
-  const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      text: "Merhaba, başvurunuz hakkında görüşmek isterim.",
-      senderId: "corporate",
-      timestamp: new Date(),
-    }
-  ]);
+  const [application, setApplication] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Mock başvuru verisi
-  const application = {
-    id: id,
-    jobTitle: "Frontend Geliştirici",
-    applicantName: "Ahmet Yılmaz",
-    email: "ahmet@example.com",
-    phone: "+90 555 123 4567",
-    location: "İstanbul",
-    appliedDate: "2024-03-15",
-    status: "Değerlendiriliyor",
-    experience: [
-      {
-        title: "Frontend Geliştirici",
-        company: "TechCorp",
-        period: "2020 - 2023",
-        description: "React, TypeScript ve Node.js kullanarak modern web uygulamaları geliştirdim."
-      },
-      {
-        title: "Frontend Developer",
-        company: "Innovative Solutions",
-        period: "2018 - 2020",
-        description: "Angular ve SCSS kullanarak ölçeklenebilir bir web uygulaması geliştirdim."
+  useEffect(() => {
+    const loadApplication = async () => {
+      if (!id) return;
+      
+      try {
+        setLoading(true);
+        
+        // Başvuru bilgilerini al
+        const { data: appData, error: appError } = await supabase
+          .from('applications')
+          .select('*')
+          .eq('id', id)
+          .single();
+        
+        if (appError) throw appError;
+        
+        // Job bilgilerini al
+        const { data: jobData } = await supabase
+          .from('jobs')
+          .select('title,description,requirements,location')
+          .eq('id', appData.job_id)
+          .single();
+        
+        // Başvuru yapan kişinin bilgilerini al (auth_user_id ile)
+        const { data: applicantUser } = await supabase
+          .from('users')
+          .select('first_name,last_name,email,phone,location,about,skills,languages,experiences,educations')
+          .eq('auth_user_id', appData.user_id)
+          .single();
+        
+        console.log('Başvuru user_id:', appData.user_id);
+        console.log('Kullanıcı verisi:', applicantUser);
+        
+        // Eğer auth_user_id ile bulunamazsa, user_id ile dene
+        let finalApplicantUser = applicantUser;
+        if (!applicantUser) {
+          console.log('auth_user_id ile bulunamadı, user_id ile deneniyor...');
+          const { data: applicantUser2 } = await supabase
+            .from('users')
+            .select('first_name,last_name,email,phone,location,about,skills,languages,experiences,educations')
+            .eq('user_id', appData.user_id)
+            .single();
+          
+          console.log('user_id ile kullanıcı verisi:', applicantUser2);
+          
+          if (applicantUser2) {
+            finalApplicantUser = applicantUser2;
+          }
+        }
+        
+        // Eğer auth_user_id ile "Bilinmeyen Kullanıcı" bulunduysa, user_id ile dene
+        if (applicantUser && applicantUser.first_name === 'Bilinmeyen') {
+          console.log('auth_user_id ile "Bilinmeyen Kullanıcı" bulundu, user_id ile deneniyor...');
+          const { data: applicantUser2 } = await supabase
+            .from('users')
+            .select('first_name,last_name,email,phone,location,about,skills,languages,experiences,educations')
+            .eq('user_id', appData.user_id)
+            .single();
+          
+          console.log('user_id ile kullanıcı verisi:', applicantUser2);
+          
+          if (applicantUser2) {
+            finalApplicantUser = applicantUser2;
+          }
+        }
+        
+        const applicantName = finalApplicantUser 
+          ? `${finalApplicantUser.first_name || ''} ${finalApplicantUser.last_name || ''}`.trim() || finalApplicantUser.email?.split('@')[0] || 'Kullanıcı'
+          : 'Bilinmeyen Kullanıcı';
+        
+        // JSON verilerini parse et
+        const experiences = typeof finalApplicantUser?.experiences === 'string' 
+          ? JSON.parse(finalApplicantUser.experiences || '[]') 
+          : finalApplicantUser?.experiences || [];
+        
+        const educations = typeof finalApplicantUser?.educations === 'string' 
+          ? JSON.parse(finalApplicantUser.educations || '[]') 
+          : finalApplicantUser?.educations || [];
+        
+        const skills = typeof finalApplicantUser?.skills === 'string' 
+          ? JSON.parse(finalApplicantUser.skills || '[]') 
+          : finalApplicantUser?.skills || [];
+        
+        const languages = typeof finalApplicantUser?.languages === 'string' 
+          ? JSON.parse(finalApplicantUser.languages || '[]') 
+          : finalApplicantUser?.languages || [];
+        
+        setApplication({
+          id: appData.id,
+          jobTitle: jobData?.title || 'İş İlanı',
+          applicantName: applicantName,
+          email: finalApplicantUser?.email || 'Email bulunamadı',
+          phone: finalApplicantUser?.phone || '-',
+          location: finalApplicantUser?.location || jobData?.location || '-',
+          appliedDate: new Date(appData.created_at).toLocaleDateString('tr-TR'),
+          status: appData.status === 'pending' ? 'Beklemede' : 
+                 appData.status === 'in_review' ? 'Değerlendiriliyor' :
+                 appData.status === 'accepted' ? 'Kabul Edildi' :
+                 appData.status === 'approved' ? 'Onaylandı' :
+                 appData.status === 'rejected' ? 'Reddedildi' : 'Beklemede',
+          coverLetter: appData.cover_letter || 'Ön yazı bulunmuyor.',
+          experience: experiences,
+          education: educations,
+          skills: skills,
+          languages: languages,
+          certificates: [],
+          about: finalApplicantUser?.about || ''
+        });
+        
+      } catch (error) {
+        console.error('Başvuru yüklenemedi:', error);
+      } finally {
+        setLoading(false);
       }
-    ],
-    education: [
-      {
-        school: "İstanbul Teknik Üniversitesi",
-        degree: "Bilgisayar Mühendisliği",
-        period: "2014 - 2019",
-        description: "GPA: 3.5"
-      }
-    ],
-    skills: ["React", "TypeScript", "Node.js", "Tailwind CSS"],
-    coverLetter: "Merhaba, Frontend Geliştirici pozisyonu için başvurumu yapıyorum...",
-    languages: [
-      { name: "Türkçe", level: "Ana Dil", proficiency: 100 },
-      { name: "İngilizce", level: "Orta", proficiency: 75 }
-    ],
-    certificates: [
-      { name: "React Advanced", issuer: "Tech Academy", date: "2023" },
-      { name: "Node.js Certification", issuer: "NodeSchool", date: "2022" }
-    ]
-  };
+    };
+    
+    loadApplication();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-gray-600">Başvuru yükleniyor...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!application) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600">Başvuru bulunamadı.</p>
+          <Button onClick={() => navigate('/corporate/applications')} className="mt-4">
+            Geri Dön
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   // chat=1 parametresi varsa mesajlaşma aktif olsun
-  const showChat = new URLSearchParams(location.search).get('chat') === '1';
+  // const showChat = new URLSearchParams(location.search).get('chat') === '1';
 
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (message.trim()) {
-      setMessages(prev => [...prev, {
-        id: prev.length + 1,
-        text: message,
-        senderId: "corporate",
-        timestamp: new Date(),
-      }]);
-      setMessage("");
-      // Dummy bildirim oluştur
-      const notifications = JSON.parse(localStorage.getItem('individual_notifications') || '[]');
-      notifications.push({
-        id: Date.now(),
-        type: 'message',
-        title: 'Yeni Mesaj',
-        desc: 'Kurumsal taraftan yeni bir mesajınız var.',
-        date: new Date().toLocaleString(),
-        applicationId: application.id,
-        read: false
-      });
-      localStorage.setItem('individual_notifications', JSON.stringify(notifications));
-    }
-  };
+  // const handleSendMessage = (e: React.FormEvent) => {
+  //   e.preventDefault();
+  //   if (message.trim()) {
+  //     setMessages(prev => [...prev, {
+  //       id: prev.length + 1,
+  //       text: message,
+  //       senderId: "corporate",
+  //       timestamp: new Date(),
+  //     }]);
+  //     setMessage("");
+  //     // Dummy bildirim oluştur
+  //     const notifications = JSON.parse(localStorage.getItem('individual_notifications') || '[]');
+  //     notifications.push({
+  //       id: Date.now(),
+  //       type: 'message',
+  //       title: 'Yeni Mesaj',
+  //       desc: 'Kurumsal taraftan yeni bir mesajınız var.',
+  //       date: new Date().toLocaleString(),
+  //       applicationId: application.id,
+  //       read: false
+  //     });
+  //     localStorage.setItem('individual_notifications', JSON.stringify(notifications));
+  //   }
+  // };
 
   const handleAccept = () => {
     alert('Başvuru kabul edildi!');
@@ -162,14 +253,18 @@ const ApplicationDetail = () => {
             <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6">
               <h2 className="text-lg md:text-xl font-bold mb-4">Deneyim</h2>
               <div className="space-y-4">
-                {application.experience.map((exp, index) => (
-                  <div key={index} className="border-b border-gray-100 last:border-0 pb-4 last:pb-0">
-                    <h3 className="text-base md:text-lg font-semibold text-gray-900">{exp.title}</h3>
-                    <p className="text-sm md:text-base text-gray-600 mt-1">{exp.company}</p>
-                    <p className="text-xs md:text-sm text-gray-500 mt-1">{exp.period}</p>
-                    <p className="text-sm md:text-base text-gray-700 mt-2">{exp.description}</p>
-                  </div>
-                ))}
+                {application.experience && application.experience.length > 0 ? (
+                  application.experience.map((exp: any, index: number) => (
+                    <div key={index} className="border-b border-gray-100 last:border-0 pb-4 last:pb-0">
+                      <h3 className="text-base md:text-lg font-semibold text-gray-900">{exp.title || exp.position || 'Pozisyon'}</h3>
+                      <p className="text-sm md:text-base text-gray-600 mt-1">{exp.company || exp.employer || 'Şirket'}</p>
+                      <p className="text-xs md:text-sm text-gray-500 mt-1">{exp.period || exp.duration || exp.start_date || 'Tarih'}</p>
+                      <p className="text-sm md:text-base text-gray-700 mt-2">{exp.description || exp.desc || ''}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-gray-500 italic">Deneyim bilgisi bulunmuyor.</p>
+                )}
               </div>
             </div>
 
@@ -177,16 +272,30 @@ const ApplicationDetail = () => {
             <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6">
               <h2 className="text-lg md:text-xl font-bold mb-4">Eğitim</h2>
               <div className="space-y-4">
-                {application.education.map((edu, index) => (
-                  <div key={index} className="border-b border-gray-100 last:border-0 pb-4 last:pb-0">
-                    <h3 className="text-base md:text-lg font-semibold text-gray-900">{edu.school}</h3>
-                    <p className="text-sm md:text-base text-gray-600 mt-1">{edu.degree}</p>
-                    <p className="text-xs md:text-sm text-gray-500 mt-1">{edu.period}</p>
-                    <p className="text-sm md:text-base text-gray-700 mt-2">{edu.description}</p>
-                  </div>
-                ))}
+                {application.education && application.education.length > 0 ? (
+                  application.education.map((edu: any, index: number) => (
+                    <div key={index} className="border-b border-gray-100 last:border-0 pb-4 last:pb-0">
+                      <h3 className="text-base md:text-lg font-semibold text-gray-900">{edu.school || edu.institution || 'Okul'}</h3>
+                      <p className="text-sm md:text-base text-gray-600 mt-1">{edu.degree || edu.field || 'Bölüm'}</p>
+                      <p className="text-xs md:text-sm text-gray-500 mt-1">{edu.period || edu.duration || edu.graduation_year || 'Tarih'}</p>
+                      <p className="text-sm md:text-base text-gray-700 mt-2">{edu.description || edu.desc || ''}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-gray-500 italic">Eğitim bilgisi bulunmuyor.</p>
+                )}
               </div>
             </div>
+
+            {/* Hakkında */}
+            {application.about && (
+              <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6">
+                <h2 className="text-lg md:text-xl font-bold mb-4">Hakkında</h2>
+                <p className="text-sm md:text-base text-gray-700 leading-relaxed">
+                  {application.about}
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Sağ Kolon: Özet Bilgiler */}
@@ -195,14 +304,18 @@ const ApplicationDetail = () => {
             <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6">
               <h2 className="text-lg md:text-xl font-bold mb-4">Yetenekler</h2>
               <div className="flex flex-wrap gap-2">
-                {application.skills.map((skill, index) => (
-                  <span
-                    key={index}
-                    className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-xs md:text-sm"
-                  >
-                    {skill}
-                  </span>
-                ))}
+                {application.skills && application.skills.length > 0 ? (
+                  application.skills.map((skill: any, index: number) => (
+                    <span
+                      key={index}
+                      className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-xs md:text-sm"
+                    >
+                      {typeof skill === 'string' ? skill : skill.name || skill.skill || 'Yetenek'}
+                    </span>
+                  ))
+                ) : (
+                  <p className="text-gray-500 italic">Yetenek bilgisi bulunmuyor.</p>
+                )}
               </div>
             </div>
 
@@ -210,20 +323,24 @@ const ApplicationDetail = () => {
             <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6">
               <h2 className="text-lg md:text-xl font-bold mb-4">Diller</h2>
               <div className="space-y-3">
-                {application.languages.map((lang, index) => (
-                  <div key={index}>
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-sm md:text-base text-gray-700">{lang.name}</span>
-                      <span className="text-xs md:text-sm text-gray-500">{lang.level}</span>
+                {application.languages && application.languages.length > 0 ? (
+                  application.languages.map((lang: any, index: number) => (
+                    <div key={index}>
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-sm md:text-base text-gray-700">{lang.name || lang.language || 'Dil'}</span>
+                        <span className="text-xs md:text-sm text-gray-500">{lang.level || lang.proficiency || 'Seviye'}</span>
+                      </div>
+                      <div className="h-2 bg-gray-100 rounded-full">
+                        <div
+                          className="h-2 bg-blue-500 rounded-full"
+                          style={{ width: `${lang.proficiency || 50}%` }}
+                        />
+                      </div>
                     </div>
-                    <div className="h-2 bg-gray-100 rounded-full">
-                      <div
-                        className="h-2 bg-blue-500 rounded-full"
-                        style={{ width: `${lang.proficiency}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-gray-500 italic">Dil bilgisi bulunmuyor.</p>
+                )}
               </div>
             </div>
 
@@ -231,15 +348,19 @@ const ApplicationDetail = () => {
             <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6">
               <h2 className="text-lg md:text-xl font-bold mb-4">Sertifikalar</h2>
               <div className="space-y-3">
-                {application.certificates.map((cert, index) => (
-                  <div key={index} className="flex items-start gap-3">
-                    <Award className="w-4 h-4 md:w-5 md:h-5 text-blue-500 mt-1" />
-                    <div>
-                      <h3 className="text-sm md:text-base font-medium text-gray-900">{cert.name}</h3>
-                      <p className="text-xs md:text-sm text-gray-500">{cert.issuer} - {cert.date}</p>
+                {application.certificates && application.certificates.length > 0 ? (
+                  application.certificates.map((cert: any, index: number) => (
+                    <div key={index} className="flex items-start gap-3">
+                      <Award className="w-4 h-4 md:w-5 md:h-5 text-blue-500 mt-1" />
+                      <div>
+                        <h3 className="text-sm md:text-base font-medium text-gray-900">{cert.name || cert.title || 'Sertifika'}</h3>
+                        <p className="text-xs md:text-sm text-gray-500">{cert.issuer || cert.institution || 'Kurum'} - {cert.date || cert.issued_date || 'Tarih'}</p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-gray-500 italic">Sertifika bilgisi bulunmuyor.</p>
+                )}
               </div>
             </div>
           </div>
@@ -249,4 +370,4 @@ const ApplicationDetail = () => {
   );
 };
 
-export default ApplicationDetail; 
+export default ApplicationDetail;

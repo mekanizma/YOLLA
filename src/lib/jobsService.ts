@@ -100,7 +100,7 @@ export async function fetchCompanyByEmail(email: string) {
 }
 
 // Belirli şirketin ilanlarını getir (en yeni ilk)
-export async function fetchCorporateJobs(companyId: string) {
+export async function fetchCorporateJobs(companyId: number) {
   const { data, error } = await supabase
     .from('jobs')
     .select('id,title,status,applications,created_at')

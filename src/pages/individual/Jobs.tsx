@@ -185,8 +185,12 @@ const Jobs = () => {
 
   const handleApply = async (jobId: string) => {
     try {
+      console.log('handleApply başladı, jobId:', jobId);
+      
       // Kullanıcı giriş kontrolü
       const { data: auth } = await supabase.auth.getUser();
+      console.log('Auth kullanıcı:', auth.user);
+      
       if (!auth.user?.id) {
         alert('Başvuru yapmak için giriş yapmalısınız.');
         navigate('/login/individual');
@@ -204,36 +208,66 @@ const Jobs = () => {
 
       // İş bilgilerini al
       const job = jobs.find(j => j.id === jobId);
+      console.log('Bulunan iş:', job);
+      
       if (!job) {
         alert('İş ilanı bulunamadı.');
         return;
       }
 
+      console.log('Başvuru yapılıyor...');
       // Başvuru yap
       await applyToJob(jobId, auth.user.id, {
         cover_letter: '', // İleride özelleştirilebilir
         resume_url: null,
         answers: null
       });
+      console.log('Başvuru tamamlandı');
 
       // Başvuru yapıldığını işaretle
       setAppliedJobs(prev => new Set(prev).add(jobId));
 
       // Şirkete bildirim gönder
       try {
+        console.log('Bildirim gönderme başladı...');
+        
         const { data: jobData } = await supabase
           .from('jobs')
-          .select('company_id, companies(name)')
+          .select('title, company_id')
           .eq('id', jobId)
           .single();
 
-        if (jobData?.company_id) {
+        console.log('İş verisi:', jobData);
+
+        // Başvuru yapan kullanıcının bilgilerini al
+        const { data: userData } = await supabase
+          .from('users')
+          .select('first_name, last_name, email')
+          .eq('user_id', auth.user.id)
+          .single();
+
+        console.log('Kullanıcı verisi:', userData);
+
+        if (jobData?.company_id && userData) {
+          const applicantName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || userData.email?.split('@')[0] || 'Kullanıcı';
+          
+          console.log('Bildirim gönderiliyor:', {
+            company_id: jobData.company_id,
+            title: 'Yeni Başvuru',
+            message: `${applicantName} adlı kullanıcı "${jobData.title}" pozisyonu için başvuru yaptı.`,
+            type: 'info'
+          });
+          
           await createNotification({
             company_id: jobData.company_id,
             title: 'Yeni Başvuru',
-            message: `${job.title} pozisyonuna yeni bir başvuru geldi.`,
+            message: `${applicantName} adlı kullanıcı "${jobData.title}" pozisyonu için başvuru yaptı.`,
             type: 'info'
           });
+          
+          console.log('Bildirim gönderildi!');
+        } else {
+          console.log('Bildirim gönderilemedi - eksik veri:', { jobData, userData });
         }
       } catch (notificationError) {
         console.warn('Bildirim gönderilemedi:', notificationError);

@@ -78,15 +78,24 @@ const Dashboard = () => {
       try {
         const { data: jobData } = await supabase
           .from('jobs')
-          .select('company_id, companies(name)')
+          .select('title, company_id')
           .eq('id', jobId)
           .single();
 
-        if (jobData?.company_id) {
+        // Başvuru yapan kullanıcının bilgilerini al
+        const { data: userData } = await supabase
+          .from('users')
+          .select('first_name, last_name, email')
+          .eq('user_id', auth.user.id)
+          .single();
+
+        if (jobData?.company_id && userData) {
+          const applicantName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || userData.email?.split('@')[0] || 'Kullanıcı';
+          
           await createNotification({
             company_id: jobData.company_id,
             title: 'Yeni Başvuru',
-            message: `${job.title} pozisyonuna yeni bir başvuru geldi.`,
+            message: `${applicantName} adlı kullanıcı "${jobData.title}" pozisyonu için başvuru yaptı.`,
             type: 'info'
           });
         }
