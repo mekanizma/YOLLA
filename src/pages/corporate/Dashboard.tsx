@@ -1,5 +1,5 @@
 import React from 'react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   PlusCircle, 
@@ -16,75 +16,48 @@ import {
   Building
 } from 'lucide-react';
 import Header from '../../components/layout/Header';
+import supabase from '../../lib/supabaseClient';
+import { fetchCompanyByEmail, fetchCorporateJobs } from '../../lib/jobsService';
 import Footer from '../../components/layout/Footer';
 import Button from '../../components/ui/Button';
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  // Statistics data
-  const stats = [
-    { 
-      title: 'Aktif İlanlar', 
-      value: '5', 
-      icon: <FileText className="text-primary" />,
-      bgColor: 'bg-primary/10',
-      change: '+2 bu hafta',
-      changeUp: true,
-      onClick: () => navigate('/corporate/dashboard'),
-    },
-    { 
-      title: 'Toplam Başvurular', 
-      value: '124', 
-      icon: <Users className="text-secondary" />,
-      bgColor: 'bg-secondary/10', 
-      change: '+18 bu hafta',
-      changeUp: true,
-      onClick: () => navigate('/corporate/applications'),
-    },
-    { 
-      title: 'Görüşme Aşamasında', 
-      value: '8', 
-      icon: <Clock className="text-accent" />,
-      bgColor: 'bg-accent/10',
-      change: '+3 bu hafta',
-      changeUp: true, 
-      onClick: () => navigate('/corporate/applications?tab=interview'),
-    },
-    { 
-      title: 'Tamamlanan İşe Alımlar', 
-      value: '12', 
-      icon: <TrendingUp className="text-success" />,
-      bgColor: 'bg-success/10',
-      change: '+0 bu hafta',
-      changeUp: false, 
-      onClick: () => navigate('/corporate/applications?tab=completed'),
-    },
-  ];
+  const [stats, setStats] = useState<any[]>([]);
   
-  // Recent applications data
-  const recentApplications = [
-    {
-      id: 1,
-      name: "Ahmet Yılmaz",
-      position: "Frontend Developer",
-      location: "İstanbul",
-      date: "2 saat önce",
-    },
-    {
-      id: 2,
-      name: "Mehmet Demir",
-      position: "UI/UX Designer",
-      location: "Ankara",
-      date: "3 saat önce",
-    },
-    {
-      id: 3,
-      name: "Ayşe Kaya",
-      position: "Backend Developer",
-      location: "İzmir",
-      date: "5 saat önce",
-    }
-  ];
+  const [recentApplications, setRecentApplications] = useState<any[]>([]);
+
+  useEffect(() => {
+    const load = async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      const email = auth.user?.email || '';
+      const company = await fetchCompanyByEmail(email);
+      if (!company) return;
+      const jobs = await fetchCorporateJobs(company.id);
+      const activeCount = jobs.filter(j => j.status === 'published').length;
+      const totalApplications = jobs.reduce((sum, j) => sum + (j.applications || 0), 0);
+      // TODO: Görüşme aşamasında ve tamamlanan işe alımlar için 'applications' tablosu şemasına göre sorgu eklenebilir
+      setStats([
+        { title: 'Yayındaki İlanlar', value: String(activeCount), icon: <FileText className="text-primary" />, bgColor: 'bg-primary/10', change: '', changeUp: true, onClick: () => navigate('/corporate/jobs') },
+        { title: 'Toplam Başvurular', value: String(totalApplications), icon: <Users className="text-secondary" />, bgColor: 'bg-secondary/10', change: '', changeUp: true, onClick: () => navigate('/corporate/applications') },
+        { title: 'Görüşme Aşamasında', value: '-', icon: <Clock className="text-accent" />, bgColor: 'bg-accent/10', change: '', changeUp: true, onClick: () => navigate('/corporate/applications?tab=interview') },
+        { title: 'Tamamlanan İşe Alımlar', value: '-', icon: <TrendingUp className="text-success" />, bgColor: 'bg-success/10', change: '', changeUp: false, onClick: () => navigate('/corporate/applications?tab=completed') },
+      ]);
+
+      // Son başvurular (jobs join applications) — basit bir örnek için jobs üzerinden oluşturma zamanı kullanılır
+      // Eğer applications tablosu uygun ise burada gerçek join yapılabilir
+      setRecentApplications(
+        jobs.slice(0, 3).map(j => ({
+          id: j.id,
+          name: 'Aday',
+          position: j.title,
+          location: '-',
+          date: new Date(j.created_at).toLocaleDateString('tr-TR')
+        }))
+      );
+    };
+    load();
+  }, []);
 
   return (
     <>

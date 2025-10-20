@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Button, Input, Space, Modal, Form } from 'antd';
+import { adminCreateCorporateAccount } from '../../lib/authService';
 import { SearchOutlined, EditOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import supabase from '../../lib/supabaseClient';
 
@@ -26,13 +27,28 @@ const CorporatesPage: React.FC = () => {
     setModalOpen(true);
   };
   const handleOk = () => {
-    form.validateFields().then(values => {
+    form.validateFields().then(async (values: any) => {
       if (editing) {
         setData(data.map(c => c.id === editing.id ? { ...editing, ...values } : c));
-      } else {
-        setData([...data, { ...values, id: Date.now(), created: new Date().toISOString().slice(0,10) }]);
+        setModalOpen(false);
+        return;
       }
-      setModalOpen(false);
+      try {
+        await adminCreateCorporateAccount({
+          email: values.email,
+          password: values.password,
+          companyName: values.name,
+          phone: values.phone,
+        });
+        setData([
+          ...data,
+          { id: Date.now(), name: values.name, email: values.email, phone: values.phone, created: new Date().toLocaleDateString('tr-TR') }
+        ]);
+        setModalOpen(false);
+        form.resetFields();
+      } catch (e: any) {
+        Modal.error({ title: 'Oluşturma başarısız', content: e?.message || 'Bilinmeyen hata' });
+      }
     });
   };
 
@@ -97,6 +113,11 @@ const CorporatesPage: React.FC = () => {
           <Form.Item name="email" label="E-posta" rules={[{ required: true, type: 'email', message: 'Geçerli e-posta girin' }]}>
             <Input />
           </Form.Item>
+          {!editing && (
+            <Form.Item name="password" label="Geçici Şifre" rules={[{ required: true, min: 6, message: 'En az 6 karakter' }]}>
+              <Input.Password />
+            </Form.Item>
+          )}
           <Form.Item name="phone" label="Telefon" rules={[{ required: true, message: 'Zorunlu alan' }]}>
             <Input />
           </Form.Item>

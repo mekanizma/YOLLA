@@ -3,6 +3,8 @@ import { Container, Paper, Typography, Box, TextField, Button, FormControl, Inpu
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { MapPin, Building, Clock, Users, Calendar } from 'lucide-react';
 import Header from '../../components/layout/Header';
+import supabase from '../../lib/supabaseClient';
+import { createCorporateJob, fetchCompanyByEmail } from '../../lib/jobsService';
 import { useNavigate } from 'react-router-dom';
 
 const departments = [
@@ -125,36 +127,52 @@ const JobPost: React.FC = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const newJob = {
-      id: Date.now().toString(),
-      title: form.title,
-      department: form.department,
-      location: form.location,
-      experience: form.experience,
-      employment: form.employment,
-      description: form.description,
-      requirements: form.requirements,
-      deadline: form.deadline,
-      salary: form.salary,
-      benefits: form.benefits,
-      status: 'active' as 'active' | 'closed',
-      createdAt: new Date().toISOString(),
-      applications: 0
+    // Şirketi bul
+    const { data: auth } = await supabase.auth.getUser();
+    const email = auth.user?.email || '';
+    const company = await fetchCompanyByEmail(email);
+    if (!company) {
+      alert('Şirket kaydı bulunamadı. Lütfen kurumsal profilinizi tamamlayın.');
+      return;
+    }
+
+    // Eşleme: employment -> type, experience -> experience_level
+    const typeMap: Record<string, 'full-time' | 'part-time' | 'contract' | 'internship' | 'remote'> = {
+      'Tam Zamanlı': 'full-time',
+      'Yarı Zamanlı': 'part-time',
+      'Sözleşmeli': 'contract',
+      'Staj': 'internship',
+      'Geçici': 'contract',
+    };
+    const experienceMap: Record<string, 'entry' | 'mid' | 'senior'> = {
+      junior: 'entry',
+      mid: 'mid',
+      senior: 'senior',
     };
 
-    const jobs = localStorage.getItem('corporate_jobs');
-    const jobsArr = jobs ? JSON.parse(jobs) : [];
-    jobsArr.push(newJob);
-    localStorage.setItem('corporate_jobs', JSON.stringify(jobsArr));
-
-    // Başarılı mesajı göster
-    alert('İlan başarıyla oluşturuldu!');
-    
-    // İlanlar sayfasına yönlendir
-    navigate('/corporate/jobs');
+    try {
+      await createCorporateJob(company.id, {
+        title: form.title,
+        description: form.description,
+        requirements: form.requirements,
+        location: form.location,
+        department: form.department || null,
+        experience_level: experienceMap[form.experience] || 'mid',
+        type: typeMap[form.employment] || 'full-time',
+        salary: form.salary.showSalary && (form.salary.min || form.salary.max)
+          ? { min: Number(form.salary.min || 0), max: Number(form.salary.max || 0), currency: 'TRY' }
+          : null,
+        benefits: form.benefits.length ? form.benefits : null,
+        application_deadline: form.deadline || null,
+        status: 'published',
+      });
+      alert('İlan başarıyla oluşturuldu');
+      navigate('/corporate/jobs');
+    } catch (err: any) {
+      alert(err?.message || 'İlan oluşturulamadı');
+    }
   };
 
   const getExperienceLabel = (value: string) => {

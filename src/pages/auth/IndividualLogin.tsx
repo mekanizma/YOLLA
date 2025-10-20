@@ -5,7 +5,7 @@ import Header from '../../components/layout/Header';
 import Footer from '../../components/layout/Footer';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
-import { signIn } from '../../lib/authService';
+import { signInWithRole } from '../../lib/authService';
 
 const IndividualLogin = () => {
   const navigate = useNavigate();
@@ -22,7 +22,7 @@ const IndividualLogin = () => {
     setIsLoading(true);
     
     try {
-      await signIn(email, password);
+      await signInWithRole(email, password, 'individual');
       navigate('/individual/dashboard');
     } catch (err: any) {
       setError(err.message || 'Giriş yapılamadı. Lütfen bilgilerinizi kontrol edin.');

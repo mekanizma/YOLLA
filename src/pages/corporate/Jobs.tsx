@@ -1,69 +1,41 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, FileText, Users, Search, Filter, Calendar, Briefcase, CheckCircle, XCircle } from 'lucide-react';
+import { Plus, FileText, Users, Search, Calendar } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Header from '../../components/layout/Header';
+import supabase from '../../lib/supabaseClient';
+import { fetchCompanyByEmail, fetchCorporateJobs, setJobStatus } from '../../lib/jobsService';
 
-interface Job {
-  id: string;
-  title: string;
-  createdAt: string;
-  status: 'active' | 'closed';
-  applications: number;
-}
-
-const getJobs = (): Job[] => {
-  const jobs = localStorage.getItem('corporate_jobs');
-  if (jobs) {
-    const parsedJobs = JSON.parse(jobs);
-    // Tip güvenliği için status değerini kontrol et
-    return parsedJobs.map((job: any) => ({
-      id: job.id,
-      title: job.title,
-      createdAt: job.createdAt,
-      status: job.status === 'active' ? 'active' : 'closed',
-      applications: job.applications
-    } as Job));
-  }
-  
-  // Dummy ilanlar ekle
-  const dummyJobs: Job[] = [
-    { id: '1', title: 'Frontend Developer', createdAt: new Date().toISOString(), status: 'active', applications: 5 },
-    { id: '2', title: 'Backend Developer', createdAt: new Date().toISOString(), status: 'active', applications: 3 },
-    { id: '3', title: 'UI/UX Designer', createdAt: new Date().toISOString(), status: 'closed', applications: 0 }
-  ];
-  localStorage.setItem('corporate_jobs', JSON.stringify(dummyJobs));
-  return dummyJobs;
-};
+type Row = { id: number; title: string; created_at: string; status: 'draft' | 'published' | 'closed'; applications: number };
 
 const Jobs: React.FC = () => {
-  const [jobs, setJobs] = useState<Job[]>([]);
+  const [jobs, setJobs] = useState<Row[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'closed'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'published' | 'closed' | 'draft'>('all');
+  const [companyId, setCompanyId] = useState<number | null>(null);
 
   useEffect(() => {
-    const loadedJobs = getJobs();
-    setJobs(loadedJobs);
+    const load = async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      const email = auth.user?.email || '';
+      const company = await fetchCompanyByEmail(email);
+      if (!company) return;
+      setCompanyId(company.id);
+      const rows = await fetchCorporateJobs(company.id);
+      setJobs(rows as any);
+    };
+    load();
   }, []);
 
-  const handleStatusChange = (jobId: string, currentStatus: 'active' | 'closed') => {
-    const updatedJobs = jobs.map(job => {
-      if (job.id === jobId) {
-        return {
-          ...job,
-          status: currentStatus === 'active' ? 'closed' : 'active'
-        } as Job;
-      }
-      return job;
-    });
-    
-    setJobs(updatedJobs);
-    localStorage.setItem('corporate_jobs', JSON.stringify(updatedJobs));
+  const handleStatusChange = async (jobId: number, currentStatus: Row['status']) => {
+    const next = currentStatus === 'closed' ? 'published' : 'closed';
+    const updated = await setJobStatus(jobId, next);
+    setJobs(prev => prev.map(j => (j.id === jobId ? { ...j, status: updated.status as Row['status'] } : j)));
   };
 
   const filteredJobs = jobs
     .filter(job => job.title.toLowerCase().includes(searchTerm.toLowerCase()))
     .filter(job => statusFilter === 'all' || job.status === statusFilter)
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   return (
     <>
@@ -89,11 +61,12 @@ const Jobs: React.FC = () => {
             <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
               <select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as 'all' | 'active' | 'closed')}
+                onChange={(e) => setStatusFilter(e.target.value as 'all' | 'published' | 'closed' | 'draft')}
                 className="px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white text-sm md:text-base"
               >
                 <option value="all">Tüm İlanlar</option>
-                <option value="active">Aktif İlanlar</option>
+                <option value="published">Yayında</option>
+                <option value="draft">Taslak</option>
                 <option value="closed">Kapalı İlanlar</option>
               </select>
               <Link
@@ -123,19 +96,21 @@ const Jobs: React.FC = () => {
                       <h3 className="text-base md:text-lg font-semibold text-gray-900 dark:text-white">{job.title}</h3>
                       <span
                         className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          job.status === 'active'
+                          job.status === 'published'
                             ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                            : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                            : job.status === 'draft'
+                              ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                              : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
                         }`}
                       >
-                        {job.status === 'active' ? 'Aktif' : 'Kapalı'}
+                        {job.status === 'published' ? 'Yayında' : job.status === 'draft' ? 'Taslak' : 'Kapalı'}
                       </span>
                     </div>
                     
                     <div className="space-y-2 md:space-y-3">
                       <div className="flex items-center text-xs md:text-sm text-gray-600 dark:text-gray-400">
                         <Calendar className="mr-2 w-3.5 h-3.5 md:w-4 md:h-4" />
-                        {new Date(job.createdAt).toLocaleDateString('tr-TR', {
+                        {new Date(job.created_at).toLocaleDateString('tr-TR', {
                           year: 'numeric',
                           month: 'long',
                           day: 'numeric'
@@ -143,7 +118,7 @@ const Jobs: React.FC = () => {
                       </div>
                       <div className="flex items-center text-xs md:text-sm text-gray-600 dark:text-gray-400">
                         <Users className="mr-2 w-3.5 h-3.5 md:w-4 md:h-4" />
-                        {job.applications} başvuru
+                        {job.applications || 0} başvuru
                       </div>
                     </div>
 
@@ -157,12 +132,12 @@ const Jobs: React.FC = () => {
                       <button
                         onClick={() => handleStatusChange(job.id, job.status)}
                         className={`px-2 md:px-3 py-1 rounded-lg text-xs md:text-sm font-medium ${
-                          job.status === 'active'
+                          job.status === 'published'
                             ? 'text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20'
                             : 'text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20'
                         }`}
                       >
-                        {job.status === 'active' ? 'İlanı Kapat' : 'İlanı Aç'}
+                        {job.status === 'published' ? 'İlanı Kapat' : 'İlanı Aç'}
                       </button>
                     </div>
                   </div>

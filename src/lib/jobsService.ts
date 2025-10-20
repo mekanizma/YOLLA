@@ -52,5 +52,79 @@ export async function fetchJobById(id: number) {
   return data as unknown as JobRecord | null;
 }
 
+// Şirket e-postasından company kaydını getir
+export async function fetchCompanyByEmail(email: string) {
+  const { data, error } = await supabase
+    .from('companies')
+    .select('id,name,email,phone')
+    .eq('email', email)
+    .maybeSingle();
+  if (error) throw error;
+  return data as { id: number; name: string; email: string; phone?: string | null } | null;
+}
 
+// Belirli şirketin ilanlarını getir (en yeni ilk)
+export async function fetchCorporateJobs(companyId: number) {
+  const { data, error } = await supabase
+    .from('jobs')
+    .select('id,title,status,applications,created_at')
+    .eq('company_id', companyId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data || []) as Array<Pick<JobRecord, 'id' | 'title' | 'status' | 'applications' | 'created_at'>>;
+}
 
+// İlan oluştur
+export async function createCorporateJob(companyId: number, payload: {
+  title: string;
+  description: string;
+  requirements: string;
+  location: string;
+  department?: string | null;
+  experience_level?: JobRecord['experience_level'];
+  type?: JobRecord['type'];
+  salary?: { min?: number; max?: number; currency?: string } | null;
+  benefits?: string[] | null;
+  application_deadline?: string | null;
+  status?: JobRecord['status'];
+}) {
+  const insertPayload: Partial<JobRecord> = {
+    title: payload.title,
+    description: payload.description,
+    requirements: payload.requirements,
+    responsibilities: '',
+    location: payload.location,
+    type: payload.type || 'full-time',
+    experience_level: payload.experience_level || 'mid',
+    education_level: null,
+    salary: payload.salary ? { min: Number(payload.salary.min || 0), max: Number(payload.salary.max || 0), currency: payload.salary.currency || 'TRY' } : null,
+    skills: [],
+    benefits: payload.benefits || null,
+    department: payload.department || null,
+    status: payload.status || 'published',
+    is_remote: false,
+    application_deadline: payload.application_deadline || null,
+    company_id: companyId,
+    views: 0,
+    applications: 0,
+  } as Partial<JobRecord>;
+  const { data, error } = await supabase
+    .from('jobs')
+    .insert(insertPayload)
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data as JobRecord;
+}
+
+// İlan durumunu değiştir
+export async function setJobStatus(jobId: number, status: JobRecord['status']) {
+  const { data, error } = await supabase
+    .from('jobs')
+    .update({ status })
+    .eq('id', jobId)
+    .select('id,status')
+    .single();
+  if (error) throw error;
+  return data as Pick<JobRecord, 'id' | 'status'>;
+}

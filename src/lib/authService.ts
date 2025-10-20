@@ -153,6 +153,80 @@ export async function signIn(email: string, password: string) {
   return data;
 }
 
+// Belirli role ile giriş zorunluluğu: users.role veya user_metadata.userType kontrol edilir
+export async function signInWithRole(email: string, password: string, allowedRole: 'individual' | 'corporate' | 'admin') {
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) throw error;
+
+  // Rolü oku
+  const authUser = data.user;
+  const metaRole = (authUser?.user_metadata as any)?.userType as string | undefined;
+
+  let rowRole: string | null = null;
+  try {
+    const { data: row } = await supabase
+      .from('users')
+      .select('role')
+      .eq('email', email)
+      .maybeSingle();
+    rowRole = (row as any)?.role ?? null;
+  } catch (_e) {
+    // tablo erişiminde sorun olsa da meta ile devam edilecek
+  }
+
+  const effectiveRole = (rowRole || metaRole || 'individual') as 'individual' | 'corporate' | 'admin';
+  if (effectiveRole !== allowedRole) {
+    // Yanlış panel girişini engelle
+    await supabase.auth.signOut();
+    throw new Error(
+      allowedRole === 'individual'
+        ? 'Bu panel sadece bireysel hesaplar içindir.'
+        : allowedRole === 'corporate'
+          ? 'Bu panel sadece kurumsal hesaplar içindir.'
+          : 'Yetkisiz giriş.'
+    );
+  }
+
+  // Users kaydını senkronize et (mevcut signIn ile aynı mantık)
+  try {
+    const uid = authUser?.id as string;
+    const meta = authUser?.user_metadata || {};
+    const fullName: string = (meta.name as string) || '';
+    const [firstName, ...rest] = fullName.split(' ');
+    const lastName = rest.join(' ');
+    if (uid) {
+      try {
+        await ensureUserRowByUserId({
+          user_id: uid,
+          email,
+          first_name: firstName || fullName || '',
+          last_name: lastName || '',
+          role: effectiveRole
+        });
+      } catch (e) {
+        await ensureUserRowByEmail({
+          email,
+          first_name: firstName || fullName || '',
+          last_name: lastName || '',
+          role: effectiveRole
+        });
+      }
+    } else {
+      await ensureUserRowByEmail({
+        email,
+        first_name: firstName || fullName || '',
+        last_name: lastName || '',
+        role: effectiveRole
+      });
+    }
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('users upsert (role login) başarısız:', e);
+  }
+
+  return data;
+}
+
 export async function signOut() {
   const { error } = await supabase.auth.signOut();
   if (error) throw error;
@@ -164,3 +238,61 @@ export function onAuthStateChange(callback: (session: any) => void) {
 }
 
 
+
+// Admin: Kurumsal hesap oluştur (auth kullanıcı + users tablosu + companies kaydı)
+export async function adminCreateCorporateAccount(payload: {
+  email: string;
+  password: string;
+  companyName: string;
+  phone?: string;
+}) {
+  const { email, password, companyName, phone } = payload;
+
+  // 1) Auth kullanıcısı oluştur (rol bilgisini metadata'ya da yaz)
+  const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: { userType: 'corporate', name: companyName, phone },
+      emailRedirectTo: typeof window !== 'undefined' ? `${window.location.origin}/login/corporate` : undefined
+    }
+  });
+  if (signUpErr) throw signUpErr;
+
+  // 2) users tablosunu garantiye al (rol = corporate)
+  try {
+    const uid = signUpData.user?.id as string | undefined;
+    if (uid) {
+      await ensureUserRowByUserId({
+        user_id: uid,
+        email,
+        first_name: companyName,
+        last_name: '',
+        role: 'corporate'
+      });
+    } else {
+      await ensureUserRowByEmail({ email, first_name: companyName, last_name: '', role: 'corporate' });
+    }
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('users insert (admin corporate) başarısız:', e);
+  }
+
+  // 3) companies tablosuna kayıt aç (varsa güncelle)
+  try {
+    const { error: compErr } = await supabase
+      .from('companies')
+      .upsert({ name: companyName, email, phone: phone || null }, { onConflict: 'email' });
+    if (compErr) throw compErr;
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('companies upsert (admin corporate) başarısız:', e);
+  }
+
+  // 4) Oturum açıldıysa kapat (admin paneli localStorage ile yönetiliyor)
+  if (signUpData.session) {
+    await supabase.auth.signOut();
+  }
+
+  return { ok: true };
+}

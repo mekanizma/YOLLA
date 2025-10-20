@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Briefcase, Eye, EyeOff } from 'lucide-react';
+import { signInWithRole } from '../../lib/authService';
 import Header from '../../components/layout/Header';
 import Footer from '../../components/layout/Footer';
 import Button from '../../components/ui/Button';
@@ -21,13 +22,10 @@ const CorporateLogin = () => {
     setIsLoading(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // For demo purposes, always succeed
+      await signInWithRole(email, password, 'corporate');
       navigate('/corporate/dashboard');
-    } catch (err) {
-      setError('Giriş yapılamadı. Lütfen bilgilerinizi kontrol edin.');
+    } catch (err: any) {
+      setError(err.message || 'Giriş yapılamadı. Lütfen bilgilerinizi kontrol edin.');
     } finally {
       setIsLoading(false);
     }
