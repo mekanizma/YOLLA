@@ -1,5 +1,4 @@
-import React from 'react';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   PlusCircle, 
@@ -18,46 +17,91 @@ import {
 import Header from '../../components/layout/Header';
 import supabase from '../../lib/supabaseClient';
 import { fetchCompanyByEmail, fetchCorporateJobs } from '../../lib/jobsService';
-import Footer from '../../components/layout/Footer';
-import Button from '../../components/ui/Button';
+import { getCorporateApplications } from '../../lib/applicationsService';
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const [stats, setStats] = useState<any[]>([]);
-  
   const [recentApplications, setRecentApplications] = useState<any[]>([]);
+  const [companyInfo, setCompanyInfo] = useState<any>(null);
 
   useEffect(() => {
     const load = async () => {
-      const { data: auth } = await supabase.auth.getUser();
-      const email = auth.user?.email || '';
-      const company = await fetchCompanyByEmail(email);
-      if (!company) return;
-      const jobs = await fetchCorporateJobs(company.id);
-      const activeCount = jobs.filter(j => j.status === 'published').length;
-      const totalApplications = jobs.reduce((sum, j) => sum + (j.applications || 0), 0);
-      // TODO: Görüşme aşamasında ve tamamlanan işe alımlar için 'applications' tablosu şemasına göre sorgu eklenebilir
-      setStats([
-        { title: 'Yayındaki İlanlar', value: String(activeCount), icon: <FileText className="text-primary" />, bgColor: 'bg-primary/10', change: '', changeUp: true, onClick: () => navigate('/corporate/jobs') },
-        { title: 'Toplam Başvurular', value: String(totalApplications), icon: <Users className="text-secondary" />, bgColor: 'bg-secondary/10', change: '', changeUp: true, onClick: () => navigate('/corporate/applications') },
-        { title: 'Görüşme Aşamasında', value: '-', icon: <Clock className="text-accent" />, bgColor: 'bg-accent/10', change: '', changeUp: true, onClick: () => navigate('/corporate/applications?tab=interview') },
-        { title: 'Tamamlanan İşe Alımlar', value: '-', icon: <TrendingUp className="text-success" />, bgColor: 'bg-success/10', change: '', changeUp: false, onClick: () => navigate('/corporate/applications?tab=completed') },
-      ]);
+      try {
+        const { data: auth } = await supabase.auth.getUser();
+        const user = auth.user;
+        if (!user) return;
 
-      // Son başvurular (jobs join applications) — basit bir örnek için jobs üzerinden oluşturma zamanı kullanılır
-      // Eğer applications tablosu uygun ise burada gerçek join yapılabilir
-      setRecentApplications(
-        jobs.slice(0, 3).map(j => ({
-          id: j.id,
-          name: 'Aday',
-          position: j.title,
-          location: '-',
-          date: new Date(j.created_at).toLocaleDateString('tr-TR')
-        }))
-      );
+        // Şirketi mail ile çek
+        const company = await fetchCompanyByEmail(user.email || '');
+        if (!company) return;
+        setCompanyInfo(company);
+
+        // İlanlar ve başvurular
+        const [jobs, applications] = await Promise.all([
+          fetchCorporateJobs(company.id.toString()),
+          getCorporateApplications(company.id.toString()),
+        ]);
+
+        const activeCount = jobs.filter((j: any) => j.status === 'published').length;
+        const totalApplications = applications.length;
+        const pendingApplications = applications.filter((a: any) => a.status === 'pending').length;
+        const acceptedApplications = applications.filter((a: any) => a.status === 'accepted').length;
+
+        setStats([
+          {
+            title: 'Yayındaki İlanlar',
+            value: String(activeCount),
+            icon: <FileText className="text-primary" />,
+            bgColor: 'bg-primary/10',
+            change: `${jobs.length} toplam ilan`,
+            changeUp: true,
+            onClick: () => navigate('/corporate/jobs'),
+          },
+          {
+            title: 'Toplam Başvurular',
+            value: String(totalApplications),
+            icon: <Users className="text-secondary" />,
+            bgColor: 'bg-secondary/10',
+            change: `${pendingApplications} bekleyen`,
+            changeUp: true,
+            onClick: () => navigate('/corporate/applications'),
+          },
+          {
+            title: 'Bekleyen Başvurular',
+            value: String(pendingApplications),
+            icon: <Clock className="text-accent" />,
+            bgColor: 'bg-accent/10',
+            change: 'İncelenmeyi bekliyor',
+            changeUp: true,
+            onClick: () => navigate('/corporate/applications'),
+          },
+          {
+            title: 'Kabul Edilenler',
+            value: String(acceptedApplications),
+            icon: <TrendingUp className="text-success" />,
+            bgColor: 'bg-success/10',
+            change: 'İşe alım süreci',
+            changeUp: false,
+            onClick: () => navigate('/corporate/applications'),
+          },
+        ]);
+
+        const recentApps = applications.slice(0, 5).map((app: any) => ({
+          id: app.id,
+          name: app.users?.full_name || 'Aday',
+          position: app.jobs?.title || 'Pozisyon',
+          location: app.users?.location || '-',
+          date: new Date(app.created_at).toLocaleDateString('tr-TR'),
+        }));
+        setRecentApplications(recentApps);
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn('Dashboard load error:', e);
+      }
     };
     load();
-  }, []);
+  }, [navigate]);
 
   return (
     <>
@@ -67,7 +111,7 @@ const Dashboard = () => {
         <section className="bg-gradient-to-r from-primary to-primary/80 pt-24 pb-12">
           <div className="container mx-auto px-4">
             <div className="text-center text-white">
-              <h1 className="text-2xl md:text-3xl font-bold mb-2">Hoş Geldiniz, Şirket Adı!</h1>
+              <h1 className="text-2xl md:text-3xl font-bold mb-2">Hoş Geldiniz, {companyInfo?.name || 'Şirket'}!</h1>
               <p className="text-sm md:text-base text-white/90">İş ilanlarınızı ve başvuruları buradan yönetebilirsiniz.</p>
             </div>
           </div>
@@ -110,7 +154,6 @@ const Dashboard = () => {
                     <ChevronRight size={16} />
                   </Link>
                 </div>
-                
                 <div className="space-y-4">
                   {recentApplications.map((application) => (
                     <div 
@@ -158,33 +201,67 @@ const Dashboard = () => {
             <div className="space-y-6">
               <div className="bg-white rounded-lg shadow p-4 md:p-6">
                 <h2 className="text-lg md:text-xl font-semibold mb-4">Şirket Profili</h2>
+                {companyInfo?.logo && (
+                  <div className="flex justify-center mb-4">
+                    <img 
+                      src={companyInfo.logo} 
+                      alt="Şirket Logosu" 
+                      className="w-16 h-16 rounded-full object-cover border-2 border-gray-200"
+                    />
+                  </div>
+                )}
                 <div className="space-y-4">
                   <div className="flex items-center gap-3">
                     <Building className="w-4 h-4 md:w-5 md:h-5 text-gray-400" />
                     <div>
                       <p className="text-xs md:text-sm text-gray-500">Şirket Adı</p>
-                      <p className="text-sm md:text-base font-medium">TechCorp Solutions</p>
+                      <p className="text-sm md:text-base font-medium">{companyInfo?.name || '-'}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <Mail className="w-4 h-4 md:w-5 md:h-5 text-gray-400" />
                     <div>
                       <p className="text-xs md:text-sm text-gray-500">E-posta</p>
-                      <p className="text-sm md:text-base font-medium">info@techcorp.com</p>
+                      <p className="text-sm md:text-base font-medium">{companyInfo?.email || '-'}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <Phone className="w-4 h-4 md:w-5 md:h-5 text-gray-400" />
                     <div>
                       <p className="text-xs md:text-sm text-gray-500">Telefon</p>
-                      <p className="text-sm md:text-base font-medium">+90 (555) 123 45 67</p>
+                      <p className="text-sm md:text-base font-medium">{companyInfo?.phone || '-'}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <MapPin className="w-4 h-4 md:w-5 md:h-5 text-gray-400" />
                     <div>
                       <p className="text-xs md:text-sm text-gray-500">Adres</p>
-                      <p className="text-sm md:text-base font-medium">İstanbul, Türkiye</p>
+                      <p className="text-sm md:text-base font-medium">{companyInfo?.address || companyInfo?.location || '-'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Building className="w-4 h-4 md:w-5 md:h-5 text-gray-400" />
+                    <div>
+                      <p className="text-xs md:text-sm text-gray-500">Website</p>
+                      <p className="text-sm md:text-base font-medium">
+                        {companyInfo?.website ? (
+                          <a 
+                            href={companyInfo.website.startsWith('http') ? companyInfo.website : `https://${companyInfo.website}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary hover:underline"
+                          >
+                            {companyInfo.website}
+                          </a>
+                        ) : '-'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Briefcase className="w-4 h-4 md:w-5 md:h-5 text-gray-400" />
+                    <div>
+                      <p className="text-xs md:text-sm text-gray-500">Sektör</p>
+                      <p className="text-sm md:text-base font-medium">{companyInfo?.industry || '-'}</p>
                     </div>
                   </div>
                 </div>

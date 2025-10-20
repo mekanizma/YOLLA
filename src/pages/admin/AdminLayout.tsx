@@ -14,13 +14,41 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 const { Sider, Content, Header } = Layout;
 
 const menuItems = [
-  { key: '/admin/users', icon: <UserOutlined />, label: 'Bireysel Kullanıcılar' },
-  { key: '/admin/corporates', icon: <TeamOutlined />, label: 'Kurumsal Hesaplar' },
-  { key: '/admin/jobs', icon: <FileTextOutlined />, label: 'İş İlanları' },
-  { key: '/admin/applications', icon: <SolutionOutlined />, label: 'Başvurular' },
-  { key: '/admin/stats', icon: <BarChartOutlined />, label: 'İstatistikler' },
-  { key: '/admin/reports', icon: <BarChartOutlined />, label: 'Raporlar' },
-  { key: '/admin/settings', icon: <SettingOutlined />, label: 'Ayarlar' },
+  { 
+    key: '/admin/users', 
+    icon: <UserOutlined />, 
+    label: <Link to="/admin/users">Bireysel Kullanıcılar</Link> 
+  },
+  { 
+    key: '/admin/corporates', 
+    icon: <TeamOutlined />, 
+    label: <Link to="/admin/corporates">Kurumsal Hesaplar</Link> 
+  },
+  { 
+    key: '/admin/jobs', 
+    icon: <FileTextOutlined />, 
+    label: <Link to="/admin/jobs">İş İlanları</Link> 
+  },
+  { 
+    key: '/admin/applications', 
+    icon: <SolutionOutlined />, 
+    label: <Link to="/admin/applications">Başvurular</Link> 
+  },
+  { 
+    key: '/admin/stats', 
+    icon: <BarChartOutlined />, 
+    label: <Link to="/admin/stats">İstatistikler</Link> 
+  },
+  { 
+    key: '/admin/reports', 
+    icon: <BarChartOutlined />, 
+    label: <Link to="/admin/reports">Raporlar</Link> 
+  },
+  { 
+    key: '/admin/settings', 
+    icon: <SettingOutlined />, 
+    label: <Link to="/admin/settings">Ayarlar</Link> 
+  },
 ];
 
 const AdminLayout: React.FC = () => {
@@ -39,18 +67,18 @@ const AdminLayout: React.FC = () => {
         <Menu
           mode="inline"
           selectedKeys={[location.pathname]}
+          items={[
+            ...menuItems,
+            {
+              key: 'logout',
+              icon: <LogoutOutlined />,
+              label: 'Çıkış Yap',
+              onClick: handleLogout,
+              style: { marginTop: 'auto', color: '#ff4d4f', fontWeight: 600 }
+            }
+          ]}
           style={{ height: '100%', borderRight: 0, display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh - 64px)' }}
-        >
-          {menuItems.map(item => (
-            <Menu.Item key={item.key} icon={item.icon}>
-              <Link to={item.key}>{item.label}</Link>
-            </Menu.Item>
-          ))}
-          <div style={{ flex: 1 }} />
-          <Menu.Item key="logout" icon={<LogoutOutlined />} onClick={handleLogout} style={{ marginTop: 'auto', color: '#ff4d4f', fontWeight: 600 }}>
-            Çıkış Yap
-          </Menu.Item>
-        </Menu>
+        />
       </Sider>
       <Layout>
         <Header style={{ background: '#fff', padding: '0 24px', fontWeight: 600, fontSize: 18, borderBottom: '1px solid #f0f0f0' }}>

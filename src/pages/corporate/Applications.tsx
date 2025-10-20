@@ -32,6 +32,8 @@ import { Link } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import supabase from '../../lib/supabaseClient';
 import { JobRecord } from '../../lib/jobsService';
+import { getCorporateApplications, updateApplicationStatus } from '../../lib/applicationsService';
+import { fetchCompanyByEmail } from '../../lib/jobsService';
 
 // Styled components for mobile responsiveness
 const StyledPaper = styled(Paper)(({ theme }) => ({
@@ -105,12 +107,13 @@ const CorporateApplications: React.FC = () => {
           return;
         }
         // Kurumsal kullanıcıya ait şirketin ilanlarına gelen başvurular
-        const { data, error } = await supabase
-          .from('applications')
-          .select('id,status,created_at, users(full_name,avatar_url), jobs(title)')
-          .order('created_at', { ascending: false });
-        if (error) throw error;
-        const mapped: Application[] = (data as unknown as ApplicationRow[]).map((r) => ({
+        const company = await fetchCompanyByEmail(user.email || '');
+        if (!company) {
+          setApplications([]);
+          return;
+        }
+        const data = await getCorporateApplications(company.id);
+        const mapped: Application[] = (data as any[]).map((r) => ({
           id: r.id,
           applicantName: r.users?.full_name || 'Aday',
           position: r.jobs?.title || 'Pozisyon',
@@ -152,34 +155,18 @@ const CorporateApplications: React.FC = () => {
     setSelectedApplication(null);
   };
 
-  const handleStatusChange = (newStatus: Application['status']) => {
+  const handleStatusChange = async (newStatus: Application['status']) => {
     if (selectedApplication) {
-      // Dummy bildirim oluştur
-      const notifications = JSON.parse(localStorage.getItem('individual_notifications') || '[]');
-      let title = '';
-      let desc = '';
-      if (newStatus === 'accepted') {
-        title = 'Başvurunuz Kabul Edildi';
-        desc = `${selectedApplication.applicantName} başvurunuz kabul edildi.`;
-      } else if (newStatus === 'rejected') {
-        title = 'Başvurunuz Reddedildi';
-        desc = `${selectedApplication.applicantName} başvurunuz reddedildi.`;
-      } else if (newStatus === 'reviewing') {
-        title = 'Başvurunuz İnceleniyor';
-        desc = `${selectedApplication.applicantName} başvurunuz inceleme aşamasında.`;
+      try {
+        await updateApplicationStatus(selectedApplication.id, newStatus, rejectReason);
+        setApplications(prev => prev.map(app =>
+          app.id === selectedApplication.id ? { ...app, status: newStatus } : app
+        ));
+        setSnackbar({ open: true, message: 'Başvuru durumu güncellendi.' });
+      } catch (e: any) {
+        setSnackbar({ open: true, message: e?.message || 'Güncelleme başarısız.' });
       }
-      if (title) {
-        notifications.push({
-          id: Date.now(),
-          type: 'application',
-          title,
-          desc,
-          date: new Date().toLocaleString(),
-          applicationId: selectedApplication.id,
-          read: false
-        });
-        localStorage.setItem('individual_notifications', JSON.stringify(notifications));
-      }
+      
       if (newStatus === 'rejected') {
         setRejectDialogOpen(true);
         return;
@@ -188,23 +175,25 @@ const CorporateApplications: React.FC = () => {
         setAcceptDialogOpen(true);
         return;
       }
-      setApplications(prev => prev.map(app =>
-        app.id === selectedApplication.id ? { ...app, status: newStatus } : app
-      ));
     }
     handleMenuClose();
   };
 
-  const handleRejectConfirm = () => {
-    // Burada Supabase'e red nedeni ile bildirim gönderilebilir ve kayıt tutulabilir
-    setApplications(prev => prev.map(app =>
-      app.id === selectedApplication?.id ? { ...app, status: 'rejected', rejectReason, rejectDate: new Date().toISOString() } : app
-    ));
+  const handleRejectConfirm = async () => {
+    if (selectedApplication) {
+      try {
+        await updateApplicationStatus(selectedApplication.id, 'rejected', rejectReason);
+        setApplications(prev => prev.map(app =>
+          app.id === selectedApplication.id ? { ...app, status: 'rejected', rejectReason, rejectDate: new Date().toISOString() } : app
+        ));
+        setSnackbar({ open: true, message: 'Red sebebiniz başarıyla iletildi.' });
+      } catch (e: any) {
+        setSnackbar({ open: true, message: e?.message || 'Güncelleme başarısız.' });
+      }
+    }
     setRejectDialogOpen(false);
     setRejectReason('');
     handleMenuClose();
-    setSnackbar({ open: true, message: 'Red sebebiniz başarıyla iletildi.' });
-    // Bildirim gönderme işlemi burada yapılacak
   };
 
   const handleAcceptConfirm = () => {
@@ -212,25 +201,26 @@ const CorporateApplications: React.FC = () => {
     setContractDialogOpen(true);
   };
 
-  const handleContractConfirm = () => {
-    // Burada Supabase'e kabul ve sözleşme onayı ile bildirim gönderilebilir ve kayıt tutulabilir
-    setApplications(prev => prev.map(app =>
-      app.id === selectedApplication?.id ? { ...app, status: 'accepted', acceptDate: new Date().toISOString(), contractAccepted: true } : app
-    ));
+  const handleContractConfirm = async () => {
+    if (selectedApplication) {
+      try {
+        await updateApplicationStatus(selectedApplication.id, 'accepted');
+        setApplications(prev => prev.map(app =>
+          app.id === selectedApplication.id ? { ...app, status: 'accepted', acceptDate: new Date().toISOString(), contractAccepted: true } : app
+        ));
+        setSnackbar({ open: true, message: 'İşe alımınız tamamlanmıştır.' });
+      } catch (e: any) {
+        setSnackbar({ open: true, message: e?.message || 'Güncelleme başarısız.' });
+      }
+    }
     setContractDialogOpen(false);
     setContractAccepted(false);
     setAcceptDetails({ date: '', time: '', details: '' });
     handleMenuClose();
-    setSnackbar({ open: true, message: 'İşe alımınız tamamlanmıştır.' });
-    // Bildirim gönderme işlemi burada yapılacak
   };
 
-  // Başvuruların status'unu localStorage'daki approved_applications'a göre güncelle
-  const approvedIds = JSON.parse(localStorage.getItem('approved_applications') || '[]');
-  const applicationsWithApproved = applications.map(app =>
-    approvedIds.includes(app.id) ? { ...app, status: 'approved' } : app
-  );
-  const filteredApplications = applicationsWithApproved.filter(app => {
+  // Başvuruları filtrele (localStorage kaldırıldı)
+  const filteredApplications = applications.filter(app => {
     switch (currentTab) {
       case 0: return app.status === 'pending';
       case 1: return app.status === 'reviewing';

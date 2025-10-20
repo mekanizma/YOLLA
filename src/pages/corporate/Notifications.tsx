@@ -16,6 +16,9 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { useNavigate } from 'react-router-dom';
 import Header from '../../components/layout/Header';
+import supabase from '../../lib/supabaseClient';
+import { getCorporateNotifications, deleteNotification, markNotificationRead } from '../../lib/notificationsService';
+import { fetchCompanyByEmail } from '../../lib/jobsService';
 
 type TabType = 'all' | 'unread' | 'read' | 'messages';
 
@@ -39,26 +42,31 @@ const CorporateNotifications: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Dummy notifications
-    const dummyNotifications: Notification[] = [
-      {
-        id: 1,
-        title: 'Yeni Başvuru',
-        message: 'Frontend Developer pozisyonuna yeni bir başvuru aldınız.',
-        timestamp: new Date().toISOString(),
-        read: false,
-        type: 'info'
-      },
-      {
-        id: 2,
-        title: 'İlan Süresi',
-        message: 'Backend Developer ilanınızın süresi 3 gün sonra dolacak.',
-        timestamp: new Date(Date.now() - 86400000).toISOString(),
-        read: true,
-        type: 'warning'
+    const load = async () => {
+      try {
+        const { data: auth } = await supabase.auth.getUser();
+        const user = auth.user;
+        if (!user) return;
+        
+        const company = await fetchCompanyByEmail(user.email || '');
+        if (!company) return;
+        
+        const data = await getCorporateNotifications(company.id);
+        const mapped: Notification[] = (data as any[]).map((n) => ({
+          id: n.id,
+          title: n.title,
+          message: n.message,
+          timestamp: n.created_at,
+          read: n.is_read || false,
+          type: n.type || 'info',
+        }));
+        setNotifications(mapped);
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn(e);
       }
-    ];
-    setNotifications(dummyNotifications);
+    };
+    load();
   }, []);
 
   const handleTabChange = (_: any, newValue: number) => {
@@ -66,12 +74,27 @@ const CorporateNotifications: React.FC = () => {
     setTab(tabValues[newValue]);
   };
 
-  const markAllAsRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, read: true })));
+  const markAllAsRead = async () => {
+    try {
+      const unreadIds = notifications.filter(n => !n.read).map(n => n.id);
+      for (const id of unreadIds) {
+        await markNotificationRead(id);
+      }
+      setNotifications(notifications.map(n => ({ ...n, read: true })));
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn(e);
+    }
   };
 
-  const handleDeleteNotification = (id: number) => {
-    setNotifications(notifications.filter(n => n.id !== id));
+  const handleDeleteNotification = async (id: number) => {
+    try {
+      await deleteNotification(id);
+      setNotifications(notifications.filter(n => n.id !== id));
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn(e);
+    }
   };
 
   // Bildirimleri en yeni en üstte olacak şekilde sırala
@@ -81,7 +104,8 @@ const CorporateNotifications: React.FC = () => {
 
   useEffect(() => {
     if (tab === 'messages') {
-      setChats(JSON.parse(localStorage.getItem('corporate_chats') || '[]'));
+      // Mesajlar için ayrı bir servis gerekebilir
+      setChats([]);
     }
   }, [tab]);
 

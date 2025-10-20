@@ -1,7 +1,7 @@
 import supabase from './supabaseClient';
 
 export type JobRecord = {
-  id: number;
+  id: string;
   title: string;
   description: string;
   requirements: string;
@@ -17,7 +17,7 @@ export type JobRecord = {
   status: 'draft' | 'published' | 'closed';
   is_remote: boolean;
   application_deadline: string | null;
-  company_id: number;
+  company_id: string;
   views: number;
   applications: number;
   created_at: string;
@@ -27,7 +27,19 @@ export type JobRecord = {
 export async function fetchPublishedJobs(params?: { search?: string; city?: string }) {
   const query = supabase
     .from('jobs')
-    .select('*')
+    .select(`
+      *,
+      companies!inner(
+        id,
+        name,
+        logo,
+        location,
+        industry,
+        website,
+        phone,
+        email
+      )
+    `)
     .eq('status', 'published')
     .order('created_at', { ascending: false });
 
@@ -39,10 +51,21 @@ export async function fetchPublishedJobs(params?: { search?: string; city?: stri
 
   const { data, error } = await query;
   if (error) throw error;
-  return data as unknown as JobRecord[];
+  return data as unknown as (JobRecord & { 
+    companies: { 
+      id: number; 
+      name: string; 
+      logo?: string; 
+      location?: string; 
+      industry?: string;
+      website?: string;
+      phone?: string;
+      email?: string;
+    } 
+  })[];
 }
 
-export async function fetchJobById(id: number) {
+export async function fetchJobById(id: string) {
   const { data, error } = await supabase
     .from('jobs')
     .select('*')
@@ -56,15 +79,28 @@ export async function fetchJobById(id: number) {
 export async function fetchCompanyByEmail(email: string) {
   const { data, error } = await supabase
     .from('companies')
-    .select('id,name,email,phone')
+    .select('id,name,email,phone,address,website,industry,location,description,size,founded_year,logo')
     .eq('email', email)
     .maybeSingle();
   if (error) throw error;
-  return data as { id: number; name: string; email: string; phone?: string | null } | null;
+  return data as { 
+    id: number; 
+    name: string; 
+    email: string; 
+    phone?: string | null;
+    address?: string | null;
+    website?: string | null;
+    industry?: string | null;
+    location?: string | null;
+    description?: string | null;
+    size?: string | null;
+    founded_year?: number | null;
+    logo?: string | null;
+  } | null;
 }
 
 // Belirli şirketin ilanlarını getir (en yeni ilk)
-export async function fetchCorporateJobs(companyId: number) {
+export async function fetchCorporateJobs(companyId: string) {
   const { data, error } = await supabase
     .from('jobs')
     .select('id,title,status,applications,created_at')
@@ -75,7 +111,7 @@ export async function fetchCorporateJobs(companyId: number) {
 }
 
 // İlan oluştur
-export async function createCorporateJob(companyId: number, payload: {
+export async function createCorporateJob(companyId: string, payload: {
   title: string;
   description: string;
   requirements: string;
@@ -118,7 +154,7 @@ export async function createCorporateJob(companyId: number, payload: {
 }
 
 // İlan durumunu değiştir
-export async function setJobStatus(jobId: number, status: JobRecord['status']) {
+export async function setJobStatus(jobId: string, status: JobRecord['status']) {
   const { data, error } = await supabase
     .from('jobs')
     .update({ status })

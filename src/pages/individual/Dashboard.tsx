@@ -7,8 +7,9 @@ import Button from '../../components/ui/Button';
 import { jobCategories, cities } from '../../lib/utils';
 import BadgesSection from '../../components/BadgesSection';
 import { fetchPublishedJobs } from '../../lib/jobsService';
-import { getMyApplications } from '../../lib/applicationsService';
+import { getMyApplications, applyToJob } from '../../lib/applicationsService';
 import { getUserBadges, checkApplicationBadges, checkProfileCompletionBadges } from '../../lib/badgesService';
+import { createNotification } from '../../lib/notificationsService';
 import supabase from '../../lib/supabaseClient';
 
 const Dashboard = () => {
@@ -20,6 +21,8 @@ const Dashboard = () => {
   const [recommendedJobs, setRecommendedJobs] = useState<any[]>([]);
   
   const [recentApplications, setRecentApplications] = useState<any[]>([]);
+  const [applyingJobs, setApplyingJobs] = useState<Set<string>>(new Set());
+  const [appliedJobs, setAppliedJobs] = useState<Set<string>>(new Set());
 
   const [badges, setBadges] = useState<any[]>([]);
 
@@ -33,6 +36,77 @@ const Dashboard = () => {
     e.preventDefault();
     // Implement search functionality
     console.log({ searchTerm, selectedCategory, selectedCity });
+  };
+
+  const handleApply = async (jobId: string) => {
+    try {
+      // Kullanıcı giriş kontrolü
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user?.id) {
+        alert('Başvuru yapmak için giriş yapmalısınız.');
+        navigate('/login/individual');
+        return;
+      }
+
+      // Zaten başvuru yapılmış mı kontrol et
+      if (appliedJobs.has(jobId)) {
+        alert('Bu ilana zaten başvuru yaptınız.');
+        return;
+      }
+
+      // Başvuru işlemi başlatıldığını göster
+      setApplyingJobs(prev => new Set(prev).add(jobId));
+
+      // İş bilgilerini al
+      const job = recommendedJobs.find(j => j.id === jobId);
+      if (!job) {
+        alert('İş ilanı bulunamadı.');
+        return;
+      }
+
+      // Başvuru yap
+      await applyToJob(jobId, auth.user.id, {
+        cover_letter: '',
+        resume_url: null,
+        answers: null
+      });
+
+      // Başvuru yapıldığını işaretle
+      setAppliedJobs(prev => new Set(prev).add(jobId));
+
+      // Şirkete bildirim gönder
+      try {
+        const { data: jobData } = await supabase
+          .from('jobs')
+          .select('company_id, companies(name)')
+          .eq('id', jobId)
+          .single();
+
+        if (jobData?.company_id) {
+          await createNotification({
+            company_id: jobData.company_id,
+            title: 'Yeni Başvuru',
+            message: `${job.title} pozisyonuna yeni bir başvuru geldi.`,
+            type: 'info'
+          });
+        }
+      } catch (notificationError) {
+        console.warn('Bildirim gönderilemedi:', notificationError);
+      }
+
+      alert('Başvurunuz başarıyla gönderildi!');
+      
+    } catch (error: any) {
+      console.error('Başvuru hatası:', error);
+      alert(error.message || 'Başvuru gönderilemedi. Lütfen tekrar deneyin.');
+    } finally {
+      // Başvuru işlemi tamamlandığını göster
+      setApplyingJobs(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(jobId);
+        return newSet;
+      });
+    }
   };
 
   // Filtrelenmiş iş ilanları
@@ -52,19 +126,39 @@ const Dashboard = () => {
           const meta: any = user.user_metadata || {};
           const fullName: string = meta.full_name || meta.name || `${meta.first_name || ''} ${meta.last_name || ''}`.trim();
           setDisplayName(fullName || (user.email ? user.email.split('@')[0] : ''));
+
+          // Kullanıcının mevcut başvurularını yükle
+          try {
+            const { data: applications } = await supabase
+              .from('applications')
+              .select('job_id')
+              .eq('user_id', user.id);
+            
+            if (applications) {
+              const appliedJobIds = new Set(applications.map(app => app.job_id));
+              setAppliedJobs(appliedJobIds);
+            }
+          } catch (error) {
+            console.warn('Başvuru durumu yüklenemedi:', error);
+          }
         }
         // Önerilen işler (şimdilik son yayınlanan 6 ilan)
         const jobs = await fetchPublishedJobs();
         const mappedJobs = jobs.slice(0, 6).map((j: any) => ({
           id: j.id,
           title: j.title,
-          company: j.company_name || 'Şirket',
+          company: j.companies?.name || 'Şirket',
           location: j.location,
           type: j.type,
           salary: j.salary ? `${j.salary.min} - ${j.salary.max} ${j.salary.currency}` : '',
           postedDate: new Date(j.created_at).toLocaleDateString('tr-TR'),
-          logo: j.company_logo || 'https://images.pexels.com/photos/1181671/pexels-photo-1181671.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1',
-          category: j.department || ''
+          logo: j.companies?.logo || 'https://images.pexels.com/photos/1181671/pexels-photo-1181671.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1',
+          category: j.department || '',
+          companyIndustry: j.companies?.industry || '',
+          companyLocation: j.companies?.location || '',
+          companyWebsite: j.companies?.website || '',
+          companyPhone: j.companies?.phone || '',
+          companyEmail: j.companies?.email || ''
         }));
         setRecommendedJobs(mappedJobs);
 
@@ -197,18 +291,29 @@ const Dashboard = () => {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {filteredJobs.map((job) => (
-                    <div key={job.id} className="group border border-gray-100 rounded-xl p-5 bg-gray-50 hover:bg-white hover:shadow-xl transition-all duration-200 cursor-pointer flex gap-4 items-center">
+                    <div 
+                      key={job.id} 
+                      className="group border border-gray-100 rounded-xl p-5 bg-gray-50 hover:bg-white hover:shadow-xl transition-all duration-200 cursor-pointer flex gap-4 items-center"
+                      onClick={() => navigate(`/individual/jobs?jobId=${job.id}`)}
+                      title={`${job.company} - ${job.title} - ${job.location}`}
+                    >
                       <div className="w-16 h-16 rounded-full overflow-hidden flex-shrink-0 border-2 border-primary/20 group-hover:scale-105 transition-transform duration-200">
                         <img 
                           src={job.logo} 
                           alt={`${job.company} logo`}
                           className="w-full h-full object-cover" 
+                          onError={(e) => {
+                            e.currentTarget.src = 'https://images.pexels.com/photos/1181671/pexels-photo-1181671.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1';
+                          }}
                         />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex flex-col gap-1">
-                          <h3 className="font-semibold text-lg truncate">{job.title}</h3>
+                          <h3 className="font-semibold text-lg truncate group-hover:text-primary transition-colors">{job.title}</h3>
                           <p className="text-gray-600 text-sm truncate">{job.company}</p>
+                          {job.companyIndustry && (
+                            <p className="text-gray-500 text-xs truncate">🏢 {job.companyIndustry}</p>
+                          )}
                         </div>
                         <div className="flex flex-wrap gap-2 mt-2">
                           <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">
@@ -226,14 +331,47 @@ const Dashboard = () => {
                             {job.postedDate}
                           </div>
                         </div>
-                        <div className="mt-4 flex justify-end">
+                        <div className="mt-4 flex justify-end gap-2">
+                          {appliedJobs.has(job.id) ? (
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              disabled
+                              className="flex items-center gap-1 bg-green-50 text-green-700 border-green-200"
+                            >
+                              <span>✓ Başvuru Yapıldı</span>
+                            </Button>
+                          ) : (
+                            <Button 
+                              variant="primary" 
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleApply(job.id);
+                              }}
+                              disabled={applyingJobs.has(job.id)}
+                              className="flex items-center gap-1 hover:bg-blue-600 transition-colors duration-200"
+                            >
+                              {applyingJobs.has(job.id) ? (
+                                <>
+                                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                  <span>Başvuru Yapılıyor...</span>
+                                </>
+                              ) : (
+                                <span>Başvur</span>
+                              )}
+                            </Button>
+                          )}
                           <Button 
                             variant="outline" 
                             size="sm"
                             className="w-full md:w-auto"
-                            onClick={() => navigate(`/individual/jobs/${job.id}`)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/individual/jobs?jobId=${job.id}`);
+                            }}
                           >
-                            İlanı Görüntüle
+                            Detayları Gör
                           </Button>
                         </div>
                       </div>

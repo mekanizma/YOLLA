@@ -245,8 +245,14 @@ export async function adminCreateCorporateAccount(payload: {
   password: string;
   companyName: string;
   phone?: string;
+  description?: string;
+  industry?: string;
+  location?: string;
+  website?: string;
+  size?: string;
+  founded_year?: number;
 }) {
-  const { email, password, companyName, phone } = payload;
+  const { email, password, companyName, phone, description, industry, location, website, size, founded_year } = payload;
 
   // 1) Auth kullanıcısı oluştur (rol bilgisini metadata'ya da yaz)
   const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
@@ -267,26 +273,144 @@ export async function adminCreateCorporateAccount(payload: {
         user_id: uid,
         email,
         first_name: companyName,
-        last_name: '',
+        last_name: 'Şirket', // Boş string yerine 'Şirket' gönderiyoruz
         role: 'corporate'
       });
     } else {
-      await ensureUserRowByEmail({ email, first_name: companyName, last_name: '', role: 'corporate' });
+      await ensureUserRowByEmail({ email, first_name: companyName, last_name: 'Şirket', role: 'corporate' });
     }
   } catch (e) {
     // eslint-disable-next-line no-console
     console.warn('users insert (admin corporate) başarısız:', e);
   }
 
-  // 3) companies tablosuna kayıt aç (varsa güncelle)
+  // 3) companies tablosuna detaylı kayıt
   try {
-    const { error: compErr } = await supabase
+    // Normalize email to satisfy DB check (trim, lowercase, strip spaces, remove special chars)
+    const normalizedEmail = (email || '')
+      .normalize('NFKC')
+      .replace(/[\u200B-\u200D\uFEFF]/g, '') // zero-width chars
+      .replace(/[\u0000-\u001F\u007F]/g, '') // control chars
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, '')
+      .replace(/[^\w@.-]/g, ''); // Sadece alfanumerik, @, ., - karakterlerini bırak
+
+    const normalizedWebsite = website
+      ? (website.startsWith('http://') || website.startsWith('https://')
+          ? website.trim()
+          : `https://${website.trim()}`)
+      : null;
+
+    const companyPayload = {
+      name: companyName,
+      email: normalizedEmail,
+      phone: phone || null,
+      description: description || '',
+      industry: industry || '',
+      location: location || '',
+      website: normalizedWebsite,
+      size: size || null,
+      founded_year: founded_year || null,
+      is_verified: true,
+      status: 'pending' // enum değerini pending olarak değiştirdim
+    };
+    
+    console.log('Companies payload:', companyPayload); // Debug için
+    console.log('Original email:', email);
+    console.log('Normalized email:', normalizedEmail);
+    
+    // Email formatını kontrol et ve düzelt
+    const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(companyPayload.email)) {
+      console.error('Geçersiz email formatı:', companyPayload.email);
+      throw new Error('Geçersiz email formatı');
+    }
+    
+    // Önce email ile kontrol et, varsa güncelle yoksa ekle
+    const { data: existingCompany } = await supabase
       .from('companies')
-      .upsert({ name: companyName, email, phone: phone || null }, { onConflict: 'email' });
-    if (compErr) throw compErr;
+      .select('id')
+      .eq('email', companyPayload.email)
+      .single();
+    
+    let compData, compErr;
+    
+    if (existingCompany) {
+      // Güncelle
+      const result = await supabase
+        .from('companies')
+        .update(companyPayload)
+        .eq('id', existingCompany.id)
+        .select();
+      compData = result.data;
+      compErr = result.error;
+    } else {
+      // Yeni kayıt ekle
+      const result = await supabase
+        .from('companies')
+        .insert(companyPayload)
+        .select();
+      compData = result.data;
+      compErr = result.error;
+    }
+
+    if (compErr) {
+      console.error('Companies upsert hatası:', compErr);
+      console.error('Hata detayları:', {
+        code: compErr.code,
+        message: compErr.message,
+        details: compErr.details,
+        hint: compErr.hint
+      });
+      
+      // Email constraint hatası ise farklı bir yaklaşım dene
+      if (compErr.code === '23514' && compErr.message.includes('companies_email_chk')) {
+        console.log('Email constraint hatası, alternatif yaklaşım deneniyor...');
+        console.log('Constraint hatası detayları:', compErr.details);
+        
+        // Supabase constraint'i kontrol etmek için test sorgusu
+        try {
+          const testResult = await supabase
+            .from('companies')
+            .select('email')
+            .limit(1);
+          console.log('Mevcut companies tablosu örneği:', testResult.data);
+        } catch (testErr) {
+          console.log('Test sorgusu hatası:', testErr);
+        }
+        
+        // Daha agresif email temizleme
+        const ultraCleanEmail = normalizedEmail
+          .replace(/[^a-zA-Z0-9@.-]/g, '')
+          .replace(/\.{2,}/g, '.')
+          .replace(/@{2,}/g, '@');
+        
+        console.log('Ultra clean email:', ultraCleanEmail);
+        
+        const ultraCleanPayload = { ...companyPayload, email: ultraCleanEmail };
+        
+        const retryResult = await supabase
+          .from('companies')
+          .insert(ultraCleanPayload)
+          .select();
+          
+        if (retryResult.error) {
+          console.error('Retry da başarısız:', retryResult.error);
+          console.error('Ultra clean payload:', ultraCleanPayload);
+          throw retryResult.error;
+        } else {
+          console.log('Retry başarılı:', retryResult.data);
+        }
+      } else {
+        throw compErr;
+      }
+    } else {
+      console.log('Companies kaydı başarılı:', compData);
+    }
   } catch (e) {
-    // eslint-disable-next-line no-console
-    console.warn('companies upsert (admin corporate) başarısız:', e);
+    console.error('companies upsert (admin corporate) başarısız:', e);
+    // Hata olsa bile devam et, sadece logla
   }
 
   // 4) Oturum açıldıysa kapat (admin paneli localStorage ile yönetiliyor)

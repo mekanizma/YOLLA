@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Container,
   Paper,
@@ -17,6 +17,8 @@ import {
 import { styled } from '@mui/material/styles';
 import Header from '../../components/layout/Header';
 import PhotoCamera from '@mui/icons-material/PhotoCamera';
+import supabase from '../../lib/supabaseClient';
+import { fetchCompanyByEmail } from '../../lib/jobsService';
 
 // Styled components for mobile responsiveness
 const StyledPaper = styled(Paper)(({ theme }) => ({
@@ -52,13 +54,13 @@ const CorporateSettings: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [settings, setSettings] = useState<CompanySettings>({
-    companyName: 'Tech Solutions Ltd.',
-    email: 'contact@techsolutions.com',
-    phone: '+90 555 123 4567',
-    address: 'İstanbul, Türkiye',
-    website: 'www.techsolutions.com',
-    industry: 'Teknoloji',
-    companySize: '50-100',
+    companyName: '',
+    email: '',
+    phone: '',
+    address: '',
+    website: '',
+    industry: '',
+    companySize: '',
     notifications: {
       newApplications: true,
       applicationUpdates: true,
@@ -75,6 +77,39 @@ const CorporateSettings: React.FC = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [logo, setLogo] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [logoLoading, setLogoLoading] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const { data: auth } = await supabase.auth.getUser();
+        const user = auth.user;
+        if (!user) return;
+        
+        const company = await fetchCompanyByEmail(user.email || '');
+        if (company) {
+          setSettings(prev => ({
+            ...prev,
+            companyName: company.name || '',
+            email: company.email || '',
+            phone: company.phone || '',
+            address: company.address || '',
+            website: company.website || '',
+            industry: company.industry || '',
+            companySize: company.size || '',
+          }));
+          if (company.logo) {
+            setLogo(company.logo);
+          }
+        }
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn(e);
+      }
+    };
+    load();
+  }, []);
 
   const handleChange = (field: string, value: string) => {
     setSettings(prev => ({
@@ -114,11 +149,99 @@ const CorporateSettings: React.FC = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleLogoUpload = async () => {
+    if (!logoFile) return;
+    
+    setLogoLoading(true);
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      const user = auth.user;
+      if (!user) return;
+      
+      const company = await fetchCompanyByEmail(user.email || '');
+      if (company) {
+        // Önce storage'ı dene
+        try {
+          const fileExt = logoFile.name.split('.').pop();
+          const fileName = `company_${company.id}_${Date.now()}.${fileExt}`;
+          const { error: uploadErr } = await supabase.storage.from('avatars').upload(fileName, logoFile, { upsert: true });
+          if (uploadErr) throw uploadErr;
+          const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
+          const logoUrl = publicUrlData.publicUrl;
+
+          const { error } = await supabase
+            .from('companies')
+            .update({ logo: logoUrl })
+            .eq('id', company.id);
+          if (error) throw error;
+          
+          setLogo(logoUrl);
+        } catch (storageError) {
+          // Storage başarısız olursa base64 olarak kaydet
+          console.warn('Storage upload failed, using base64:', storageError);
+          const reader = new FileReader();
+          reader.onload = async (e) => {
+            const base64 = e.target?.result as string;
+            const { error } = await supabase
+              .from('companies')
+              .update({ logo: base64 })
+              .eq('id', company.id);
+            if (error) throw error;
+            setLogo(base64);
+          };
+          reader.readAsDataURL(logoFile);
+        }
+        
+        setLogoFile(null);
+        setShowSuccess(true);
+        setTimeout(() => setShowSuccess(false), 3000);
+      }
+    } catch (e: any) {
+      // eslint-disable-next-line no-console
+      console.warn(e);
+    } finally {
+      setLogoLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // API call would go here
-    setShowSuccess(true);
-    setTimeout(() => setShowSuccess(false), 3000);
+    setLoading(true);
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      const user = auth.user;
+      if (!user) return;
+      
+      const company = await fetchCompanyByEmail(user.email || '');
+      if (company) {
+        const normalizedWebsite = settings.website
+          ? (settings.website.startsWith('http://') || settings.website.startsWith('https://')
+              ? settings.website.trim()
+              : `https://${settings.website.trim()}`)
+          : null;
+
+        const { error } = await supabase
+          .from('companies')
+          .update({
+            name: settings.companyName,
+            phone: settings.phone || null,
+            address: settings.address || null,
+            website: normalizedWebsite,
+            industry: settings.industry || '',
+            size: settings.companySize || null,
+            location: settings.address ? settings.address : (company.location || null),
+          })
+          .eq('id', company.id);
+        if (error) throw error;
+      }
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+    } catch (e: any) {
+      // eslint-disable-next-line no-console
+      console.warn(e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -149,15 +272,27 @@ const CorporateSettings: React.FC = () => {
                     <PhotoCamera sx={{ fontSize: 40, color: '#b0b8c9' }} />
                   )}
                 </Box>
-                <Button
-                  variant="outlined"
-                  component="label"
-                  size="small"
-                  sx={{ mt: 1, fontWeight: 500, borderRadius: 2 }}
-                >
-                  Logo Yükle
-                  <input hidden accept="image/*" type="file" onChange={handleLogoChange} />
-                </Button>
+                {logoFile ? (
+                  <Button
+                    variant="contained"
+                    size="small"
+                    onClick={handleLogoUpload}
+                    disabled={logoLoading}
+                    sx={{ fontWeight: 500, borderRadius: 2 }}
+                  >
+                    {logoLoading ? 'Kaydediliyor...' : 'KAYDET'}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outlined"
+                    component="label"
+                    size="small"
+                    sx={{ fontWeight: 500, borderRadius: 2 }}
+                  >
+                    LOGO YÜKLE
+                    <input hidden accept="image/*" type="file" onChange={handleLogoChange} />
+                  </Button>
+                )}
               </Box>
               <Typography variant="h5" fontWeight={700} mb={1}>
                 {settings.companyName}
@@ -325,9 +460,10 @@ const CorporateSettings: React.FC = () => {
                 variant="contained"
                 color="primary"
                 size="large"
+                disabled={loading}
                 sx={{ borderRadius: 2, minWidth: 180, fontWeight: 600, fontSize: 16 }}
               >
-                Değişiklikleri Kaydet
+                {loading ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}
               </Button>
             </Box>
             {showSuccess && (
