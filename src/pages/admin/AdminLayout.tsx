@@ -10,6 +10,8 @@ import {
   LogoutOutlined
 } from '@ant-design/icons';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { signOut } from '../../lib/authService';
+import { message } from 'antd';
 
 const { Sider, Content, Header } = Layout;
 
@@ -54,9 +56,16 @@ const menuItems = [
 const AdminLayout: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const handleLogout = () => {
-    localStorage.removeItem('admin-auth');
-    navigate('/admin/login', { replace: true });
+  const handleLogout = async () => {
+    try {
+      await signOut();
+    } catch (_e) {
+      // sessiyon yoksa da sorun değil
+    } finally {
+      localStorage.removeItem('admin-auth');
+      message.success('Çıkış yapıldı');
+      navigate('/admin/login', { replace: true });
+    }
   };
   return (
     <Layout style={{ minHeight: '100vh' }}>
