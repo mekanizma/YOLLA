@@ -1,158 +1,147 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Table, Row, Col, Select, DatePicker, Space, Tag, Button } from 'antd';
+import { Card, Table, Row, Col, Select, DatePicker, Space, Tag, Button, Statistic, message } from 'antd';
 import { Pie, Line } from '@ant-design/charts';
 import dayjs, { Dayjs } from 'dayjs';
 import * as XLSX from 'xlsx';
-import supabase from '../../lib/supabaseClient';
-
-type JobRow = { id: number; title: string; company_name: string };
-type AppRow = { job_id: number; user_id: string; status: 'approved' | 'pending' | 'rejected' | 'in_review' | 'accepted'; created_at: string };
+import { fetchAdminStats, fetchFilteredApplications, AdminStatsData } from '../../lib/adminService';
 
 const ReportsPage: React.FC = () => {
-  const [jobPosts, setJobPosts] = useState<JobRow[]>([]);
-  const [applications, setApplications] = useState<AppRow[]>([]);
+  const [stats, setStats] = useState<AdminStatsData | null>(null);
+  const [loading, setLoading] = useState(false);
 
-const statusColors: Record<string, string> = {
-  approved: 'green',
-  pending: 'blue',
-  rejected: 'red',
-  in_review: 'orange',
-  accepted: 'green',
-};
+  const statusColors: Record<string, string> = {
+    approved: 'green',
+    pending: 'blue',
+    rejected: 'red',
+    in_review: 'orange',
+    accepted: 'green',
+  };
 
-const statusLabels: Record<string, string> = {
-  approved: 'Onaylandı',
-  pending: 'Beklemede',
-  rejected: 'Reddedildi',
-  in_review: 'İnceleniyor',
-  accepted: 'Kabul Edildi',
-};
+  const statusLabels: Record<string, string> = {
+    approved: 'Onaylandı',
+    pending: 'Beklemede',
+    rejected: 'Reddedildi',
+    in_review: 'İnceleniyor',
+    accepted: 'Kabul Edildi',
+  };
 
   // Filtreler
   const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
   const [company, setCompany] = useState<string | undefined>(undefined);
   const [status, setStatus] = useState<string | undefined>(undefined);
 
-  useEffect(() => {
-    const load = async () => {
-      const { data: jobs } = await supabase
-        .from('jobs')
-        .select('id,title,company_name')
-        .eq('status', 'published');
-      setJobPosts((jobs as any) || []);
+  const loadStats = async () => {
+    setLoading(true);
+    try {
+      console.log('Reports sayfası veri yükleniyor...');
+      const statsData = await fetchAdminStats();
+      console.log('Reports verisi yüklendi:', statsData);
+      setStats(statsData);
+    } catch (error) {
+      console.error('Reports sayfası veri yükleme hatası:', error);
+      message.error(`İstatistikler yüklenirken hata oluştu: ${error instanceof Error ? error.message : 'Bilinmeyen hata'}`);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      const { data: apps } = await supabase
-        .from('applications')
-        .select('job_id,user_id,status,created_at');
-      setApplications((apps as any) || []);
-    };
-    load();
+  useEffect(() => {
+    loadStats();
   }, []);
   // Filtrelenmiş başvurular
-  const filteredApplications = useMemo(() => {
-    return applications.filter(app => {
-      const job = jobPosts.find(j => j.id === app.job_id);
-      if (company && job && job.company_name !== company) return false;
-      if (status && app.status !== (status as any)) return false;
-      if (dateRange) {
-        const appDate = dayjs(app.created_at);
-        if (appDate.isBefore(dateRange[0], 'day') || appDate.isAfter(dateRange[1], 'day')) return false;
-      }
-      return true;
-    });
-  }, [company, status, dateRange]);
-
-  // 1. Her iş ilanı için toplam başvuru sayısı
-  const jobApplicationCounts = useMemo(() => {
-    return jobPosts.map(job => ({
-      ...job,
-      total: filteredApplications.filter(a => a.job_id === job.id).length,
-    }));
-  }, [filteredApplications]);
-
-  // 2. Her iş ilanı için onaylanan başvuru sayısı
-  const jobApprovedCounts = useMemo(() => {
-    return jobPosts.map(job => ({
-      ...job,
-      approved: filteredApplications.filter(a => a.job_id === job.id && a.status === 'approved').length,
-    }));
-  }, [filteredApplications]);
-
-  // 3. Tarihe göre başvuruların zaman çizelgesi
-  const timelineData = useMemo(() => {
-    const grouped: Record<string, number> = {};
-    filteredApplications.forEach(a => {
-      const key = dayjs(a.created_at).format('YYYY-MM-DD');
-      grouped[key] = (grouped[key] || 0) + 1;
-    });
-    return Object.entries(grouped).map(([date, count]) => ({ date, count }));
-  }, [filteredApplications]);
-
-  // 4. İşveren bazlı başvuru raporu
-  const companyApplicationCounts = useMemo(() => {
-    const grouped: Record<string, number> = {};
-    filteredApplications.forEach(a => {
-      const job = jobPosts.find(j => j.id === a.job_id);
-      if (job) grouped[job.company_name] = (grouped[job.company_name] || 0) + 1;
-    });
-    return Object.entries(grouped).map(([company, count]) => ({ company, count }));
-  }, [filteredApplications]);
-
-  // 5. Başvuru durumu dağılımı
-  const statusPieData = useMemo(() => {
-    const grouped: Record<string, number> = { 
-      approved: 0, 
-      rejected: 0, 
-      pending: 0, 
-      in_review: 0, 
-      accepted: 0 
-    };
-    filteredApplications.forEach(a => {
-      if (a.status === 'approved') grouped.approved++;
-      if (a.status === 'rejected') grouped.rejected++;
-      if (a.status === 'pending') grouped.pending++;
-      if (a.status === 'in_review') grouped.in_review++;
-      if (a.status === 'accepted') grouped.accepted++;
-    });
-    return [
-      { type: 'Onaylandı', value: grouped.approved },
-      { type: 'Reddedildi', value: grouped.rejected },
-      { type: 'Beklemede', value: grouped.pending },
-      { type: 'İnceleniyor', value: grouped.in_review },
-      { type: 'Kabul Edildi', value: grouped.accepted },
-    ].filter(item => item.value > 0);
-  }, [filteredApplications]);
+  const filteredApplications = useMemo(async () => {
+    if (!stats) return [];
+    
+    const filters: any = {};
+    if (dateRange) {
+      filters.dateRange = {
+        start: dateRange[0].startOf('day').toISOString(),
+        end: dateRange[1].endOf('day').toISOString()
+      };
+    }
+    if (company) filters.company = company;
+    if (status) filters.status = status;
+    
+    try {
+      return await fetchFilteredApplications(filters);
+    } catch (error) {
+      message.error('Filtrelenmiş veriler yüklenirken hata oluştu');
+      return [];
+    }
+  }, [company, status, dateRange, stats]);
 
   // Şirketler listesi
-  const companyOptions = Array.from(new Set(jobPosts.map(j => j.company_name)));
+  const companyOptions = stats ? Array.from(new Set(stats.topCompanies.map(c => c.company_name))) : [];
 
   // Excel'e Aktar fonksiyonu
-  const handleExportExcel = () => {
-    if (!company) return;
-    // Şirket bazlı başvuru verisi
-    const rows = filteredApplications
-      .filter(a => {
-        const job = jobPosts.find(j => j.id === a.job_id);
-        return job && job.company_name === company;
-      })
-      .map(a => {
-        const job = jobPosts.find(j => j.id === a.job_id);
-        return {
-          'İlan': job?.title,
-          'Şirket': job?.company_name,
-          'Kullanıcı ID': a.user_id,
-          'Durum': statusLabels[a.status],
-          'Başvuru Tarihi': a.created_at,
+  const handleExportExcel = async () => {
+    if (!company || !stats) return;
+    
+    try {
+      const filters: any = { company };
+      if (dateRange) {
+        filters.dateRange = {
+          start: dateRange[0].startOf('day').toISOString(),
+          end: dateRange[1].endOf('day').toISOString()
         };
-      });
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Başvurular');
-    XLSX.writeFile(wb, `BasvuruRaporu_${company}.xlsx`);
+      }
+      if (status) filters.status = status;
+      
+      const filteredData = await fetchFilteredApplications(filters);
+      
+      const rows = filteredData.map(a => ({
+        'İlan': a.jobs?.title || 'Bilinmeyen İş',
+        'Şirket': a.jobs?.company_name || 'Bilinmeyen Şirket',
+        'Kullanıcı': a.users?.full_name || 'Bilinmeyen Kullanıcı',
+        'E-posta': a.users?.email || '-',
+        'Durum': statusLabels[a.status],
+        'Başvuru Tarihi': new Date(a.created_at).toLocaleDateString('tr-TR'),
+      }));
+      
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Başvurular');
+      XLSX.writeFile(wb, `BasvuruRaporu_${company}.xlsx`);
+      message.success('Excel dosyası başarıyla oluşturuldu');
+    } catch (error) {
+      message.error('Excel dosyası oluşturulurken hata oluştu');
+    }
   };
+
+  if (!stats) {
+    return (
+      <div style={{ padding: 24, textAlign: 'center' }}>
+        <div>Yükleniyor...</div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ padding: 24 }}>
+      {/* Genel İstatistikler */}
+      <Row gutter={16} style={{ marginBottom: 24 }}>
+        <Col xs={24} sm={12} md={6}>
+          <Card>
+            <Statistic title="Toplam İş İlanı" value={stats.totalJobs} />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card>
+            <Statistic title="Toplam Başvuru" value={stats.totalApplications} />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card>
+            <Statistic title="Toplam Kullanıcı" value={stats.totalUsers} />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card>
+            <Statistic title="Toplam Şirket" value={stats.totalCompanies} />
+          </Card>
+        </Col>
+      </Row>
+
       <Card style={{ marginBottom: 24 }}>
         <Space wrap>
           <DatePicker.RangePicker
@@ -186,39 +175,49 @@ const statusLabels: Record<string, string> = {
       </Card>
       <Row gutter={24}>
         <Col xs={24} md={12} lg={8}>
-          <Card title="İlan Bazlı Başvuru Sayısı" size="small" style={{ marginBottom: 24 }}>
-            <Table
-              size="small"
-              dataSource={jobApplicationCounts}
-              columns={[
-                { title: 'İlan', dataIndex: 'title', key: 'title' },
-                { title: 'Şirket', dataIndex: 'companyName', key: 'companyName' },
-                { title: 'Toplam Başvuru', dataIndex: 'total', key: 'total' },
-              ]}
-              rowKey="id"
-              pagination={false}
-            />
+          <Card title="İş İlanı Durumları" size="small" style={{ marginBottom: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-around', textAlign: 'center' }}>
+              <div>
+                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#52c41a' }}>{stats.publishedJobs}</div>
+                <div>Yayında</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#faad14' }}>{stats.draftJobs}</div>
+                <div>Taslak</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#ff4d4f' }}>{stats.closedJobs}</div>
+                <div>Kapalı</div>
+              </div>
+            </div>
           </Card>
         </Col>
         <Col xs={24} md={12} lg={8}>
-          <Card title="Onaylanan Başvuru Sayısı" size="small" style={{ marginBottom: 24 }}>
-            <Table
-              size="small"
-              dataSource={jobApprovedCounts}
-              columns={[
-                { title: 'İlan', dataIndex: 'title', key: 'title' },
-                { title: 'Şirket', dataIndex: 'companyName', key: 'companyName' },
-                { title: 'Onaylanan', dataIndex: 'approved', key: 'approved' },
-              ]}
-              rowKey="id"
-              pagination={false}
-            />
+          <Card title="Başvuru Durumları" size="small" style={{ marginBottom: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-around', textAlign: 'center' }}>
+              <div>
+                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#1890ff' }}>{stats.pendingApplications}</div>
+                <div>Beklemede</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#52c41a' }}>{stats.approvedApplications}</div>
+                <div>Onaylandı</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#ff4d4f' }}>{stats.rejectedApplications}</div>
+                <div>Reddedildi</div>
+              </div>
+            </div>
           </Card>
         </Col>
         <Col xs={24} md={24} lg={8}>
-          <Card title="Onaylanmış/Reddedilmiş Oran" size="small" style={{ marginBottom: 24 }}>
+          <Card title="Başvuru Durumu Dağılımı" size="small" style={{ marginBottom: 24 }}>
             <Pie
-              data={statusPieData}
+              data={[
+                { type: 'Onaylandı', value: stats.approvedApplications },
+                { type: 'Reddedildi', value: stats.rejectedApplications },
+                { type: 'Beklemede', value: stats.pendingApplications },
+              ].filter(item => item.value > 0)}
               angleField="value"
               colorField="type"
               radius={0.9}
@@ -231,15 +230,15 @@ const statusLabels: Record<string, string> = {
       </Row>
       <Row gutter={24}>
         <Col xs={24} md={12}>
-          <Card title="Başvuru Zaman Çizelgesi" size="small" style={{ marginBottom: 24 }}>
+          <Card title="Aylık İstatistikler" size="small" style={{ marginBottom: 24 }}>
             <Line
-              data={timelineData}
-              xField="date"
-              yField="count"
+              data={stats.monthlyStats}
+              xField="month"
+              yField="applications"
               point={{ size: 4 }}
               smooth
               height={220}
-              xAxis={{ title: { text: 'Tarih' } }}
+              xAxis={{ title: { text: 'Ay' } }}
               yAxis={{ title: { text: 'Başvuru' } }}
             />
           </Card>
@@ -248,13 +247,34 @@ const statusLabels: Record<string, string> = {
           <Card title={<span>Şirket Bazlı Başvuru {company && <Button size="small" type="primary" style={{ float: 'right' }} onClick={handleExportExcel} disabled={!company}>Excel'e Aktar</Button>}</span>} size="small" style={{ marginBottom: 24 }}>
             <Table
               size="small"
-              dataSource={companyApplicationCounts}
+              dataSource={stats.topCompanies}
               columns={[
-                { title: 'Şirket', dataIndex: 'company', key: 'company' },
-                { title: 'Başvuru', dataIndex: 'count', key: 'count' },
+                { title: 'Şirket', dataIndex: 'company_name', key: 'company_name' },
+                { title: 'İlan Sayısı', dataIndex: 'job_count', key: 'job_count' },
+                { title: 'Başvuru Sayısı', dataIndex: 'application_count', key: 'application_count' },
               ]}
-              rowKey="company"
+              rowKey="company_name"
               pagination={false}
+            />
+          </Card>
+        </Col>
+      </Row>
+      <Row gutter={24}>
+        <Col xs={24}>
+          <Card title="Son Başvurular" size="small">
+            <Table
+              size="small"
+              dataSource={stats.recentApplications}
+              columns={[
+                { title: 'Kullanıcı', dataIndex: 'users', key: 'user', render: (users: any) => users?.full_name || 'Bilinmeyen' },
+                { title: 'E-posta', dataIndex: 'users', key: 'email', render: (users: any) => users?.email || '-' },
+                { title: 'İş İlanı', dataIndex: 'jobs', key: 'job', render: (jobs: any) => jobs?.title || 'Bilinmeyen' },
+                { title: 'Şirket', dataIndex: 'jobs', key: 'company', render: (jobs: any) => jobs?.company_name || 'Bilinmeyen' },
+                { title: 'Durum', dataIndex: 'status', key: 'status', render: (status: string) => <Tag color={statusColors[status]}>{statusLabels[status]}</Tag> },
+                { title: 'Tarih', dataIndex: 'created_at', key: 'date', render: (date: string) => new Date(date).toLocaleDateString('tr-TR') },
+              ]}
+              rowKey="id"
+              pagination={{ pageSize: 5 }}
             />
           </Card>
         </Col>
