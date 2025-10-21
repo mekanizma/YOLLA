@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, Bell, User, Briefcase, LogOut, Building } from 'lucide-react';
+import { Menu, X, Bell, User, Briefcase, LogOut, Building, Home, Plus, Settings } from 'lucide-react';
 import Button from '../ui/Button';
+import BlobButton from '../ui/BlobButton';
+import LiquidButton from '../ui/LiquidButton';
 import yollabiLogo from '../../assets/yollabi-logo.svg';
 
 interface HeaderProps {
@@ -17,6 +19,9 @@ const Header: React.FC<HeaderProps> = ({ userType, scrolled }) => {
   // Check if we're on the landing page
   const isLandingPage = location.pathname === '/';
   
+  // Check if we're on login pages
+  const isLoginPage = location.pathname.startsWith('/login/');
+  
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen);
   };
@@ -27,20 +32,20 @@ const Header: React.FC<HeaderProps> = ({ userType, scrolled }) => {
   };
   
   const individualLinks = [
-    { name: 'Ana Sayfa', path: '/individual/dashboard', icon: <Briefcase size={18} /> },
-    { name: 'İş Ara', path: '/individual/jobs', icon: <Briefcase size={18} /> },
-    { name: 'Başvurularım', path: '/individual/applications', icon: <Briefcase size={18} /> },
-    { name: 'Bildirimler', path: '/individual/notifications', icon: <Bell size={18} /> },
-    { name: 'Profilim', path: '/individual/profile', icon: <User size={18} /> },
+    { name: 'Ana Sayfa', path: '/individual/dashboard', icon: <Home size={16} /> },
+    { name: 'İş Ara', path: '/individual/jobs', icon: <Briefcase size={16} /> },
+    { name: 'Başvurularım', path: '/individual/applications', icon: <Briefcase size={16} /> },
+    { name: 'Bildirimler', path: '/individual/notifications', icon: <Bell size={16} /> },
+    { name: 'Profilim', path: '/individual/profile', icon: <User size={16} /> },
   ];
   
   const corporateLinks = [
-    { name: 'Ana Sayfa', path: '/corporate/dashboard', icon: <Briefcase size={18} /> },
-    { name: 'İlan Oluştur', path: '/corporate/post-job', icon: <Briefcase size={18} /> },
-    { name: 'İlanlarım', path: '/corporate/jobs', icon: <Briefcase size={18} /> },
-    { name: 'Başvurular', path: '/corporate/applications', icon: <Briefcase size={18} /> },
-    { name: 'Bildirimler', path: '/corporate/notifications', icon: <Bell size={18} /> },
-    { name: 'Ayarlar', path: '/corporate/settings', icon: <User size={18} /> },
+    { name: 'Ana Sayfa', path: '/corporate/dashboard', icon: <Home size={16} /> },
+    { name: 'İlan Oluştur', path: '/corporate/post-job', icon: <Plus size={16} /> },
+    { name: 'İlanlarım', path: '/corporate/jobs', icon: <Briefcase size={16} /> },
+    { name: 'Başvurular', path: '/corporate/applications', icon: <User size={16} /> },
+    { name: 'Bildirimler', path: '/corporate/notifications', icon: <Bell size={16} /> },
+    { name: 'Ayarlar', path: '/corporate/settings', icon: <Settings size={16} /> },
   ];
   
   const activeLinks = userType === 'individual' 
@@ -51,93 +56,84 @@ const Header: React.FC<HeaderProps> = ({ userType, scrolled }) => {
   
   return (
     <header className={cn(
-      "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
+      "fixed top-0 left-0 right-0 z-50 transition-all duration-500",
       isLandingPage && !scrolled
-        ? "bg-transparent text-white"
-        : "bg-white shadow-sm text-foreground"
+        ? "bg-transparent text-white backdrop-blur-none"
+        : "bg-white/95 backdrop-blur-md shadow-lg text-foreground border-b border-gray-100"
     )}>
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <div className="flex items-center space-x-2 cursor-pointer select-none">
-            <img 
-              src={yollabiLogo} 
-              alt="YOLLABİ Logo" 
-              className="h-12 w-auto object-contain transition-all"
-              style={{ filter: isLandingPage && !scrolled ? 'brightness(0) invert(1)' : 'none' }}
-            />
-          </div>
+          <Link to="/" className="flex items-center space-x-2 cursor-pointer select-none group">
+            <div className="relative">
+              <img 
+                src={yollabiLogo} 
+                alt="YOLLABİ Logo" 
+                className="h-10 w-auto object-contain transition-all duration-300 group-hover:scale-105"
+                style={{ filter: isLandingPage && !scrolled ? 'brightness(0) invert(1)' : 'none' }}
+              />
+              <div className="absolute -inset-2 bg-gradient-to-r from-primary/20 to-secondary/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10" />
+            </div>
+          </Link>
           
           {/* Desktop Nav */}
           {userType ? (
-            <nav className="hidden md:flex space-x-8">
+            <nav className="hidden md:flex space-x-2">
               {activeLinks.map((link) => (
-                <Link 
+                <LiquidButton
                   key={link.path}
-                  to={link.path}
-                  className={cn(
-                    "text-sm font-medium flex items-center space-x-1 transition-colors",
-                    location.pathname === link.path 
-                      ? "text-primary" 
-                      : isLandingPage && !scrolled
-                        ? "text-white hover:text-white/80" 
-                        : "text-muted-foreground hover:text-foreground"
-                  )}
+                  onClick={() => navigate(link.path)}
+                  active={location.pathname === link.path}
+                  dark={isLandingPage && !scrolled}
+                  icon={link.icon}
                 >
-                  <span className="hidden lg:inline-flex">{link.icon}</span>
-                  <span>{link.name}</span>
-                </Link>
+                  {link.name}
+                </LiquidButton>
               ))}
-              <button 
+              <LiquidButton
                 onClick={handleLogout}
-                className={cn(
-                  "text-sm font-medium flex items-center space-x-1 transition-colors",
-                  isLandingPage && !scrolled
-                    ? "text-white hover:text-white/80" 
-                    : "text-muted-foreground hover:text-foreground"
-                )}
+                dark={isLandingPage && !scrolled}
+                icon={<LogOut size={16} />}
               >
-                <LogOut size={18} />
-                <span>Çıkış</span>
-              </button>
+                Çıkış
+              </LiquidButton>
             </nav>
-          ) : (
+          ) : !isLoginPage ? (
             <div className="hidden md:flex space-x-4">
               <div className="flex items-center gap-4">
-                <Button
+                <BlobButton
                   onClick={() => navigate('/login/individual')}
-                  variant="outline"
-                  className="group relative px-6 py-2 text-base font-semibold border-2 border-primary text-primary hover:text-primary rounded-lg hover:bg-primary/5 transform hover:scale-105 transition-all duration-300"
+                  variant="primary"
+                  className="flex items-center gap-2"
                 >
-                  <span className="relative z-10 flex items-center justify-center gap-2">
-                    <User className="w-5 h-5" />
-                    Bireysel Giriş
-                  </span>
-                </Button>
-                <Button
+                  <User className="w-4 h-4" />
+                  Bireysel Giriş
+                </BlobButton>
+                <BlobButton
                   onClick={() => navigate('/login/corporate')}
-                  className="group relative px-6 py-2 text-base font-semibold bg-gradient-to-r from-primary to-primary/80 text-white rounded-lg hover:from-primary/90 hover:to-primary/70 transform hover:scale-105 transition-all duration-300 shadow-md hover:shadow-lg"
+                  variant="secondary"
+                  className="flex items-center gap-2"
                 >
-                  <span className="relative z-10 flex items-center justify-center gap-2">
-                    <Building className="w-5 h-5" />
-                    Kurumsal Giriş
-                  </span>
-                  <div className="absolute inset-0 bg-gradient-to-r from-white/0 to-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                </Button>
+                  <Building className="w-4 h-4" />
+                  Kurumsal Giriş
+                </BlobButton>
               </div>
             </div>
-          )}
+          ) : null}
           
           {/* Mobile menu button */}
           <button
-            className="md:hidden"
+            className={cn(
+              "md:hidden p-2 rounded-xl transition-all duration-300 hover:bg-white/10",
+              isLandingPage && !scrolled ? "text-white hover:bg-white/20" : "text-gray-700 hover:bg-gray-100"
+            )}
             onClick={toggleMobileMenu}
             aria-label="Toggle menu"
           >
             {mobileMenuOpen ? (
-              <X className={isLandingPage && !mobileMenuOpen && !scrolled ? "text-white" : "text-foreground"} />
+              <X className="w-6 h-6" />
             ) : (
-              <Menu className={isLandingPage && !mobileMenuOpen && !scrolled ? "text-white" : "text-foreground"} />
+              <Menu className="w-6 h-6" />
             )}
           </button>
         </div>
@@ -145,72 +141,72 @@ const Header: React.FC<HeaderProps> = ({ userType, scrolled }) => {
       
       {/* Mobile menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-white text-foreground shadow-lg animate-slideDown">
-          <div className="container mx-auto px-4 py-3">
+        <div className="md:hidden bg-white/95 backdrop-blur-md text-foreground shadow-xl border-t border-gray-100 animate-slideDown">
+          <div className="container mx-auto px-4 py-4">
             {userType ? (
-              <div className="flex flex-col space-y-4 py-2">
+              <div className="flex flex-col space-y-2 py-2">
                 {activeLinks.map((link) => (
-                  <Link
+                  <LiquidButton
                     key={link.path}
-                    to={link.path}
-                    className={cn(
-                      "flex items-center space-x-2 p-2 rounded-md transition-colors",
-                      location.pathname === link.path
-                        ? "bg-primary/10 text-primary"
-                        : "text-foreground hover:bg-muted"
-                    )}
-                    onClick={() => setMobileMenuOpen(false)}
+                    onClick={() => {
+                      navigate(link.path);
+                      setMobileMenuOpen(false);
+                    }}
+                    active={location.pathname === link.path}
+                    icon={link.icon}
+                    className="justify-start"
                   >
-                    {link.icon}
-                    <span>{link.name}</span>
-                  </Link>
+                    {link.name}
+                  </LiquidButton>
                 ))}
                 {userType === 'corporate' && (
-                  <Link to="/corporate/jobs" className="flex items-center space-x-2 p-2 rounded-md text-foreground hover:bg-muted">
-                    <Briefcase size={18} />
-                    <span>İlanlarım</span>
-                  </Link>
+                  <LiquidButton
+                    onClick={() => {
+                      navigate('/corporate/jobs');
+                      setMobileMenuOpen(false);
+                    }}
+                    icon={<Briefcase size={16} />}
+                    className="justify-start"
+                  >
+                    İlanlarım
+                  </LiquidButton>
                 )}
-                <button
-                  className="flex items-center space-x-2 p-2 rounded-md text-foreground hover:bg-muted"
+                <LiquidButton
                   onClick={handleLogout}
+                  icon={<LogOut size={16} />}
+                  className="justify-start"
                 >
-                  <LogOut size={18} />
-                  <span>Çıkış</span>
-                </button>
+                  Çıkış
+                </LiquidButton>
               </div>
-            ) : (
-              <div className="flex flex-col space-y-3 py-2">
-                <div className="flex items-center gap-4">
-                  <Button
+            ) : !isLoginPage ? (
+              <div className="flex flex-col space-y-4 py-4">
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <BlobButton
                     onClick={() => {
                       navigate('/login/individual');
                       setMobileMenuOpen(false);
                     }}
-                    variant="outline"
-                    className="group relative px-6 py-2 text-base font-semibold border-2 border-primary text-primary hover:text-primary rounded-lg hover:bg-primary/5 transform hover:scale-105 transition-all duration-300"
+                    variant="primary"
+                    className="flex items-center justify-center gap-2"
                   >
-                    <span className="relative z-10 flex items-center justify-center gap-2">
-                      <User className="w-5 h-5" />
-                      Bireysel Giriş
-                    </span>
-                  </Button>
-                  <Button
+                    <User className="w-4 h-4" />
+                    Bireysel Giriş
+                  </BlobButton>
+                  <BlobButton
                     onClick={() => {
                       navigate('/login/corporate');
                       setMobileMenuOpen(false);
                     }}
-                    className="group relative px-6 py-2 text-base font-semibold bg-gradient-to-r from-primary to-primary/80 text-white rounded-lg hover:from-primary/90 hover:to-primary/70 transform hover:scale-105 transition-all duration-300 shadow-md hover:shadow-lg"
+                    variant="secondary"
+                    className="flex items-center justify-center gap-2"
                   >
-                    <span className="relative z-10 flex items-center justify-center gap-2">
-                      <Building className="w-5 h-5" />
-                      Kurumsal Giriş
-                    </span>
-                    <div className="absolute inset-0 bg-gradient-to-r from-white/0 to-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  </Button>
+                    <Building className="w-4 h-4" />
+                    Kurumsal Giriş
+                  </BlobButton>
                 </div>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       )}

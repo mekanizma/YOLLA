@@ -33,9 +33,9 @@ const CorporateLogin = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
+      <Header userType={null} />
       
-      <main className="flex-1 flex items-center justify-center bg-gray-50 py-12 px-4">
+      <main className="flex-1 flex items-center justify-center bg-gray-50 py-12 px-4 mt-16">
         <div className="w-full max-w-md">
           <div className="bg-white shadow-md rounded-lg p-8 animate-fadeIn">
             <div className="flex justify-center mb-6">

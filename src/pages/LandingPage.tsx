@@ -2,7 +2,6 @@ import React from 'react';
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Search, Briefcase, Users, Building, TrendingUp, ChevronRight, MapPin, User } from 'lucide-react';
-import CountUp from 'react-countup';
 import Header from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import Button from '../components/ui/Button';
@@ -125,61 +124,12 @@ const LandingPage = () => {
                   <Briefcase className="text-primary" size={24} />
                 </div>
                 <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors duration-300">{category}</h3>
-                <div className="flex items-center justify-between">
-                  <p className="text-gray-600 text-sm">142 açık pozisyon</p>
-                  <span className="text-primary text-sm font-medium group-hover:translate-x-1 transition-transform duration-300">
-                    →
-                  </span>
-                </div>
               </div>
             ))}
           </div>
         </div>
       </section>
       
-      {/* İstatistikler */}
-      <section className="py-16 bg-gray-50">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="text-center p-6 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow">
-              <div className="text-4xl font-bold text-primary mb-2">
-                <CountUp
-                  end={1000}
-                  suffix="+"
-                  duration={2.5}
-                  enableScrollSpy
-                  scrollSpyOnce
-                />
-              </div>
-              <div className="text-gray-600 font-medium">Aktif İş İlanı</div>
-            </div>
-            <div className="text-center p-6 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow">
-              <div className="text-4xl font-bold text-primary mb-2">
-                <CountUp
-                  end={500}
-                  suffix="+"
-                  duration={2.5}
-                  enableScrollSpy
-                  scrollSpyOnce
-                />
-              </div>
-              <div className="text-gray-600 font-medium">Şirket</div>
-            </div>
-            <div className="text-center p-6 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow">
-              <div className="text-4xl font-bold text-primary mb-2">
-                <CountUp
-                  end={10000}
-                  suffix="+"
-                  duration={2.5}
-                  enableScrollSpy
-                  scrollSpyOnce
-                />
-              </div>
-              <div className="text-gray-600 font-medium">Başarılı Eşleşme</div>
-            </div>
-          </div>
-        </div>
-      </section>
       
       {/* CTA Section */}
       <section className="py-16 bg-primary">

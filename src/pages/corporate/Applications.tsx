@@ -16,6 +16,9 @@ import {
   MenuItem,
   useTheme,
   useMediaQuery,
+  Fade,
+  Skeleton,
+  Divider,
 } from '@mui/material';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import { styled } from '@mui/material/styles';
@@ -29,26 +32,110 @@ import Checkbox from '@mui/material/Checkbox';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Snackbar from '@mui/material/Snackbar';
 import { Link } from 'react-router-dom';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Users, Clock, CheckCircle, XCircle, Eye, Calendar, TrendingUp } from 'lucide-react';
 import supabase from '../../lib/supabaseClient';
 import { JobRecord, fetchCompanyByEmail } from '../../lib/jobsService';
 import { createNotification } from '../../lib/notificationsService';
 import { getCorporateApplications, updateApplicationStatus } from '../../lib/applicationsService';
 
-// Styled components for mobile responsiveness
+// Styled components for modern design
 const StyledPaper = styled(Paper)(({ theme }) => ({
-  padding: theme.spacing(3),
+  padding: theme.spacing(4),
   marginTop: theme.spacing(3),
+  borderRadius: 16,
+  background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+  boxShadow: '0 10px 25px rgba(0, 0, 0, 0.08), 0 4px 10px rgba(0, 0, 0, 0.05)',
+  border: '1px solid rgba(255, 255, 255, 0.2)',
+  backdropFilter: 'blur(10px)',
   [theme.breakpoints.down('sm')]: {
     padding: theme.spacing(2),
+    borderRadius: 12,
   },
 }));
 
 const ApplicationCard = styled(Card)(({ theme }) => ({
-  marginBottom: theme.spacing(2),
-  [theme.breakpoints.down('sm')]: {
-    marginBottom: theme.spacing(1),
+  marginBottom: theme.spacing(3),
+  borderRadius: 16,
+  background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+  boxShadow: '0 4px 15px rgba(0, 0, 0, 0.05), 0 2px 8px rgba(0, 0, 0, 0.03)',
+  border: '1px solid rgba(255, 255, 255, 0.3)',
+  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+  '&:hover': {
+    transform: 'translateY(-4px)',
+    boxShadow: '0 12px 30px rgba(0, 0, 0, 0.12), 0 6px 20px rgba(0, 0, 0, 0.08)',
+    border: '1px solid rgba(59, 130, 246, 0.2)',
   },
+  [theme.breakpoints.down('sm')]: {
+    marginBottom: theme.spacing(2),
+    borderRadius: 12,
+  },
+}));
+
+const StyledTabs = styled(Tabs)(({ theme }) => ({
+  '& .MuiTabs-indicator': {
+    height: 3,
+    borderRadius: 2,
+    background: 'linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%)',
+  },
+  '& .MuiTab-root': {
+    textTransform: 'none',
+    fontWeight: 600,
+    fontSize: '0.95rem',
+    color: theme.palette.text.secondary,
+    transition: 'all 0.3s ease',
+    '&:hover': {
+      color: theme.palette.primary.main,
+      backgroundColor: 'rgba(59, 130, 246, 0.05)',
+    },
+    '&.Mui-selected': {
+      color: theme.palette.primary.main,
+      fontWeight: 700,
+    },
+  },
+}));
+
+const StatusChip = styled(Chip)(({ theme }) => ({
+  fontWeight: 600,
+  borderRadius: 20,
+  fontSize: '0.8rem',
+  height: 28,
+  '&.pending': {
+    background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+    color: '#92400e',
+    border: '1px solid #f59e0b',
+  },
+  '&.in_review': {
+    background: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)',
+    color: '#1e40af',
+    border: '1px solid #3b82f6',
+  },
+  '&.accepted': {
+    background: 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)',
+    color: '#065f46',
+    border: '1px solid #10b981',
+  },
+  '&.rejected': {
+    background: 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)',
+    color: '#991b1b',
+    border: '1px solid #ef4444',
+  },
+  '&.approved': {
+    background: 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)',
+    color: '#065f46',
+    border: '1px solid #10b981',
+  },
+}));
+
+const EmptyStateContainer = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: theme.spacing(8),
+  textAlign: 'center',
+  background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+  borderRadius: 16,
+  border: '2px dashed #cbd5e1',
 }));
 
 interface Application {
@@ -77,20 +164,42 @@ type ApplicationRow = {
   jobs: Pick<JobRecord, 'title'> | null;
 };
 
-const statusColors = {
-  pending: 'warning',
-  in_review: 'info',
-  accepted: 'success',
-  rejected: 'error',
-  approved: 'success',
-} as const;
-
-const statusLabels = {
-  pending: 'Beklemede',
-  in_review: 'İnceleniyor',
-  accepted: 'Kabul Edildi',
-  rejected: 'Reddedildi',
-  approved: 'Onaylandı',
+const statusConfig = {
+  pending: { 
+    label: 'Beklemede', 
+    color: 'pending',
+    icon: <Clock size={16} />,
+    bgColor: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+    textColor: '#92400e'
+  },
+  in_review: { 
+    label: 'İnceleniyor', 
+    color: 'in_review',
+    icon: <Eye size={16} />,
+    bgColor: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)',
+    textColor: '#1e40af'
+  },
+  accepted: { 
+    label: 'Kabul Edildi', 
+    color: 'accepted',
+    icon: <CheckCircle size={16} />,
+    bgColor: 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)',
+    textColor: '#065f46'
+  },
+  rejected: { 
+    label: 'Reddedildi', 
+    color: 'rejected',
+    icon: <XCircle size={16} />,
+    bgColor: 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)',
+    textColor: '#991b1b'
+  },
+  approved: { 
+    label: 'Onaylandı', 
+    color: 'approved',
+    icon: <TrendingUp size={16} />,
+    bgColor: 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)',
+    textColor: '#065f46'
+  },
 } as const;
 
 const CorporateApplications: React.FC = () => {
@@ -121,12 +230,15 @@ const CorporateApplications: React.FC = () => {
         console.log('getCorporateApplications verisi:', data);
         const mapped: Application[] = (data as any[]).map((r) => {
           console.log('Mapping için veri:', r);
+          const statusKey = r.status as keyof typeof statusConfig;
+          const statusInfo = statusConfig[statusKey] || statusConfig.pending;
+          
           return {
             id: r.id,
             applicantName: r.users?.full_name || 'Aday',
             position: r.jobs?.title || 'Pozisyon',
             appliedDate: new Date(r.created_at).toLocaleDateString('tr-TR'),
-            status: statusLabels[r.status as keyof typeof statusLabels] || 'Beklemede',
+            status: statusInfo.label,
             experience: '-',
             skills: [],
             avatar: r.users?.avatar_url || undefined,
@@ -172,7 +284,7 @@ const CorporateApplications: React.FC = () => {
         await updateApplicationStatus(selectedApplication.id, newStatus, rejectReason);
         
         // UI'da gösterilecek Türkçe status
-        const turkishStatus = statusLabels[newStatus];
+        const turkishStatus = statusConfig[newStatus].label;
         
         setApplications(prev => prev.map(app =>
           app.id === selectedApplication.id ? { ...app, status: turkishStatus } : app
@@ -312,127 +424,402 @@ const CorporateApplications: React.FC = () => {
     }
   });
 
+  // İstatistikler hesapla
+  const stats = {
+    total: applications.length,
+    pending: applications.filter(app => app.status === 'Beklemede').length,
+    inReview: applications.filter(app => app.status === 'İnceleniyor').length,
+    accepted: applications.filter(app => app.status === 'Kabul Edildi').length,
+    rejected: applications.filter(app => app.status === 'Reddedildi').length,
+    approved: applications.filter(app => app.status === 'Onaylandı').length,
+  };
+
   return (
     <>
       <Header userType="corporate" />
-      <Box sx={{ mt: 8 }}>
+      <Box sx={{ 
+        mt: 8, 
+        background: '#ffffff',
+        minHeight: '100vh',
+        py: 4
+      }}>
         <Container maxWidth="lg" sx={{ py: 4 }}>
-          <Typography variant="h4" component="h1" gutterBottom>
-            Başvurular
-          </Typography>
+          {/* Başlık ve İstatistikler */}
+          <Box sx={{ mb: 4 }}>
+            <Typography 
+              variant="h3" 
+              component="h1" 
+              sx={{ 
+                fontWeight: 700,
+                color: '#1e40af',
+                mb: 2,
+              }}
+            >
+              Başvurular
+            </Typography>
+            
+            {/* İstatistik Kartları */}
+            <Box sx={{ 
+              display: 'grid', 
+              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(5, 1fr)' },
+              gap: 2,
+              mb: 3
+            }}>
+              <Paper sx={{ 
+                p: 2, 
+                background: 'rgba(255, 255, 255, 0.95)',
+                backdropFilter: 'blur(10px)',
+                borderRadius: 2,
+                textAlign: 'center',
+                boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)'
+              }}>
+                <Users size={24} color="#3b82f6" />
+                <Typography variant="h6" sx={{ fontWeight: 700, color: '#1e40af' }}>
+                  {stats.total}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Toplam Başvuru
+                </Typography>
+              </Paper>
+              
+              <Paper sx={{ 
+                p: 2, 
+                background: 'rgba(255, 255, 255, 0.95)',
+                backdropFilter: 'blur(10px)',
+                borderRadius: 2,
+                textAlign: 'center',
+                boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)'
+              }}>
+                <Clock size={24} color="#f59e0b" />
+                <Typography variant="h6" sx={{ fontWeight: 700, color: '#92400e' }}>
+                  {stats.pending}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Beklemede
+                </Typography>
+              </Paper>
+              
+              <Paper sx={{ 
+                p: 2, 
+                background: 'rgba(255, 255, 255, 0.95)',
+                backdropFilter: 'blur(10px)',
+                borderRadius: 2,
+                textAlign: 'center',
+                boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)'
+              }}>
+                <Eye size={24} color="#3b82f6" />
+                <Typography variant="h6" sx={{ fontWeight: 700, color: '#1e40af' }}>
+                  {stats.inReview}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  İnceleniyor
+                </Typography>
+              </Paper>
+              
+              <Paper sx={{ 
+                p: 2, 
+                background: 'rgba(255, 255, 255, 0.95)',
+                backdropFilter: 'blur(10px)',
+                borderRadius: 2,
+                textAlign: 'center',
+                boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)'
+              }}>
+                <CheckCircle size={24} color="#10b981" />
+                <Typography variant="h6" sx={{ fontWeight: 700, color: '#065f46' }}>
+                  {stats.accepted}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Kabul Edildi
+                </Typography>
+              </Paper>
+              
+              <Paper sx={{ 
+                p: 2, 
+                background: 'rgba(255, 255, 255, 0.95)',
+                backdropFilter: 'blur(10px)',
+                borderRadius: 2,
+                textAlign: 'center',
+                boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)'
+              }}>
+                <TrendingUp size={24} color="#10b981" />
+                <Typography variant="h6" sx={{ fontWeight: 700, color: '#065f46' }}>
+                  {stats.approved}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Onaylandı
+                </Typography>
+              </Paper>
+            </Box>
+          </Box>
 
           <StyledPaper elevation={3}>
             <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-              <Tabs
+              <StyledTabs
                 value={currentTab}
                 onChange={handleTabChange}
                 variant={isMobile ? 'scrollable' : 'fullWidth'}
                 scrollButtons={isMobile ? 'auto' : false}
                 aria-label="application status tabs"
               >
-                <Tab label="Bekleyen" />
-                <Tab label="İncelenen" />
-                <Tab label="Kabul Edilen" />
-                <Tab label="Reddedilen" />
-                <Tab label="Onaylanan" />
-              </Tabs>
+                <Tab 
+                  label={
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Clock size={18} />
+                      Bekleyen
+                      {stats.pending > 0 && (
+                        <Chip 
+                          label={stats.pending} 
+                          size="small" 
+                          sx={{ 
+                            height: 20, 
+                            fontSize: '0.7rem',
+                            background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+                            color: '#92400e'
+                          }} 
+                        />
+                      )}
+                    </Box>
+                  } 
+                />
+                <Tab 
+                  label={
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Eye size={18} />
+                      İncelenen
+                      {stats.inReview > 0 && (
+                        <Chip 
+                          label={stats.inReview} 
+                          size="small" 
+                          sx={{ 
+                            height: 20, 
+                            fontSize: '0.7rem',
+                            background: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)',
+                            color: '#1e40af'
+                          }} 
+                        />
+                      )}
+                    </Box>
+                  } 
+                />
+                <Tab 
+                  label={
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <CheckCircle size={18} />
+                      Kabul Edilen
+                      {stats.accepted > 0 && (
+                        <Chip 
+                          label={stats.accepted} 
+                          size="small" 
+                          sx={{ 
+                            height: 20, 
+                            fontSize: '0.7rem',
+                            background: 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)',
+                            color: '#065f46'
+                          }} 
+                        />
+                      )}
+                    </Box>
+                  } 
+                />
+                <Tab 
+                  label={
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <XCircle size={18} />
+                      Reddedilen
+                      {stats.rejected > 0 && (
+                        <Chip 
+                          label={stats.rejected} 
+                          size="small" 
+                          sx={{ 
+                            height: 20, 
+                            fontSize: '0.7rem',
+                            background: 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)',
+                            color: '#991b1b'
+                          }} 
+                        />
+                      )}
+                    </Box>
+                  } 
+                />
+                <Tab 
+                  label={
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <TrendingUp size={18} />
+                      Onaylanan
+                      {stats.approved > 0 && (
+                        <Chip 
+                          label={stats.approved} 
+                          size="small" 
+                          sx={{ 
+                            height: 20, 
+                            fontSize: '0.7rem',
+                            background: 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)',
+                            color: '#065f46'
+                          }} 
+                        />
+                      )}
+                    </Box>
+                  } 
+                />
+              </StyledTabs>
             </Box>
 
-            <Box sx={{ display: 'grid', gap: 2 }}>
-              {filteredApplications.map((application) => (
-                <ApplicationCard key={application.id}>
-                  <CardContent>
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            {/* Loading State */}
+            {loading ? (
+              <Box sx={{ display: 'grid', gap: 2 }}>
+                {[1, 2, 3].map((i) => (
+                  <ApplicationCard key={i}>
+                    <CardContent>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <Avatar
-                          src={application.avatar}
-                          alt={application.applicantName}
-                          sx={{ width: 56, height: 56 }}
-                        />
-                        <Box>
-                          <Typography variant="h6" component="div">
-                            {application.applicantName}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            {application.position}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            Başvuru Tarihi: {application.appliedDate}
-                          </Typography>
+                        <Skeleton variant="circular" width={56} height={56} />
+                        <Box sx={{ flex: 1 }}>
+                          <Skeleton variant="text" width="60%" height={24} />
+                          <Skeleton variant="text" width="40%" height={20} />
+                          <Skeleton variant="text" width="30%" height={16} />
                         </Box>
+                        <Skeleton variant="rectangular" width={80} height={28} sx={{ borderRadius: 14 }} />
                       </Box>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <Chip
-                          label={statusLabels[application.status]}
-                          color={statusColors[application.status]}
-                          size="small"
-                        />
-                        <IconButton
-                          onClick={(e) => handleMenuOpen(e, application)}
-                          size="small"
-                        >
-                          <MoreVertIcon />
-                        </IconButton>
-                      </Box>
-                    </Box>
+                    </CardContent>
+                  </ApplicationCard>
+                ))}
+              </Box>
+            ) : filteredApplications.length === 0 ? (
+              <EmptyStateContainer>
+                <Users size={64} color="#94a3b8" />
+                <Typography variant="h5" sx={{ fontWeight: 600, color: '#64748b', mb: 1 }}>
+                  Henüz başvuru bulunmuyor
+                </Typography>
+                <Typography variant="body1" color="text.secondary">
+                  Bu kategoride henüz başvuru bulunmuyor. Yeni başvurular geldiğinde burada görünecek.
+                </Typography>
+              </EmptyStateContainer>
+            ) : (
+              <Box sx={{ display: 'grid', gap: 3 }}>
+                {filteredApplications.map((application, index) => {
+                  const statusKey = Object.keys(statusConfig).find(key => 
+                    statusConfig[key as keyof typeof statusConfig].label === application.status
+                  ) as keyof typeof statusConfig;
+                  const statusInfo = statusConfig[statusKey] || statusConfig.pending;
+                  
+                  return (
+                    <Fade in timeout={300 + index * 100} key={application.id}>
+                      <ApplicationCard>
+                        <CardContent sx={{ p: 3 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                              <Avatar
+                                src={application.avatar}
+                                alt={application.applicantName}
+                                sx={{ 
+                                  width: 64, 
+                                  height: 64,
+                                  border: '3px solid rgba(59, 130, 246, 0.1)',
+                                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
+                                }}
+                              />
+                              <Box>
+                                <Typography variant="h6" component="div" sx={{ fontWeight: 700, mb: 0.5 }}>
+                                  {application.applicantName}
+                                </Typography>
+                                <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 500, mb: 0.5 }}>
+                                  {application.position}
+                                </Typography>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <Calendar size={16} color="#64748b" />
+                                  <Typography variant="caption" color="text.secondary">
+                                    Başvuru Tarihi: {application.appliedDate}
+                                  </Typography>
+                                </Box>
+                              </Box>
+                            </Box>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                              <StatusChip
+                                label={
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                    {statusInfo.icon}
+                                    {application.status}
+                                  </Box>
+                                }
+                                className={statusInfo.color}
+                                size="small"
+                              />
+                              <IconButton
+                                onClick={(e) => handleMenuOpen(e, application)}
+                                size="small"
+                                sx={{
+                                  background: 'rgba(59, 130, 246, 0.1)',
+                                  '&:hover': {
+                                    background: 'rgba(59, 130, 246, 0.2)',
+                                  }
+                                }}
+                              >
+                                <MoreVertIcon />
+                              </IconButton>
+                            </Box>
+                          </Box>
+                          
+                          <Divider sx={{ my: 2 }} />
+                          
+                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                              <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                Deneyim: {application.experience}
+                              </Typography>
+                              {application.skills.length > 0 && (
+                                <Box sx={{ display: 'flex', gap: 1 }}>
+                                  {application.skills.slice(0, 3).map((skill) => (
+                                    <Chip
+                                      key={skill}
+                                      label={skill}
+                                      size="small"
+                                      variant="outlined"
+                                      sx={{ fontSize: '0.7rem' }}
+                                    />
+                                  ))}
+                                  {application.skills.length > 3 && (
+                                    <Typography variant="caption" color="text.secondary">
+                                      +{application.skills.length - 3} daha
+                                    </Typography>
+                                  )}
+                                </Box>
+                              )}
+                            </Box>
+                            
+                            <Link
+                              to={`/corporate/applications/${application.id}${currentTab === 4 ? '?chat=1' : ''}`}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                color: '#3b82f6',
+                                textDecoration: 'none',
+                                fontWeight: 600,
+                                fontSize: '0.9rem',
+                                padding: '8px 16px',
+                                borderRadius: 8,
+                                background: 'rgba(59, 130, 246, 0.1)',
+                                transition: 'all 0.2s ease',
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = 'rgba(59, 130, 246, 0.2)';
+                                e.currentTarget.style.transform = 'translateX(2px)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)';
+                                e.currentTarget.style.transform = 'translateX(0)';
+                              }}
+                            >
+                              Detayları Görüntüle <ChevronRight size={16} />
+                            </Link>
+                          </Box>
+                        </CardContent>
+                      </ApplicationCard>
+                    </Fade>
+                  );
+                })}
+              </Box>
+            )}
 
-                    <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                      <Typography variant="body2" sx={{ mr: 1 }}>
-                        Deneyim: {application.experience}
-                      </Typography>
-                      {application.skills.map((skill) => (
-                        <Chip
-                          key={skill}
-                          label={skill}
-                          size="small"
-                          variant="outlined"
-                        />
-                      ))}
-                    </Box>
-
-                    <Box sx={{ mt: 2, display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-                      {/* <Button
-                        variant="outlined"
-                        size="small"
-                        onClick={() => window.open(`/resume/${application.id}`, '_blank')}
-                      >
-                        CV Görüntüle
-                      </Button>
-                      <Button
-                        variant="contained"
-                        size="small"
-                        onClick={() => window.open(`/profile/${application.id}`, '_blank')}
-                      >
-                        Profili Görüntüle
-                      </Button> */}
-                    </Box>
-
-                    {currentTab === 2 ? (
-                      <Link
-                        to={`/corporate/applications/${application.id}`}
-                        className="text-primary hover:underline text-sm font-medium flex items-center gap-1"
-                      >
-                        Detayları Görüntüle <ChevronRight size={16} />
-                      </Link>
-                    ) : currentTab === 4 ? (
-                      <Link
-                        to={`/corporate/applications/${application.id}?chat=1`}
-                        className="text-primary hover:underline text-sm font-medium flex items-center gap-1"
-                      >
-                        Detayları Görüntüle <ChevronRight size={16} />
-                      </Link>
-                    ) : (
-                      <Link
-                        to={`/corporate/applications/${application.id}`}
-                        className="text-primary hover:underline text-sm font-medium flex items-center gap-1"
-                      >
-                        Detayları Görüntüle <ChevronRight size={16} />
-                      </Link>
-                    )}
-                  </CardContent>
-                </ApplicationCard>
-              ))}
-            </Box>
           </StyledPaper>
 
           <Menu
