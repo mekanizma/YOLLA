@@ -31,9 +31,9 @@ import Snackbar from '@mui/material/Snackbar';
 import { Link } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import supabase from '../../lib/supabaseClient';
-import { JobRecord } from '../../lib/jobsService';
+import { JobRecord, fetchCompanyByEmail } from '../../lib/jobsService';
+import { createNotification } from '../../lib/notificationsService';
 import { getCorporateApplications, updateApplicationStatus } from '../../lib/applicationsService';
-import { fetchCompanyByEmail } from '../../lib/jobsService';
 
 // Styled components for mobile responsiveness
 const StyledPaper = styled(Paper)(({ theme }) => ({
@@ -62,12 +62,17 @@ interface Application {
   avatar?: string;
   rejectReason?: string;
   rejectDate?: string;
+  user_id?: number;
+  jobTitle?: string;
+  acceptDate?: string;
+  contractAccepted?: boolean;
 }
 
 type ApplicationRow = {
   id: number;
   status: 'pending' | 'in_review' | 'accepted' | 'rejected' | 'approved';
   created_at: string;
+  user_id: number;
   users: { full_name?: string; avatar_url?: string } | null;
   jobs: Pick<JobRecord, 'title'> | null;
 };
@@ -113,16 +118,22 @@ const CorporateApplications: React.FC = () => {
           return;
         }
         const data = await getCorporateApplications(company.id);
-        const mapped: Application[] = (data as any[]).map((r) => ({
-          id: r.id,
-          applicantName: r.users?.full_name || 'Aday',
-          position: r.jobs?.title || 'Pozisyon',
-          appliedDate: new Date(r.created_at).toLocaleDateString('tr-TR'),
-          status: statusLabels[r.status as keyof typeof statusLabels] || 'Beklemede',
-          experience: '-',
-          skills: [],
-          avatar: r.users?.avatar_url || undefined,
-        }));
+        console.log('getCorporateApplications verisi:', data);
+        const mapped: Application[] = (data as any[]).map((r) => {
+          console.log('Mapping için veri:', r);
+          return {
+            id: r.id,
+            applicantName: r.users?.full_name || 'Aday',
+            position: r.jobs?.title || 'Pozisyon',
+            appliedDate: new Date(r.created_at).toLocaleDateString('tr-TR'),
+            status: statusLabels[r.status as keyof typeof statusLabels] || 'Beklemede',
+            experience: '-',
+            skills: [],
+            avatar: r.users?.avatar_url || undefined,
+            user_id: r.user_id,
+            jobTitle: r.jobs?.title,
+          };
+        });
         setApplications(mapped);
       } catch (e) {
         // eslint-disable-next-line no-console
@@ -167,6 +178,38 @@ const CorporateApplications: React.FC = () => {
           app.id === selectedApplication.id ? { ...app, status: turkishStatus } : app
         ));
         setSnackbar({ open: true, message: 'Başvuru durumu güncellendi.' });
+        
+        // Başvuru sahibine bildirim gönder
+        try {
+          const { data: auth } = await supabase.auth.getUser();
+          const user = auth.user;
+          if (user) {
+            const company = await fetchCompanyByEmail(user.email || '');
+            if (company && selectedApplication.user_id) {
+              const statusMessage = {
+                'accepted': 'Başvurunuz kabul edildi!',
+                'rejected': 'Başvurunuz reddedildi.',
+                'in_review': 'Başvurunuz değerlendiriliyor.',
+                'approved': 'Başvurunuz onaylandı!'
+              };
+              
+              await createNotification({
+                user_id: selectedApplication.user_id,
+                title: 'Başvuru Durumu Güncellendi',
+                message: statusMessage[newStatus] || 'Başvuru durumunuz güncellendi.',
+                type: newStatus === 'accepted' || newStatus === 'approved' ? 'success' : 'info',
+                data: { 
+                  application_id: selectedApplication.id,
+                  job_title: selectedApplication.jobTitle,
+                  company_name: company.name
+                }
+              });
+            }
+          }
+        } catch (notificationError) {
+          console.warn('Bildirim gönderilemedi:', notificationError);
+        }
+        
       } catch (e: any) {
         setSnackbar({ open: true, message: e?.message || 'Güncelleme başarısız.' });
       }
@@ -212,6 +255,40 @@ const CorporateApplications: React.FC = () => {
         setApplications(prev => prev.map(app =>
           app.id === selectedApplication.id ? { ...app, status: 'Kabul Edildi', acceptDate: new Date().toISOString(), contractAccepted: true } : app
         ));
+        
+        // Başvuru sahibine detaylı bildirim gönder
+        try {
+          const { data: auth } = await supabase.auth.getUser();
+          const user = auth.user;
+          if (user) {
+            const company = await fetchCompanyByEmail(user.email || '');
+            if (company && selectedApplication.user_id) {
+              const detailsMessage = acceptDetails.details 
+                ? `\n\nDetaylar:\n${acceptDetails.details}`
+                : '';
+              
+              const fullMessage = `Başvurunuz kabul edildi! İşe başlama tarihi: ${acceptDetails.date}, Saat: ${acceptDetails.time}.${detailsMessage}`;
+              
+              await createNotification({
+                user_id: selectedApplication.user_id,
+                title: 'Başvuru Kabul Edildi! 🎉',
+                message: fullMessage,
+                type: 'success',
+                data: { 
+                  application_id: selectedApplication.id,
+                  job_title: selectedApplication.jobTitle,
+                  company_name: company.name,
+                  accept_date: acceptDetails.date,
+                  accept_time: acceptDetails.time,
+                  details: acceptDetails.details
+                }
+              });
+            }
+          }
+        } catch (notificationError) {
+          console.warn('Bildirim gönderilemedi:', notificationError);
+        }
+        
         setSnackbar({ open: true, message: 'İşe alımınız tamamlanmıştır.' });
       } catch (e: any) {
         setSnackbar({ open: true, message: e?.message || 'Güncelleme başarısız.' });
@@ -398,7 +475,18 @@ const CorporateApplications: React.FC = () => {
           </Dialog>
 
           {/* Kabul Detayları Dialog */}
-          <Dialog open={acceptDialogOpen} onClose={() => setAcceptDialogOpen(false)}>
+          <Dialog 
+            open={acceptDialogOpen} 
+            onClose={() => setAcceptDialogOpen(false)}
+            maxWidth="sm"
+            fullWidth
+            PaperProps={{
+              sx: {
+                maxHeight: '90vh',
+                margin: '20px',
+              }
+            }}
+          >
             <DialogTitle>Kabul Detayları</DialogTitle>
             <DialogContent>
               <TextField
@@ -422,8 +510,10 @@ const CorporateApplications: React.FC = () => {
               <TextField
                 margin="dense"
                 label="Diğer Detaylar"
-                type="text"
+                multiline
+                rows={4}
                 fullWidth
+                placeholder="İşe başlama tarihi, çalışma saatleri, maaş bilgileri, özel koşullar vb. detayları buraya yazabilirsiniz..."
                 value={acceptDetails.details}
                 onChange={e => setAcceptDetails({ ...acceptDetails, details: e.target.value })}
               />

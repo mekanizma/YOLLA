@@ -1,14 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Search, MapPin, Filter, ChevronDown, Star, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 import Header from '../../components/layout/Header';
 import Footer from '../../components/layout/Footer';
 import Button from '../../components/ui/Button';
 import { jobCategories, cities, experienceLevels, workTypes, updateMetaTags, pageSEOContent } from '../../lib/utils';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { fetchPublishedJobs } from '../../lib/jobsService';
+import { fetchPublishedJobsOptimized } from '../../lib/cacheService';
 import { applyToJob } from '../../lib/applicationsService';
 import { createNotification } from '../../lib/notificationsService';
 import supabase from '../../lib/supabaseClient';
+import { useToast } from '../../components/ui/ToastProvider';
 
 const Jobs = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -31,6 +32,7 @@ const Jobs = () => {
   
   const navigate = useNavigate();
   const location = useLocation();
+  const { showToast } = useToast();
   const queryParams = new URLSearchParams(location.search);
   const initialSearchTerm = queryParams.get('search') || '';
   const initialCity = queryParams.get('city') || '';
@@ -69,38 +71,21 @@ const Jobs = () => {
     }
   }, [initialJobId, jobs, currentPage, jobsPerPage, location, navigate]);
 
-  // Kullanıcının mevcut başvurularını yükle
+  // Paralel veri yükleme - hem işler hem başvurular
   useEffect(() => {
-    const loadUserApplications = async () => {
-      try {
-        const { data: auth } = await supabase.auth.getUser();
-        if (auth.user?.id) {
-          const { data: applications } = await supabase
-            .from('applications')
-            .select('job_id')
-            .eq('user_id', auth.user.id);
-          
-          if (applications) {
-            const appliedJobIds = new Set(applications.map(app => app.job_id));
-            setAppliedJobs(appliedJobIds);
-          }
-        }
-      } catch (error) {
-        console.warn('Başvuru durumu yüklenemedi:', error);
-      }
-    };
-    
-    loadUserApplications();
-  }, []);
-
-  useEffect(() => {
-    const load = async () => {
+    const loadData = async () => {
       try {
         setLoading(true);
         setError(null);
-        const data = await fetchPublishedJobs({ search: initialSearchTerm, city: initialCity });
-        // UI’nin ihtiyacı olan alanlara dönüştürme (örnek)
-        const mapped = data.map((j: any) => ({
+        
+        // Paralel veri yükleme (cache ile optimize edildi)
+        const [jobsData, authData] = await Promise.all([
+          fetchPublishedJobsOptimized({ search: initialSearchTerm, city: initialCity }),
+          supabase.auth.getUser()
+        ]);
+
+        // Jobs verilerini işle
+        const mapped = jobsData.map((j: any) => ({
           id: j.id,
           title: j.title,
           company: j.companies?.name || 'Şirket',
@@ -124,25 +109,48 @@ const Jobs = () => {
           isRemote: j.is_remote,
           educationLevel: j.education_level,
           responsibilities: j.responsibilities || '',
+          workStartTime: j.work_start_time,
+          workEndTime: j.work_end_time,
+          workDays: j.work_days || [],
         }));
         setJobs(mapped);
+
+        // Kullanıcı başvurularını yükle
+        if (authData.data.user?.id) {
+          try {
+            const { data: applications } = await supabase
+              .from('applications')
+              .select('job_id')
+              .eq('user_id', authData.data.user.id);
+            
+            if (applications) {
+              const appliedJobIds = new Set(applications.map(app => app.job_id));
+              setAppliedJobs(appliedJobIds);
+            }
+          } catch (error) {
+            console.warn('Başvuru durumu yüklenemedi:', error);
+          }
+        }
       } catch (e: any) {
         setError(e.message || 'Veri alınamadı');
       } finally {
         setLoading(false);
       }
     };
-    load();
+    
+    loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialSearchTerm, initialCity]);
 
-  // Filtrelenmiş iş ilanları
-  const filteredJobs = jobs.filter(job => {
-    const matchesSearch = searchTerm === '' || job.title.toLowerCase().includes(searchTerm.toLowerCase()) || job.company.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === '' || (job.category && job.category === selectedCategory);
-    const matchesWorkType = workType === '' || job.type === workType;
-    return matchesSearch && matchesCategory && matchesWorkType;
-  });
+  // Filtrelenmiş iş ilanları - useMemo ile optimize edildi
+  const filteredJobs = useMemo(() => {
+    return jobs.filter(job => {
+      const matchesSearch = searchTerm === '' || job.title.toLowerCase().includes(searchTerm.toLowerCase()) || job.company.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCategory = selectedCategory === '' || (job.category && job.category === selectedCategory);
+      const matchesWorkType = workType === '' || job.type === workType;
+      return matchesSearch && matchesCategory && matchesWorkType;
+    });
+  }, [jobs, searchTerm, selectedCategory, workType]);
 
   // Belirli bir ilan ID'si varsa o ilanı öne çıkar
   const sortedJobs = initialJobId 
@@ -192,14 +200,22 @@ const Jobs = () => {
       console.log('Auth kullanıcı:', auth.user);
       
       if (!auth.user?.id) {
-        alert('Başvuru yapmak için giriş yapmalısınız.');
+        showToast({
+          type: 'warning',
+          title: 'Giriş Gerekli',
+          message: 'Başvuru yapmak için giriş yapmalısınız.'
+        });
         navigate('/login/individual');
         return;
       }
 
       // Zaten başvuru yapılmış mı kontrol et
       if (appliedJobs.has(jobId)) {
-        alert('Bu ilana zaten başvuru yaptınız.');
+        showToast({
+          type: 'info',
+          title: 'Zaten Başvuru Yapıldı',
+          message: 'Bu ilana zaten başvuru yaptınız.'
+        });
         return;
       }
 
@@ -211,7 +227,11 @@ const Jobs = () => {
       console.log('Bulunan iş:', job);
       
       if (!job) {
-        alert('İş ilanı bulunamadı.');
+        showToast({
+          type: 'error',
+          title: 'Hata',
+          message: 'İş ilanı bulunamadı.'
+        });
         return;
       }
 
@@ -229,7 +249,9 @@ const Jobs = () => {
 
       // Şirkete bildirim gönder
       try {
-        console.log('Bildirim gönderme başladı...');
+        console.log('=== BİLDİRİM SÜRECİ BAŞLADI ===');
+        console.log('Başvuru yapılan jobId:', jobId);
+        console.log('Kullanıcı ID:', auth.user.id);
         
         const { data: jobData } = await supabase
           .from('jobs')
@@ -251,33 +273,53 @@ const Jobs = () => {
         if (jobData?.company_id && userData) {
           const applicantName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || userData.email?.split('@')[0] || 'Kullanıcı';
           
-          console.log('Bildirim gönderiliyor:', {
+          console.log('=== BİLDİRİM OLUŞTURULUYOR ===');
+          console.log('Bildirim parametreleri:', {
             company_id: jobData.company_id,
             title: 'Yeni Başvuru',
             message: `${applicantName} adlı kullanıcı "${jobData.title}" pozisyonu için başvuru yaptı.`,
-            type: 'info'
+            type: 'application',
+            data: { job_id: jobId, application_id: applicationId }
           });
           
-          await createNotification({
+          const notificationResult = await createNotification({
             company_id: jobData.company_id,
             title: 'Yeni Başvuru',
             message: `${applicantName} adlı kullanıcı "${jobData.title}" pozisyonu için başvuru yaptı.`,
-            type: 'info'
+            type: 'application',
+            data: { job_id: jobId, application_id: applicationId }
           });
+          console.log('=== BİLDİRİM OLUŞTURMA SONUCU ===');
+          console.log('Bildirim oluşturma sonucu:', notificationResult);
           
-          console.log('Bildirim gönderildi!');
+          console.log('Bildirim başarıyla gönderildi!');
         } else {
-          console.log('Bildirim gönderilemedi - eksik veri:', { jobData, userData });
+          console.log('=== BİLDİRİM GÖNDERİLEMEDİ ===');
+          console.log('Eksik veri:', { 
+            jobData: jobData, 
+            userData: userData,
+            jobDataCompanyId: jobData?.company_id,
+            userDataExists: !!userData
+          });
         }
       } catch (notificationError) {
-        console.warn('Bildirim gönderilemedi:', notificationError);
+        console.error('=== BİLDİRİM HATASI ===');
+        console.error('Bildirim gönderilemedi:', notificationError);
       }
 
-      alert('Başvurunuz başarıyla gönderildi!');
+      showToast({
+        type: 'success',
+        title: 'Başvuru Başarılı!',
+        message: 'Başvurunuz başarıyla gönderildi. İşveren tarafından değerlendirilecek.'
+      });
       
     } catch (error: any) {
       console.error('Başvuru hatası:', error);
-      alert(error.message || 'Başvuru gönderilemedi. Lütfen tekrar deneyin.');
+      showToast({
+        type: 'error',
+        title: 'Başvuru Hatası',
+        message: error.message || 'Başvuru gönderilemedi. Lütfen tekrar deneyin.'
+      });
     } finally {
       // Başvuru işlemi tamamlandığını göster
       setApplyingJobs(prev => {
@@ -366,10 +408,31 @@ const Jobs = () => {
             )}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-            {error && (
+            {loading ? (
+              // Skeleton Loading
+              [...Array(6)].map((_, index) => (
+                <div key={index} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 animate-pulse">
+                  <div className="flex items-start gap-4 mb-4">
+                    <div className="w-12 h-12 bg-gray-200 rounded-lg"></div>
+                    <div className="flex-1">
+                      <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                      <div className="h-3 bg-gray-200 rounded w-2/3"></div>
+                    </div>
+                  </div>
+                  <div className="space-y-2 mb-4">
+                    <div className="h-3 bg-gray-200 rounded"></div>
+                    <div className="h-3 bg-gray-200 rounded w-3/4"></div>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <div className="h-3 bg-gray-200 rounded w-1/3"></div>
+                    <div className="h-8 bg-gray-200 rounded w-20"></div>
+                  </div>
+                </div>
+              ))
+            ) : error ? (
               <div className="text-red-600">{error}</div>
-            )}
-            {currentJobs.map((job, index) => (
+            ) : (
+              currentJobs.map((job, index) => (
               <div 
                 key={job.id} 
                 className={`bg-white rounded-xl shadow-sm border p-4 md:p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 group ${
@@ -419,6 +482,20 @@ const Jobs = () => {
                             <div className="flex items-center gap-1">
                               <span className="font-medium">Sektör:</span>
                               <span>{job.category}</span>
+                            </div>
+                          )}
+                          {(job.workStartTime || job.workEndTime) && (
+                            <div className="flex items-center gap-1">
+                              <Clock size={14} className="text-orange-500" />
+                              <span className="font-medium">Çalışma Saatleri:</span>
+                              <span>
+                                {job.workStartTime && job.workEndTime 
+                                  ? `${job.workStartTime} - ${job.workEndTime}`
+                                  : job.workStartTime 
+                                    ? `${job.workStartTime} başlangıç`
+                                    : `${job.workEndTime} bitiş`
+                                }
+                              </span>
                             </div>
                           )}
                           {job.companyIndustry && (
@@ -563,7 +640,8 @@ const Jobs = () => {
                   </div>
                 </div>
               </div>
-            ))}
+              ))
+            )}
           </div>
           
           {/* Sayfalama */}

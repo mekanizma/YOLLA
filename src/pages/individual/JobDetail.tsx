@@ -9,6 +9,7 @@ import { fetchJobById } from '../../lib/jobsService';
 import { applyToJob } from '../../lib/applicationsService';
 import { createNotification } from '../../lib/notificationsService';
 import supabase from '../../lib/supabaseClient';
+import { useToast } from '../../components/ui/ToastProvider';
 
 type UiJob = {
   id: number;
@@ -23,6 +24,9 @@ type UiJob = {
   postedDate: string;
   logo: string;
   category?: string;
+  workStartTime?: string;
+  workEndTime?: string;
+  workDays?: string[];
 };
 
 const JobDetail = () => {
@@ -37,6 +41,7 @@ const JobDetail = () => {
   const [job, setJob] = useState<UiJob | null>(null);
   const [applicationStatus, setApplicationStatus] = useState<string | null>(null);
   const [isApplying, setIsApplying] = useState(false);
+  const { showToast } = useToast();
 
   // Başvuru yapma fonksiyonu
   const handleApply = async () => {
@@ -49,7 +54,11 @@ const JobDetail = () => {
       const { data: auth } = await supabase.auth.getUser();
       
       if (!auth.user?.id) {
-        alert('Başvuru yapmak için giriş yapmalısınız.');
+        showToast({
+          type: 'warning',
+          title: 'Giriş Gerekli',
+          message: 'Başvuru yapmak için giriş yapmalısınız.'
+        });
         navigate('/login/individual');
         return;
       }
@@ -98,11 +107,19 @@ const JobDetail = () => {
 
       // Başvuru durumunu güncelle
       setApplicationStatus('pending');
-      alert('Başvurunuz başarıyla gönderildi!');
+      showToast({
+        type: 'success',
+        title: 'Başvuru Başarılı!',
+        message: 'Başvurunuz başarıyla gönderildi. İşveren tarafından değerlendirilecek.'
+      });
       
     } catch (error: any) {
       console.error('Başvuru hatası:', error);
-      alert(error.message || 'Başvuru gönderilemedi. Lütfen tekrar deneyin.');
+      showToast({
+        type: 'error',
+        title: 'Başvuru Hatası',
+        message: error.message || 'Başvuru gönderilemedi. Lütfen tekrar deneyin.'
+      });
     } finally {
       setIsApplying(false);
     }
@@ -130,39 +147,67 @@ const JobDetail = () => {
 
   useEffect(() => {
     let isMounted = true;
-    const load = async () => {
+    const loadData = async () => {
       if (jobId == null) return;
-      const data = await fetchJobById(jobId);
-      if (!isMounted) return;
-      if (!data) {
-        setJob(null);
-        return;
+      
+      try {
+        // Paralel veri yükleme
+        const [jobData, authData] = await Promise.all([
+          fetchJobById(jobId),
+          supabase.auth.getUser()
+        ]);
+
+        if (!isMounted) return;
+        
+        if (!jobData) {
+          setJob(null);
+          return;
+        }
+
+        const mapped: UiJob = {
+          id: jobData.id,
+          title: (jobData as any).title,
+          company: (jobData as any).company_name || 'Şirket',
+          location: (jobData as any).location,
+          type: (jobData as any).type,
+          experience: (jobData as any).experience_level,
+          salary: (jobData as any).salary ? `${(jobData as any).salary.min} - ${(jobData as any).salary.max} ${(jobData as any).salary.currency}` : '',
+          description: (jobData as any).description,
+          requirements: (jobData as any).skills || [],
+          postedDate: new Date((jobData as any).created_at).toLocaleDateString('tr-TR'),
+          logo: (jobData as any).company_logo || 'https://images.pexels.com/photos/1181671/pexels-photo-1181671.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1',
+          category: (jobData as any).department || '',
+          workStartTime: (jobData as any).work_start_time,
+          workEndTime: (jobData as any).work_end_time,
+          workDays: (jobData as any).work_days || []
+        };
+        setJob(mapped);
+
+        // Başvuru durumunu kontrol et
+        if (authData.data.user?.id) {
+          try {
+            const { data: application } = await supabase
+              .from('applications')
+              .select('status')
+              .eq('user_id', authData.data.user.id)
+              .eq('job_id', jobId)
+              .single();
+            
+            if (application) {
+              setApplicationStatus(application.status);
+            }
+          } catch (error) {
+            console.warn('Başvuru durumu kontrol edilemedi:', error);
+          }
+        }
+      } catch (error) {
+        console.error('JobDetail verileri yüklenirken hata:', error);
       }
-      const mapped: UiJob = {
-        id: data.id,
-        title: (data as any).title,
-        company: (data as any).company_name || 'Şirket',
-        location: (data as any).location,
-        type: (data as any).type,
-        experience: (data as any).experience_level,
-        salary: (data as any).salary ? `${(data as any).salary.min} - ${(data as any).salary.max} ${(data as any).salary.currency}` : '',
-        description: (data as any).description,
-        requirements: (data as any).skills || [],
-        postedDate: new Date((data as any).created_at).toLocaleDateString('tr-TR'),
-        logo: (data as any).company_logo || 'https://images.pexels.com/photos/1181671/pexels-photo-1181671.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1',
-        category: (data as any).department || ''
-      };
-      setJob(mapped);
     };
-    load();
+    
+    loadData();
     return () => { isMounted = false; };
   }, [jobId]);
-
-  useEffect(() => {
-    if (job) {
-      checkApplicationStatus();
-    }
-  }, [job]);
 
   // Başvuru durumunu UI'da göster
   const getApplicationStatusUI = () => {
@@ -259,6 +304,17 @@ const JobDetail = () => {
                   <span className="inline-flex items-center"><MapPin size={16} className="mr-1" /> {job.location}</span>
                   <span className="inline-flex items-center"><Clock size={16} className="mr-1" /> {job.postedDate}</span>
                   <span className="inline-flex items-center"><Briefcase size={16} className="mr-1" /> {job.type}</span>
+                  {(job.workStartTime || job.workEndTime) && (
+                    <span className="inline-flex items-center">
+                      <Clock size={16} className="mr-1" /> 
+                      {job.workStartTime && job.workEndTime 
+                        ? `${job.workStartTime} - ${job.workEndTime}`
+                        : job.workStartTime 
+                          ? `${job.workStartTime} başlangıç`
+                          : `${job.workEndTime} bitiş`
+                      }
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="text-primary font-semibold text-base">{job.salary}</div>

@@ -1,4 +1,98 @@
 import supabase from './supabaseClient';
+
+// Mevcut "Bilinmeyen Kullanıcı" kayıtlarını temizlemek için yardımcı fonksiyon
+export async function cleanupUnknownUsers() {
+  try {
+    // "Bilinmeyen Kullanıcı" kayıtlarını bul
+    const { data: unknownUsers, error: selectError } = await supabase
+      .from('users')
+      .select('id, auth_user_id, user_id')
+      .eq('first_name', 'Bilinmeyen')
+      .eq('last_name', 'Kullanıcı');
+    
+    if (selectError) {
+      console.error('Bilinmeyen kullanıcılar sorgulanamadı:', selectError);
+      return;
+    }
+    
+    if (!unknownUsers || unknownUsers.length === 0) {
+      console.log('Temizlenecek bilinmeyen kullanıcı bulunamadı');
+      return;
+    }
+    
+    console.log(`${unknownUsers.length} adet bilinmeyen kullanıcı bulundu, temizleniyor...`);
+    
+    // Her bilinmeyen kullanıcı için auth.users'dan bilgi almaya çalış
+    for (const user of unknownUsers) {
+      const userId = user.auth_user_id || user.user_id;
+      if (!userId) continue;
+      
+      try {
+        const { data: authUser } = await supabase.auth.admin.getUserById(userId);
+        
+        if (authUser?.user) {
+          const userMetadata = authUser.user.user_metadata || {};
+          const email = authUser.user.email || 'user@example.com';
+          const fullName = userMetadata.name || userMetadata.full_name || '';
+          const [firstName, ...rest] = fullName.split(' ');
+          const lastName = rest.join(' ');
+          
+          // Kullanıcı bilgilerini güncelle
+          const { error: updateError } = await supabase
+            .from('users')
+            .update({
+              first_name: firstName || email.split('@')[0] || 'Kullanıcı',
+              last_name: lastName || '',
+              email: email,
+              phone: userMetadata.phone || null,
+              location: userMetadata.city || null,
+              role: userMetadata.userType || 'individual'
+            })
+            .eq('id', user.id);
+          
+          if (updateError) {
+            console.error(`Kullanıcı ${user.id} güncellenemedi:`, updateError);
+          } else {
+            console.log(`Kullanıcı ${user.id} başarıyla güncellendi`);
+          }
+        } else {
+          // Auth.users'da bulunamazsa, aynı user_id ile başka bir kayıt var mı kontrol et
+          const { data: existingUser } = await supabase
+            .from('users')
+            .select('first_name, last_name, email, phone, location')
+            .eq('user_id', userId)
+            .neq('first_name', 'Bilinmeyen')
+            .single();
+          
+          if (existingUser) {
+            console.log(`user_id ${userId} ile doğru kayıt bulundu, bilinmeyen kayıt güncelleniyor...`);
+            const { error: updateError } = await supabase
+              .from('users')
+              .update({
+                first_name: existingUser.first_name,
+                last_name: existingUser.last_name,
+                email: existingUser.email,
+                phone: existingUser.phone,
+                location: existingUser.location
+              })
+              .eq('id', user.id);
+            
+            if (updateError) {
+              console.error(`Kullanıcı ${user.id} güncellenemedi:`, updateError);
+            } else {
+              console.log(`Kullanıcı ${user.id} başarıyla güncellendi`);
+            }
+          }
+        }
+      } catch (authError) {
+        console.error(`Kullanıcı ${user.id} için auth sorgusu başarısız:`, authError);
+      }
+    }
+  } catch (error) {
+    console.error('Bilinmeyen kullanıcılar temizlenirken hata:', error);
+  }
+}
+
 import { createNotification } from './notificationsService';
 
 export async function applyToJob(jobId: string, userId: string, payload?: { cover_letter?: string; resume_url?: string; answers?: any }) {
@@ -122,9 +216,9 @@ export async function getCorporateApplications(companyId: number) {
       console.log('Kullanıcı sorgu hatası:', userError);
       console.log('Kullanıcı verisi:', applicantUser);
       
-      // Eğer auth_user_id ile bulunamazsa, user_id ile dene
+      // Eğer auth_user_id ile bulunamazsa, user_id ile dene (hata olup olmamasına bakmadan)
       let finalApplicantUser = applicantUser;
-      if (!applicantUser && !userError) {
+      if (!applicantUser) {
         console.log('auth_user_id ile bulunamadı, user_id ile deneniyor...');
         const { data: applicantUser2, error: userError2 } = await supabase
           .from('users')
@@ -152,43 +246,94 @@ export async function getCorporateApplications(companyId: number) {
         console.log('user_id ile sorgu hatası:', userError2);
         console.log('user_id ile kullanıcı verisi:', applicantUser2);
         
-        if (applicantUser2) {
+        if (applicantUser2 && applicantUser2.first_name !== 'Bilinmeyen') {
           finalApplicantUser = applicantUser2;
+          console.log('user_id ile doğru kullanıcı bulundu, auth_user_id kaydını güncelliyor...');
+          
+          // auth_user_id kaydını da güncelle
+          try {
+            await supabase
+              .from('users')
+              .update({
+                first_name: applicantUser2.first_name,
+                last_name: applicantUser2.last_name,
+                email: applicantUser2.email,
+                phone: applicantUser2.phone,
+                location: applicantUser2.location
+              })
+              .eq('auth_user_id', app.user_id);
+            console.log('auth_user_id kaydı başarıyla güncellendi');
+          } catch (updateError) {
+            console.error('auth_user_id kaydı güncellenemedi:', updateError);
+          }
         }
       }
       
-      // Eğer hiçbir alanda bulunamazsa, kullanıcıyı users tablosuna ekle
+      // Eğer hiçbir alanda bulunamazsa, auth.users tablosundan bilgileri almaya çalış
       if (!finalApplicantUser) {
-        console.log('auth_user_id ile bulunamadı, kullanıcı users tablosuna ekleniyor...');
+        console.log('users tablosunda bulunamadı, auth.users tablosundan bilgi alınmaya çalışılıyor...');
         
-        // Kullanıcıyı users tablosuna ekle
-        const { data: newUser, error: insertError } = await supabase
-          .from('users')
-          .insert({
-            auth_user_id: app.user_id,
-            first_name: 'Bilinmeyen',
-            last_name: 'Kullanıcı',
-            email: 'user@example.com',
-            phone: null,
-            location: null,
-            role: 'individual'
-          })
-          .select()
-          .single();
-        
-        if (insertError) {
-          console.error('Kullanıcı eklenemedi:', insertError);
+        try {
+          // Auth.users tablosundan kullanıcı bilgilerini al
+          const { data: authUser } = await supabase.auth.admin.getUserById(app.user_id);
+          
+          if (authUser?.user) {
+            const userMetadata = authUser.user.user_metadata || {};
+            const email = authUser.user.email || 'user@example.com';
+            const fullName = userMetadata.name || userMetadata.full_name || '';
+            const [firstName, ...rest] = fullName.split(' ');
+            const lastName = rest.join(' ');
+            
+            // Kullanıcıyı users tablosuna ekle
+            const { data: newUser, error: insertError } = await supabase
+              .from('users')
+              .insert({
+                auth_user_id: app.user_id,
+                user_id: app.user_id,
+                first_name: firstName || email.split('@')[0] || 'Kullanıcı',
+                last_name: lastName || '',
+                email: email,
+                phone: userMetadata.phone || null,
+                location: userMetadata.city || null,
+                role: 'individual'
+              })
+              .select()
+              .single();
+            
+            if (insertError) {
+              console.error('Kullanıcı eklenemedi:', insertError);
+              // Hata durumunda auth bilgilerini kullan
+              finalApplicantUser = {
+                first_name: firstName || email.split('@')[0] || 'Kullanıcı',
+                last_name: lastName || '',
+                email: email,
+                phone: userMetadata.phone || null,
+                location: userMetadata.city || null
+              };
+            } else {
+              console.log('Kullanıcı başarıyla eklendi:', newUser);
+              finalApplicantUser = newUser;
+            }
+          } else {
+            // Auth.users'da da bulunamazsa varsayılan bilgiler
+            finalApplicantUser = {
+              first_name: 'Kullanıcı',
+              last_name: '',
+              email: 'user@example.com',
+              phone: null,
+              location: null
+            };
+          }
+        } catch (authError) {
+          console.error('Auth.users sorgusu başarısız:', authError);
           // Hata durumunda varsayılan bilgiler
           finalApplicantUser = {
-            first_name: 'Bilinmeyen',
-            last_name: 'Kullanıcı',
+            first_name: 'Kullanıcı',
+            last_name: '',
             email: 'user@example.com',
             phone: null,
             location: null
           };
-        } else {
-          console.log('Kullanıcı başarıyla eklendi:', newUser);
-          finalApplicantUser = newUser;
         }
       }
       

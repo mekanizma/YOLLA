@@ -20,18 +20,19 @@ import supabase from '../../lib/supabaseClient';
 import { getCorporateNotifications, deleteNotification, markNotificationRead } from '../../lib/notificationsService';
 import { fetchCompanyByEmail } from '../../lib/jobsService';
 
-type TabType = 'all' | 'unread' | 'read' | 'messages';
+type TabType = 'all' | 'unread' | 'read';
 
 interface Notification {
-  id: number;
+  id: string;
   title: string;
   message: string;
   timestamp: string;
   read: boolean;
-  type: 'info' | 'success' | 'warning' | 'error';
+  type: 'info' | 'success' | 'warning' | 'error' | 'job' | 'application' | 'badge';
+  data?: Record<string, any>;
 }
 
-const tabLabels = ['Tümü', 'Okunmamış', 'Okunmuş', 'Mesajlar'];
+const tabLabels = ['Tümü', 'Okunmamış', 'Okunmuş'];
 
 const CorporateNotifications: React.FC = () => {
   const theme = useTheme();
@@ -51,7 +52,9 @@ const CorporateNotifications: React.FC = () => {
         const company = await fetchCompanyByEmail(user.email || '');
         if (!company) return;
         
+        console.log('Şirket bilgisi:', company);
         const data = await getCorporateNotifications(company.id);
+        console.log('Kurumsal bildirimler:', data);
         const mapped: Notification[] = (data as any[]).map((n) => ({
           id: n.id,
           title: n.title,
@@ -59,6 +62,7 @@ const CorporateNotifications: React.FC = () => {
           timestamp: n.created_at,
           read: n.is_read || false,
           type: n.type || 'info',
+          data: n.data || {}
         }));
         setNotifications(mapped);
       } catch (e) {
@@ -72,6 +76,18 @@ const CorporateNotifications: React.FC = () => {
   const handleTabChange = (_: any, newValue: number) => {
     const tabValues: TabType[] = ['all', 'unread', 'read', 'messages'];
     setTab(tabValues[newValue]);
+  };
+
+  const handleMarkAsRead = async (id: string) => {
+    try {
+      await markNotificationRead(id);
+      setNotifications(notifications.map(n => 
+        n.id === id ? { ...n, read: true } : n
+      ));
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn(e);
+    }
   };
 
   const markAllAsRead = async () => {
@@ -229,8 +245,34 @@ const CorporateNotifications: React.FC = () => {
                     p: { xs: 2, md: 3 },
                     borderRadius: 2,
                     bgcolor: notification.read ? 'background.paper' : 'action.hover',
+                    border: notification.read ? '1px solid #e0e0e0' : '1px solid #1976d2',
+                    position: 'relative',
+                    cursor: 'pointer',
+                    '&:hover': {
+                      bgcolor: notification.read ? 'action.hover' : 'action.selected',
+                    },
+                  }}
+                  onClick={() => {
+                    if (!notification.read) {
+                      handleMarkAsRead(notification.id);
+                    }
                   }}
                 >
+                  {/* Okunmadı göstergesi */}
+                  {!notification.read && (
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        top: 8,
+                        right: 8,
+                        width: 8,
+                        height: 8,
+                        borderRadius: '50%',
+                        bgcolor: 'primary.main',
+                      }}
+                    />
+                  )}
+                  
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2 }}>
                     <Box sx={{ flex: 1 }}>
                       <Typography
@@ -251,21 +293,31 @@ const CorporateNotifications: React.FC = () => {
                       >
                         {notification.message}
                       </Typography>
-                      <Typography
-                        sx={{
-                          color: 'text.disabled',
-                          fontSize: { xs: '0.75rem', md: '0.875rem' },
-                          mt: 1,
-                        }}
-                      >
-                        {new Date(notification.timestamp).toLocaleDateString('tr-TR', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+                        <Typography
+                          sx={{
+                            color: 'text.disabled',
+                            fontSize: { xs: '0.75rem', md: '0.875rem' },
+                          }}
+                        >
+                          {new Date(notification.timestamp).toLocaleDateString('tr-TR', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </Typography>
+                        <Typography
+                          sx={{
+                            color: notification.read ? 'text.disabled' : 'primary.main',
+                            fontSize: { xs: '0.75rem', md: '0.875rem' },
+                            fontWeight: notification.read ? 400 : 600,
+                          }}
+                        >
+                          {notification.read ? '✓ Okundu' : '● Okunmadı'}
+                        </Typography>
+                      </Box>
                     </Box>
                     <IconButton
                       size="small"

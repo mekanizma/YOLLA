@@ -72,8 +72,114 @@ const ApplicationDetail = () => {
           
           console.log('user_id ile kullanıcı verisi:', applicantUser2);
           
-          if (applicantUser2) {
+          if (applicantUser2 && applicantUser2.first_name !== 'Bilinmeyen') {
             finalApplicantUser = applicantUser2;
+            console.log('user_id ile doğru kullanıcı bulundu, auth_user_id kaydını güncelliyor...');
+            
+            // auth_user_id kaydını da güncelle
+            try {
+              await supabase
+                .from('users')
+                .update({
+                  first_name: applicantUser2.first_name,
+                  last_name: applicantUser2.last_name,
+                  email: applicantUser2.email,
+                  phone: applicantUser2.phone,
+                  location: applicantUser2.location,
+                  about: applicantUser2.about,
+                  skills: applicantUser2.skills,
+                  languages: applicantUser2.languages,
+                  experiences: applicantUser2.experiences,
+                  educations: applicantUser2.educations
+                })
+                .eq('auth_user_id', appData.user_id);
+              console.log('auth_user_id kaydı başarıyla güncellendi');
+            } catch (updateError) {
+              console.error('auth_user_id kaydı güncellenemedi:', updateError);
+            }
+          }
+        }
+        
+        // Eğer hiçbir alanda bulunamazsa, auth.users tablosundan bilgileri almaya çalış
+        if (!finalApplicantUser) {
+          console.log('users tablosunda bulunamadı, auth.users tablosundan bilgi alınmaya çalışılıyor...');
+          
+          try {
+            // Auth.users tablosundan kullanıcı bilgilerini al
+            const { data: authUser } = await supabase.auth.admin.getUserById(appData.user_id);
+            
+            if (authUser?.user) {
+              const userMetadata = authUser.user.user_metadata || {};
+              const email = authUser.user.email || 'user@example.com';
+              const fullName = userMetadata.name || userMetadata.full_name || '';
+              const [firstName, ...rest] = fullName.split(' ');
+              const lastName = rest.join(' ');
+              
+              // Kullanıcıyı users tablosuna ekle
+              const { data: newUser, error: insertError } = await supabase
+                .from('users')
+                .insert({
+                  auth_user_id: appData.user_id,
+                  user_id: appData.user_id,
+                  first_name: firstName || email.split('@')[0] || 'Kullanıcı',
+                  last_name: lastName || '',
+                  email: email,
+                  phone: userMetadata.phone || null,
+                  location: userMetadata.city || null,
+                  role: 'individual'
+                })
+                .select()
+                .single();
+              
+              if (insertError) {
+                console.error('Kullanıcı eklenemedi:', insertError);
+                // Hata durumunda auth bilgilerini kullan
+                finalApplicantUser = {
+                  first_name: firstName || email.split('@')[0] || 'Kullanıcı',
+                  last_name: lastName || '',
+                  email: email,
+                  phone: userMetadata.phone || null,
+                  location: userMetadata.city || null,
+                  about: null,
+                  skills: null,
+                  languages: null,
+                  experiences: null,
+                  educations: null
+                };
+              } else {
+                console.log('Kullanıcı başarıyla eklendi:', newUser);
+                finalApplicantUser = newUser;
+              }
+            } else {
+              // Auth.users'da da bulunamazsa varsayılan bilgiler
+              finalApplicantUser = {
+                first_name: 'Kullanıcı',
+                last_name: '',
+                email: 'user@example.com',
+                phone: null,
+                location: null,
+                about: null,
+                skills: null,
+                languages: null,
+                experiences: null,
+                educations: null
+              };
+            }
+          } catch (authError) {
+            console.error('Auth.users sorgusu başarısız:', authError);
+            // Hata durumunda varsayılan bilgiler
+            finalApplicantUser = {
+              first_name: 'Kullanıcı',
+              last_name: '',
+              email: 'user@example.com',
+              phone: null,
+              location: null,
+              about: null,
+              skills: null,
+              languages: null,
+              experiences: null,
+              educations: null
+            };
           }
         }
         
@@ -154,42 +260,12 @@ const ApplicationDetail = () => {
     );
   }
 
-  // chat=1 parametresi varsa mesajlaşma aktif olsun
-  // const showChat = new URLSearchParams(location.search).get('chat') === '1';
-
-  // const handleSendMessage = (e: React.FormEvent) => {
-  //   e.preventDefault();
-  //   if (message.trim()) {
-  //     setMessages(prev => [...prev, {
-  //       id: prev.length + 1,
-  //       text: message,
-  //       senderId: "corporate",
-  //       timestamp: new Date(),
-  //     }]);
-  //     setMessage("");
-  //     // Dummy bildirim oluştur
-  //     const notifications = JSON.parse(localStorage.getItem('individual_notifications') || '[]');
-  //     notifications.push({
-  //       id: Date.now(),
-  //       type: 'message',
-  //       title: 'Yeni Mesaj',
-  //       desc: 'Kurumsal taraftan yeni bir mesajınız var.',
-  //       date: new Date().toLocaleString(),
-  //       applicationId: application.id,
-  //       read: false
-  //     });
-  //     localStorage.setItem('individual_notifications', JSON.stringify(notifications));
-  //   }
-  // };
-
   const handleAccept = () => {
     alert('Başvuru kabul edildi!');
-    // setShowChat(true);
   };
 
   const handleReject = () => {
     alert('Başvuru reddedildi!');
-    // setShowChat(true);
   };
 
   return (

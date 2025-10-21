@@ -11,13 +11,14 @@ import supabase from '../../lib/supabaseClient';
 import { getMyNotifications, markNotificationRead } from '../../lib/notificationsService';
 
 interface Notification {
-  id: number;
-  type: 'job' | 'application' | 'badge' | 'message';
+  id: string;
+  type: 'job' | 'application' | 'badge' | 'info' | 'success' | 'warning' | 'error';
   title: string;
   desc: string;
   date: string;
   read: boolean;
   applicationId?: number;
+  data?: Record<string, any>;
 }
 
 
@@ -25,6 +26,10 @@ const iconMap = {
   job: <Briefcase className="w-6 h-6 text-primary" />,
   application: <CheckCircle className="w-6 h-6 text-green-600" />,
   badge: <Award className="w-6 h-6 text-yellow-500" />,
+  info: <Bell className="w-6 h-6 text-blue-500" />,
+  success: <CheckCircle className="w-6 h-6 text-green-600" />,
+  warning: <Bell className="w-6 h-6 text-yellow-500" />,
+  error: <Bell className="w-6 h-6 text-red-500" />,
 };
 
 const tabOptions = [
@@ -51,15 +56,18 @@ const IndividualNotifications: React.FC = () => {
         setNotifications([]);
         return;
       }
+      console.log('Bireysel kullanıcı ID:', user.id);
       const rows = await getMyNotifications(user.id);
+      console.log('Bireysel bildirimler:', rows);
       const mapped = rows.map((n: any) => ({
         id: n.id,
-        type: (n.type as any) || 'job',
+        type: (n.type as any) || 'info',
         title: n.title || '-',
-        desc: n.description || '-',
+        desc: n.message || n.description || '-',
         date: new Date(n.created_at).toLocaleString('tr-TR'),
         read: !!n.is_read,
-        applicationId: n.application_id || undefined
+        applicationId: n.data?.application_id || undefined,
+        data: n.data || {}
       }));
       setNotifications(mapped);
     };
@@ -75,7 +83,7 @@ const IndividualNotifications: React.FC = () => {
   // Bildirimleri en yeni en üstte olacak şekilde sırala
   const sortedNotifications = [...filtered].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  const markAsRead = async (id: number) => {
+  const markAsRead = async (id: string) => {
     try {
       await markNotificationRead(id);
     } finally {
@@ -90,10 +98,6 @@ const IndividualNotifications: React.FC = () => {
   const handleOpenDetail = (notification: Notification | any) => {
     setNotifications(prev => prev.map(n => n.id === notification.id ? { ...n, read: true } : n));
     setOpenDetail(notification);
-    if (notification.type === 'message') {
-      // Dummy chat ekranına yönlendir
-      navigate(`/individual/chat/${notification.applicationId}`);
-    }
     // Eğer kabul edilen başvuru bildirimi ise sözleşme popup'ı aç
     if (notification.type === 'application' && notification.title.toLowerCase().includes('kabul')) {
       setContractDialogOpen(true);
@@ -152,20 +156,32 @@ const IndividualNotifications: React.FC = () => {
             <Paper
               key={n.id}
               elevation={0}
-              className={`flex items-center gap-4 px-6 py-4 rounded-lg border cursor-pointer transition-all ${!n.read ? 'bg-blue-50 hover:bg-blue-100' : 'bg-white hover:bg-gray-50'}`}
+              className={`flex items-center gap-4 px-6 py-4 rounded-lg border cursor-pointer transition-all relative ${!n.read ? 'bg-blue-50 hover:bg-blue-100 border-blue-200' : 'bg-white hover:bg-gray-50 border-gray-200'}`}
               onClick={() => {
                 markAsRead(n.id);
                 handleOpenDetail(n);
               }}
             >
+              {/* Okunmadı göstergesi */}
+              {!n.read && (
+                <div className="absolute top-3 right-3 w-2 h-2 bg-blue-500 rounded-full"></div>
+              )}
+              
               <div className={`flex items-center justify-center w-10 h-10 rounded-full`} style={{ background: 'bg-primary/5' }}>
                 {iconMap[n.type]}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="font-semibold mb-1 text-base">{n.title}</div>
+                <div className={`font-semibold mb-1 text-base ${!n.read ? 'text-blue-700' : 'text-gray-800'}`}>
+                  {n.title}
+                </div>
                 <div className="text-gray-600 text-sm truncate">{n.desc}</div>
+                <div className="flex items-center gap-2 mt-1">
+                  <div className="text-xs text-gray-400">{n.date}</div>
+                  <div className={`text-xs font-medium ${!n.read ? 'text-blue-600' : 'text-gray-500'}`}>
+                    {n.read ? '✓ Okundu' : '● Okunmadı'}
+                  </div>
+                </div>
               </div>
-              <div className="text-xs text-gray-400 whitespace-nowrap ml-2">{n.date}</div>
               <button
                 className="ml-2 text-gray-400 hover:text-red-500"
                 onClick={e => { e.stopPropagation(); handleDeleteNotification(n.id); }}
@@ -180,7 +196,7 @@ const IndividualNotifications: React.FC = () => {
           )}
         </Box>
         {/* Bildirim Detay Modalı */}
-        <Dialog open={!!openDetail} onClose={handleCloseDetail} maxWidth="xs" fullWidth>
+        <Dialog open={!!openDetail} onClose={handleCloseDetail} maxWidth="sm" fullWidth>
           <DialogTitle>
             {openDetail && (
               <Box className="flex items-center gap-2">
@@ -190,10 +206,36 @@ const IndividualNotifications: React.FC = () => {
             )}
           </DialogTitle>
           <DialogContent dividers>
-            <Typography variant="body1" sx={{ mb: 2 }}>
+            <Typography variant="body1" sx={{ mb: 2, whiteSpace: 'pre-line' }}>
               {openDetail?.desc}
             </Typography>
-            <Typography variant="caption" color="text.secondary">
+            
+            {/* Kabul detayları varsa göster */}
+            {openDetail?.data && (openDetail.data.accept_date || openDetail.data.details) && (
+              <Box sx={{ mt: 3, p: 2, bgcolor: 'success.light', borderRadius: 1 }}>
+                <Typography variant="h6" sx={{ mb: 1, color: 'success.dark' }}>
+                  📋 Kabul Detayları
+                </Typography>
+                {openDetail.data.accept_date && (
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    <strong>İşe Başlama Tarihi:</strong> {new Date(openDetail.data.accept_date).toLocaleDateString('tr-TR')}
+                  </Typography>
+                )}
+                {openDetail.data.accept_time && (
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    <strong>Saat:</strong> {openDetail.data.accept_time}
+                  </Typography>
+                )}
+                {openDetail.data.details && (
+                  <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
+                    <strong>Detaylar:</strong><br />
+                    {openDetail.data.details}
+                  </Typography>
+                )}
+              </Box>
+            )}
+            
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
               {openDetail?.date}
             </Typography>
           </DialogContent>

@@ -6,11 +6,12 @@ import Footer from '../../components/layout/Footer';
 import Button from '../../components/ui/Button';
 import { jobCategories, cities } from '../../lib/utils';
 import BadgesSection from '../../components/BadgesSection';
-import { fetchPublishedJobs } from '../../lib/jobsService';
+import { fetchPublishedJobsOptimized } from '../../lib/cacheService';
 import { getMyApplications, applyToJob } from '../../lib/applicationsService';
 import { getUserBadges, checkApplicationBadges, checkProfileCompletionBadges } from '../../lib/badgesService';
 import { createNotification } from '../../lib/notificationsService';
 import supabase from '../../lib/supabaseClient';
+import { useToast } from '../../components/ui/ToastProvider';
 
 const Dashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -31,6 +32,7 @@ const Dashboard = () => {
   // const [missingFields, setMissingFields] = useState<string[]>([]);
 
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,14 +45,22 @@ const Dashboard = () => {
       // Kullanıcı giriş kontrolü
       const { data: auth } = await supabase.auth.getUser();
       if (!auth.user?.id) {
-        alert('Başvuru yapmak için giriş yapmalısınız.');
+        showToast({
+          type: 'warning',
+          title: 'Giriş Gerekli',
+          message: 'Başvuru yapmak için giriş yapmalısınız.'
+        });
         navigate('/login/individual');
         return;
       }
 
       // Zaten başvuru yapılmış mı kontrol et
       if (appliedJobs.has(jobId)) {
-        alert('Bu ilana zaten başvuru yaptınız.');
+        showToast({
+          type: 'info',
+          title: 'Zaten Başvuru Yapıldı',
+          message: 'Bu ilana zaten başvuru yaptınız.'
+        });
         return;
       }
 
@@ -60,7 +70,11 @@ const Dashboard = () => {
       // İş bilgilerini al
       const job = recommendedJobs.find(j => j.id === jobId);
       if (!job) {
-        alert('İş ilanı bulunamadı.');
+        showToast({
+          type: 'error',
+          title: 'Hata',
+          message: 'İş ilanı bulunamadı.'
+        });
         return;
       }
 
@@ -103,11 +117,19 @@ const Dashboard = () => {
         console.warn('Bildirim gönderilemedi:', notificationError);
       }
 
-      alert('Başvurunuz başarıyla gönderildi!');
+      showToast({
+        type: 'success',
+        title: 'Başvuru Başarılı!',
+        message: 'Başvurunuz başarıyla gönderildi. İşveren tarafından değerlendirilecek.'
+      });
       
     } catch (error: any) {
       console.error('Başvuru hatası:', error);
-      alert(error.message || 'Başvuru gönderilemedi. Lütfen tekrar deneyin.');
+      showToast({
+        type: 'error',
+        title: 'Başvuru Hatası',
+        message: error.message || 'Başvuru gönderilemedi. Lütfen tekrar deneyin.'
+      });
     } finally {
       // Başvuru işlemi tamamlandığını göster
       setApplyingJobs(prev => {
@@ -129,8 +151,13 @@ const Dashboard = () => {
   useEffect(() => {
     const load = async () => {
       try {
-        const { data: auth } = await supabase.auth.getUser();
-        const user = auth.user;
+        // Paralel veri yükleme (cache ile optimize edildi)
+        const [authData, jobsData] = await Promise.all([
+          supabase.auth.getUser(),
+          fetchPublishedJobsOptimized()
+        ]);
+
+        const user = authData.data.user;
         if (user) {
           const meta: any = user.user_metadata || {};
           const fullName: string = meta.full_name || meta.name || `${meta.first_name || ''} ${meta.last_name || ''}`.trim();
@@ -152,7 +179,7 @@ const Dashboard = () => {
           }
         }
         // Önerilen işler (şimdilik son yayınlanan 6 ilan)
-        const jobs = await fetchPublishedJobs();
+        const jobs = jobsData;
         const mappedJobs = jobs.slice(0, 6).map((j: any) => ({
           id: j.id,
           title: j.title,
@@ -174,14 +201,27 @@ const Dashboard = () => {
         // Son başvurular
         if (user?.id) {
           const apps = await getMyApplications(user.id);
-          const mappedApps = apps.slice(0, 5).map((a: any) => ({
-            id: a.id,
-            jobTitle: a.jobs?.title || 'İş İlanı',
-            company: a.jobs?.company_name || 'Şirket',
-            status: a.status,
-            appliedDate: new Date(a.created_at).toLocaleDateString('tr-TR'),
-            statusColor: a.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : a.status === 'approved' || a.status === 'accepted' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-          }));
+          const mappedApps = apps.slice(0, 5).map((a: any) => {
+            // Status'u Türkçe'ye çevir
+            const statusMap: { [key: string]: { text: string; color: string } } = {
+              'pending': { text: 'Beklemede', color: 'bg-yellow-100 text-yellow-800' },
+              'in_review': { text: 'İnceleniyor', color: 'bg-blue-100 text-blue-800' },
+              'accepted': { text: 'Kabul Edildi', color: 'bg-green-100 text-green-800' },
+              'rejected': { text: 'Reddedildi', color: 'bg-red-100 text-red-800' },
+              'approved': { text: 'Onaylandı', color: 'bg-green-100 text-green-800' }
+            };
+            
+            const statusInfo = statusMap[a.status] || { text: a.status, color: 'bg-gray-100 text-gray-800' };
+            
+            return {
+              id: a.id,
+              jobTitle: a.jobs?.title || 'İş İlanı',
+              company: a.jobs?.companies?.name || 'Şirket',
+              status: statusInfo.text,
+              appliedDate: new Date(a.created_at).toLocaleDateString('tr-TR'),
+              statusColor: statusInfo.color
+            };
+          });
           setRecentApplications(mappedApps);
         }
 

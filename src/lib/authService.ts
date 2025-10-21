@@ -88,21 +88,42 @@ export async function signUp(email: string, password: string, metadata?: Record<
             user_id: uid,
             email,
             first_name: firstName || fullName || '',
-            last_name: lastName || ''
+            last_name: lastName || '',
+            role: metadata?.userType || 'individual'
           });
         } catch (e) {
+          console.warn('ensureUserRowByUserId başarısız, ensureUserRowByEmail deneniyor:', e);
           await ensureUserRowByEmail({
             email,
             first_name: firstName || fullName || '',
-            last_name: lastName || ''
+            last_name: lastName || '',
+            role: metadata?.userType || 'individual',
+            auth_user_id: uid
           });
         }
       } else {
         await ensureUserRowByEmail({
           email,
           first_name: firstName || fullName || '',
-          last_name: lastName || ''
+          last_name: lastName || '',
+          role: metadata?.userType || 'individual'
         });
+      }
+    } else {
+      // Session yoksa da email ile kayıt eklemeye çalış
+      const fullName: string = (metadata?.name as string) || '';
+      const [firstName, ...rest] = fullName.split(' ');
+      const lastName = rest.join(' ');
+      
+      try {
+        await ensureUserRowByEmail({
+          email,
+          first_name: firstName || fullName || '',
+          last_name: lastName || '',
+          role: metadata?.userType || 'individual'
+        });
+      } catch (e) {
+        console.warn('Email ile kayıt ekleme başarısız:', e);
       }
     }
   } catch (e) {
@@ -132,20 +153,25 @@ export async function signIn(email: string, password: string) {
           user_id: uid,
           email,
           first_name: firstName || fullName || '',
-          last_name: lastName || ''
+          last_name: lastName || '',
+          role: meta.userType || 'individual'
         });
       } catch (e) {
+        console.warn('ensureUserRowByUserId başarısız, ensureUserRowByEmail deneniyor:', e);
         await ensureUserRowByEmail({
           email,
           first_name: firstName || fullName || '',
-          last_name: lastName || ''
+          last_name: lastName || '',
+          role: meta.userType || 'individual',
+          auth_user_id: uid
         });
       }
     } else {
       await ensureUserRowByEmail({
         email,
         first_name: firstName || fullName || '',
-        last_name: lastName || ''
+        last_name: lastName || '',
+        role: meta.userType || 'individual'
       });
     }
   } catch (e) {
@@ -206,11 +232,13 @@ export async function signInWithRole(email: string, password: string, allowedRol
           role: effectiveRole
         });
       } catch (e) {
+        console.warn('ensureUserRowByUserId başarısız, ensureUserRowByEmail deneniyor:', e);
         await ensureUserRowByEmail({
           email,
           first_name: firstName || fullName || '',
           last_name: lastName || '',
-          role: effectiveRole
+          role: effectiveRole,
+          auth_user_id: uid
         });
       }
     } else {

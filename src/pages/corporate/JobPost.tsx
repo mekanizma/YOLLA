@@ -50,6 +50,16 @@ const experienceLevels = [
 ];
 const employmentTypes = ['Tam Zamanlı', 'Yarı Zamanlı', 'Sözleşmeli', 'Staj', 'Geçici'];
 
+const workDays = [
+  { value: 'monday', label: 'Pazartesi' },
+  { value: 'tuesday', label: 'Salı' },
+  { value: 'wednesday', label: 'Çarşamba' },
+  { value: 'thursday', label: 'Perşembe' },
+  { value: 'friday', label: 'Cuma' },
+  { value: 'saturday', label: 'Cumartesi' },
+  { value: 'sunday', label: 'Pazar' }
+];
+
 const commonBenefits = [
   'Özel Sağlık Sigortası',
   'Yemek Kartı',
@@ -86,6 +96,11 @@ interface JobForm {
   };
   benefits: string[];
   extraRequirements: boolean[];
+  workHours: {
+    startTime: string;
+    endTime: string;
+    workDays: string[];
+  };
 }
 
 const JobPost: React.FC = () => {
@@ -105,7 +120,12 @@ const JobPost: React.FC = () => {
       showSalary: false
     },
     benefits: [],
-    extraRequirements: [false, false, false, false, false]
+    extraRequirements: [false, false, false, false, false],
+    workHours: {
+      startTime: '',
+      endTime: '',
+      workDays: []
+    }
   });
   const navigate = useNavigate();
 
@@ -118,6 +138,14 @@ const JobPost: React.FC = () => {
           ...prev,
           salary: {
             ...prev.salary,
+            [child]: value
+          }
+        }));
+      } else if (parent === 'workHours') {
+        setForm(prev => ({
+          ...prev,
+          workHours: {
+            ...prev.workHours,
             [child]: value
           }
         }));
@@ -166,6 +194,9 @@ const JobPost: React.FC = () => {
           : null,
         benefits: form.benefits.length ? form.benefits : null,
         application_deadline: form.deadline || null,
+        work_start_time: form.workHours.startTime || null,
+        work_end_time: form.workHours.endTime || null,
+        work_days: form.workHours.workDays.length > 0 ? form.workHours.workDays : null,
         status: 'published',
       });
       alert('İlan başarıyla oluşturuldu');
@@ -242,6 +273,71 @@ const JobPost: React.FC = () => {
           <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
             İlanın yayında kalacağı son tarihi belirtin
           </Typography>
+        </Grid>
+
+        {/* Çalışma Saatleri */}
+        <Grid item xs={12}>
+          <Typography variant="subtitle1" fontWeight={600} mb={2}>
+            Çalışma Saatleri
+          </Typography>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="İşe Başlama Saati"
+                name="workHours.startTime"
+                type="time"
+                value={form.workHours.startTime}
+                onChange={handleChange}
+                margin="dense"
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="İşten Çıkış Saati"
+                name="workHours.endTime"
+                type="time"
+                value={form.workHours.endTime}
+                onChange={handleChange}
+                margin="dense"
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <Typography variant="body2" color="text.secondary" mb={1}>
+                Çalışma Günleri
+              </Typography>
+              <Box display="flex" gap={1} flexWrap="wrap">
+                {workDays.map((day) => (
+                  <Button
+                    key={day.value}
+                    variant={form.workHours.workDays.includes(day.value) ? "contained" : "outlined"}
+                    size="small"
+                    onClick={() => {
+                      setForm(prev => ({
+                        ...prev,
+                        workHours: {
+                          ...prev.workHours,
+                          workDays: prev.workHours.workDays.includes(day.value)
+                            ? prev.workHours.workDays.filter(d => d !== day.value)
+                            : [...prev.workHours.workDays, day.value]
+                        }
+                      }));
+                    }}
+                    sx={{
+                      borderRadius: 2,
+                      textTransform: 'none',
+                      fontSize: '0.8rem'
+                    }}
+                  >
+                    {day.label}
+                  </Button>
+                ))}
+              </Box>
+            </Grid>
+          </Grid>
         </Grid>
 
         {/* Maaş Bilgisi */}
@@ -638,6 +734,31 @@ const JobPost: React.FC = () => {
                         </Typography>
                       </Box>
                     </Grid>
+                    
+                    {/* Çalışma Saatleri */}
+                    {(form.workHours.startTime || form.workHours.endTime || form.workHours.workDays.length > 0) && (
+                      <Grid item xs={12}>
+                        <Box display="flex" alignItems="center" gap={1}>
+                          <Clock size={18} className="text-gray-500" />
+                          <Typography variant="body2" color="text.secondary">
+                            Çalışma Saatleri: {
+                              form.workHours.startTime && form.workHours.endTime 
+                                ? `${form.workHours.startTime} - ${form.workHours.endTime}`
+                                : form.workHours.startTime 
+                                  ? `${form.workHours.startTime} başlangıç`
+                                  : form.workHours.endTime
+                                    ? `${form.workHours.endTime} bitiş`
+                                    : ''
+                            }
+                            {form.workHours.workDays.length > 0 && (
+                              <span> ({form.workHours.workDays.map(day => 
+                                workDays.find(d => d.value === day)?.label
+                              ).join(', ')})</span>
+                            )}
+                          </Typography>
+                        </Box>
+                      </Grid>
+                    )}
                   </Grid>
                 </Box>
 

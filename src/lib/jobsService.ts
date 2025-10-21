@@ -17,6 +17,9 @@ export type JobRecord = {
   status: 'draft' | 'published' | 'closed';
   is_remote: boolean;
   application_deadline: string | null;
+  work_start_time: string | null;
+  work_end_time: string | null;
+  work_days: string[] | null;
   company_id: string;
   views: number;
   applications: number;
@@ -122,6 +125,9 @@ export async function createCorporateJob(companyId: string, payload: {
   salary?: { min?: number; max?: number; currency?: string } | null;
   benefits?: string[] | null;
   application_deadline?: string | null;
+  work_start_time?: string | null;
+  work_end_time?: string | null;
+  work_days?: string[] | null;
   status?: JobRecord['status'];
 }) {
   const insertPayload: Partial<JobRecord> = {
@@ -140,6 +146,9 @@ export async function createCorporateJob(companyId: string, payload: {
     status: payload.status || 'published',
     is_remote: false,
     application_deadline: payload.application_deadline || null,
+    work_start_time: payload.work_start_time || null,
+    work_end_time: payload.work_end_time || null,
+    work_days: payload.work_days || null,
     company_id: companyId,
     views: 0,
     applications: 0,

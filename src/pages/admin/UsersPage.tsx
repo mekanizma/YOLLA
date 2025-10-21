@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Input, Space, Modal } from 'antd';
-import { SearchOutlined, EyeOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Table, Button, Input, Space, Modal, message } from 'antd';
+import { SearchOutlined, EyeOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons';
 import supabase from '../../lib/supabaseClient';
+import { cleanupUnknownUsers } from '../../lib/applicationsService';
 
 type UserProfile = { id: number; email: string; first_name?: string; last_name?: string; phone?: string; created_at?: string };
 
@@ -9,6 +10,7 @@ const UsersPage: React.FC = () => {
   const [data, setData] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [detail, setDetail] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -34,6 +36,21 @@ const UsersPage: React.FC = () => {
 
   const handleDelete = (id: number) => {
     setData(data.filter(u => u.id !== id));
+  };
+
+  const handleCleanupUnknownUsers = async () => {
+    setLoading(true);
+    try {
+      await cleanupUnknownUsers();
+      message.success('Bilinmeyen kullanıcılar başarıyla temizlendi!');
+      // Sayfayı yenile
+      window.location.reload();
+    } catch (error) {
+      message.error('Temizleme işlemi başarısız oldu');
+      console.error('Temizleme hatası:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const columns = [
@@ -65,6 +82,14 @@ const UsersPage: React.FC = () => {
           onChange={e => setSearch(e.target.value)}
           allowClear
         />
+        <Button 
+          icon={<ReloadOutlined />} 
+          onClick={handleCleanupUnknownUsers}
+          loading={loading}
+          type="primary"
+        >
+          Bilinmeyen Kullanıcıları Temizle
+        </Button>
       </Space>
       <Table rowKey="id" columns={columns} dataSource={filtered} pagination={{ pageSize: 8 }} />
       <Modal open={!!detail} onCancel={() => setDetail(null)} footer={null} title="Kullanıcı Detayı">
