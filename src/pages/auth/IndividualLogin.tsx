@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Briefcase, Eye, EyeOff, User } from 'lucide-react';
 import Header from '../../components/layout/Header';
 import Footer from '../../components/layout/Footer';
@@ -9,6 +10,7 @@ import { signInWithRole } from '../../lib/authService';
 
 const IndividualLogin = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -25,7 +27,7 @@ const IndividualLogin = () => {
       await signInWithRole(email, password, 'individual');
       navigate('/individual/dashboard');
     } catch (err: any) {
-      setError(err.message || 'Giriş yapılamadı. Lütfen bilgilerinizi kontrol edin.');
+      setError(err.message || t('auth:loginError'));
     } finally {
       setIsLoading(false);
     }
@@ -44,8 +46,8 @@ const IndividualLogin = () => {
               </div>
             </div>
             
-            <h1 className="text-2xl font-bold text-center mb-2">Bireysel Giriş</h1>
-            <p className="text-gray-600 text-center mb-6">Hesabınıza giriş yaparak iş aramaya devam edin</p>
+            <h1 className="text-2xl font-bold text-center mb-2">{t('auth:loginAsIndividual')}</h1>
+            <p className="text-gray-600 text-center mb-6">{t('auth:loginDescription')}</p>
             
             {error && (
               <div className="bg-error/10 text-error p-3 rounded-md mb-4 text-sm">
@@ -55,7 +57,7 @@ const IndividualLogin = () => {
             
             <form onSubmit={handleLogin} className="space-y-4">
               <Input
-                label="E-posta Adresi"
+                label={t('auth:email')}
                 type="email"
                 placeholder="ornek@mail.com"
                 value={email}
@@ -65,7 +67,7 @@ const IndividualLogin = () => {
               
               <div className="w-full">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Şifre
+                  {t('auth:password')}
                 </label>
                 <div className="relative">
                   <Input
@@ -94,23 +96,23 @@ const IndividualLogin = () => {
                     checked={rememberMe}
                     onChange={() => setRememberMe(!rememberMe)}
                   />
-                  <span className="ml-2 text-sm text-gray-600">Beni Hatırla</span>
+                  <span className="ml-2 text-sm text-gray-600">{t('auth:rememberMe')}</span>
                 </label>
                 <Link to="/forgot-password" className="text-sm text-primary hover:underline">
-                  Şifremi Unuttum
+                  {t('auth:forgotPassword')}
                 </Link>
               </div>
               
               <Button type="submit" className="w-full" isLoading={isLoading}>
-                Giriş Yap
+                {t('auth:loginButton')}
               </Button>
             </form>
             
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">
-                Henüz hesabınız yok mu?{' '}
+                {t('auth:noAccount')}{' '}
                 <Link to="/register" className="text-primary hover:underline font-medium">
-                  Hemen Kaydolun
+                  {t('auth:register')}
                 </Link>
               </p>
             </div>
@@ -119,7 +121,7 @@ const IndividualLogin = () => {
           <div className="text-center mt-6">
             <Link to="/login/corporate" className="text-sm text-gray-600 hover:text-primary flex items-center justify-center">
               <Briefcase className="mr-1" size={16} />
-              <span>Kurumsal kullanıcıysanız, buradan giriş yapabilirsiniz</span>
+              <span>{t('auth:corporateUserLink')}</span>
             </Link>
           </div>
         </div>

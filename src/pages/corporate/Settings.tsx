@@ -15,6 +15,7 @@ import {
   useMediaQuery,
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
+import { useTranslation } from 'react-i18next';
 import Header from '../../components/layout/Header';
 import PhotoCamera from '@mui/icons-material/PhotoCamera';
 import supabase from '../../lib/supabaseClient';
@@ -51,6 +52,7 @@ interface CompanySettings {
 }
 
 const CorporateSettings: React.FC = () => {
+  const { t } = useTranslation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [settings, setSettings] = useState<CompanySettings>({
@@ -267,7 +269,7 @@ const CorporateSettings: React.FC = () => {
                   }}
                 >
                   {logo ? (
-                    <img src={logo} alt="Şirket Logosu" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img src={logo} alt={t('common:companyLogo')} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : (
                     <PhotoCamera sx={{ fontSize: 40, color: '#b0b8c9' }} />
                   )}
@@ -280,7 +282,7 @@ const CorporateSettings: React.FC = () => {
                     disabled={logoLoading}
                     sx={{ fontWeight: 500, borderRadius: 2 }}
                   >
-                    {logoLoading ? 'Kaydediliyor...' : 'KAYDET'}
+                    {logoLoading ? t('common:saving') : t('common:saveLogo')}
                   </Button>
                 ) : (
                   <Button
@@ -289,7 +291,7 @@ const CorporateSettings: React.FC = () => {
                     size="small"
                     sx={{ fontWeight: 500, borderRadius: 2 }}
                   >
-                    LOGO YÜKLE
+                    {t('common:uploadLogo')}
                     <input hidden accept="image/*" type="file" onChange={handleLogoChange} />
                   </Button>
                 )}
@@ -298,20 +300,20 @@ const CorporateSettings: React.FC = () => {
                 {settings.companyName}
               </Typography>
               <Typography color="text.secondary" fontSize={16}>
-                Şirket profilinizi güncelleyin ve daha profesyonel görünün.
+                {t('common:companyProfileSubtitle')}
               </Typography>
             </Box>
           </Paper>
           <form onSubmit={handleSubmit}>
             <StyledPaper elevation={0} sx={{ mb: 3, borderRadius: 4 }}>
               <Typography variant="h6" fontWeight={600} gutterBottom>
-                Şirket Bilgileri
+                {t('common:companyInfo')}
               </Typography>
               <Divider sx={{ mb: 2 }} />
               <Grid container spacing={3}>
                 <Grid item xs={12} sm={6}>
                   <TextField
-                    label="Şirket Adı"
+                    label={t('common:companyName')}
                     value={settings.companyName}
                     onChange={(e) => handleChange('companyName', e.target.value)}
                     margin="normal"
@@ -320,7 +322,7 @@ const CorporateSettings: React.FC = () => {
                 </Grid>
                 <Grid item xs={12} sm={6}>
                   <TextField
-                    label="E-posta"
+                    label={t('common:email')}
                     type="email"
                     value={settings.email}
                     onChange={(e) => handleChange('email', e.target.value)}
@@ -330,7 +332,7 @@ const CorporateSettings: React.FC = () => {
                 </Grid>
                 <Grid item xs={12} sm={6}>
                   <TextField
-                    label="Telefon"
+                    label={t('common:phone')}
                     value={settings.phone}
                     onChange={(e) => handleChange('phone', e.target.value)}
                     margin="normal"
@@ -339,7 +341,7 @@ const CorporateSettings: React.FC = () => {
                 </Grid>
                 <Grid item xs={12} sm={6}>
                   <TextField
-                    label="Website"
+                    label={t('common:website')}
                     value={settings.website}
                     onChange={(e) => handleChange('website', e.target.value)}
                     margin="normal"
@@ -348,7 +350,7 @@ const CorporateSettings: React.FC = () => {
                 </Grid>
                 <Grid item xs={12}>
                   <TextField
-                    label="Adres"
+                    label={t('common:address')}
                     value={settings.address}
                     onChange={(e) => handleChange('address', e.target.value)}
                     margin="normal"
@@ -357,7 +359,7 @@ const CorporateSettings: React.FC = () => {
                 </Grid>
                 <Grid item xs={12} sm={6}>
                   <TextField
-                    label="Sektör"
+                    label={t('common:industry')}
                     value={settings.industry}
                     onChange={(e) => handleChange('industry', e.target.value)}
                     margin="normal"
@@ -366,7 +368,7 @@ const CorporateSettings: React.FC = () => {
                 </Grid>
                 <Grid item xs={12} sm={6}>
                   <TextField
-                    label="Şirket Büyüklüğü"
+                    label={t('common:companySize')}
                     value={settings.companySize}
                     onChange={(e) => handleChange('companySize', e.target.value)}
                     margin="normal"
@@ -377,7 +379,7 @@ const CorporateSettings: React.FC = () => {
             </StyledPaper>
             <StyledPaper elevation={0} sx={{ mb: 3, borderRadius: 4 }}>
               <Typography variant="h6" fontWeight={600} gutterBottom>
-                Bildirim Ayarları
+                {t('common:notificationSettings')}
               </Typography>
               <Divider sx={{ mb: 2 }} />
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -388,7 +390,7 @@ const CorporateSettings: React.FC = () => {
                       onChange={() => handleNotificationChange('newApplications')}
                     />
                   }
-                  label="Yeni başvurular için bildirim"
+                  label={t('common:newApplicationNotification')}
                 />
                 <FormControlLabel
                   control={
@@ -397,7 +399,7 @@ const CorporateSettings: React.FC = () => {
                       onChange={() => handleNotificationChange('applicationUpdates')}
                     />
                   }
-                  label="Başvuru güncellemeleri için bildirim"
+                  label={t('common:applicationUpdateNotification')}
                 />
                 <FormControlLabel
                   control={
@@ -406,7 +408,7 @@ const CorporateSettings: React.FC = () => {
                       onChange={() => handleNotificationChange('jobExpiry')}
                     />
                   }
-                  label="İlan süresi dolmak üzere bildirimi"
+                  label={t('common:jobExpiryNotification')}
                 />
                 <FormControlLabel
                   control={
@@ -415,13 +417,13 @@ const CorporateSettings: React.FC = () => {
                       onChange={() => handleNotificationChange('marketingEmails')}
                     />
                   }
-                  label="Pazarlama e-postaları"
+                  label={t('common:marketingEmails')}
                 />
               </Box>
             </StyledPaper>
             <StyledPaper elevation={0} sx={{ mb: 3, borderRadius: 4 }}>
               <Typography variant="h6" fontWeight={600} gutterBottom>
-                Gizlilik Ayarları
+                {t('common:privacySettings')}
               </Typography>
               <Divider sx={{ mb: 2 }} />
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -432,7 +434,7 @@ const CorporateSettings: React.FC = () => {
                       onChange={() => handlePrivacyChange('showCompanyInfo')}
                     />
                   }
-                  label="Şirket bilgilerini göster"
+                  label={t('common:showCompanyInfo')}
                 />
                 <FormControlLabel
                   control={
@@ -441,7 +443,7 @@ const CorporateSettings: React.FC = () => {
                       onChange={() => handlePrivacyChange('allowDirectMessages')}
                     />
                   }
-                  label="Doğrudan mesajlara izin ver"
+                  label={t('common:allowDirectMessages')}
                 />
                 <FormControlLabel
                   control={
@@ -450,7 +452,7 @@ const CorporateSettings: React.FC = () => {
                       onChange={() => handlePrivacyChange('showActiveJobs')}
                     />
                   }
-                  label="Aktif iş ilanlarını göster"
+                  label={t('common:showActiveJobs')}
                 />
               </Box>
             </StyledPaper>
@@ -463,12 +465,12 @@ const CorporateSettings: React.FC = () => {
                 disabled={loading}
                 sx={{ borderRadius: 2, minWidth: 180, fontWeight: 600, fontSize: 16 }}
               >
-                {loading ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}
+                {loading ? t('common:savingChanges') : t('common:saveChanges')}
               </Button>
             </Box>
             {showSuccess && (
               <Alert severity="success" sx={{ mt: 3 }}>
-                Ayarlar başarıyla kaydedildi!
+                {t('common:settingsSaved')}
               </Alert>
             )}
           </form>

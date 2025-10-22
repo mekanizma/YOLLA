@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { ChevronRight, Clock, Building, MapPin, Search, Filter, CheckCircle, UserCheck, Handshake, Flag } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { Clock, MapPin, Search, Filter, CheckCircle, Handshake, Flag } from 'lucide-react';
 import Header from '../../components/layout/Header';
 import Footer from '../../components/layout/Footer';
 import Button from '../../components/ui/Button';
@@ -8,6 +9,7 @@ import supabase from '../../lib/supabaseClient';
 import { getMyApplications } from '../../lib/applicationsService';
 
 const Applications = () => {
+  const { t } = useTranslation();
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
@@ -18,16 +20,16 @@ const Applications = () => {
   const mapStatusToUi = (status: string) => {
     switch (status) {
       case 'pending':
-        return { text: 'Beklemede', color: 'bg-blue-100 text-blue-800' };
+        return { text: t('applications:pending'), color: 'bg-blue-100 text-blue-800' };
       case 'in_review':
-        return { text: 'İncelemede', color: 'bg-yellow-100 text-yellow-800' };
+        return { text: t('applications:inReview'), color: 'bg-yellow-100 text-yellow-800' };
       case 'accepted':
       case 'approved':
-        return { text: 'Kabul Edildi', color: 'bg-green-100 text-green-800' };
+        return { text: t('applications:accepted'), color: 'bg-green-100 text-green-800' };
       case 'rejected':
-        return { text: 'Reddedildi', color: 'bg-red-100 text-red-800' };
+        return { text: t('applications:rejected'), color: 'bg-red-100 text-red-800' };
       default:
-        return { text: 'Beklemede', color: 'bg-blue-100 text-blue-800' };
+        return { text: t('applications:pending'), color: 'bg-blue-100 text-blue-800' };
     }
   };
 
@@ -47,8 +49,8 @@ const Applications = () => {
           const ui = mapStatusToUi(a.status as string);
           return {
             id: a.id,
-            position: a.jobs?.title || 'İş İlanı',
-            company: a.jobs?.companies?.name || 'Şirket',
+            position: a.jobs?.title || t('applications:jobPosting'),
+            company: a.jobs?.companies?.name || t('applications:company'),
             location: a.jobs?.location || '-',
             appliedDate: new Date(a.created_at).toLocaleDateString('tr-TR'),
             status: ui.text,
@@ -76,21 +78,21 @@ const Applications = () => {
 
   // Başvuru aşamaları
   const steps = [
-    { key: 'application', label: 'Başvuru', icon: <CheckCircle size={28} /> },
-    { key: 'review', label: 'İnceleme', icon: <CheckCircle size={28} /> },
-    { key: 'offer', label: 'Teklif', icon: <Handshake size={28} /> },
-    { key: 'result', label: 'Sonuç', icon: <Flag size={28} /> },
+    { key: 'application', label: t('applications:application'), icon: <CheckCircle size={28} /> },
+    { key: 'review', label: t('applications:review'), icon: <CheckCircle size={28} /> },
+    { key: 'offer', label: t('applications:offer'), icon: <Handshake size={28} /> },
+    { key: 'result', label: t('applications:result'), icon: <Flag size={28} /> },
   ];
 
   // Her başvuru için ilerleme yüzdesi (gerçek veriyle)
   const getProgressPercent = (status: string) => {
     switch (status) {
-      case 'Beklemede':
+      case t('applications:pending'):
         return 25;
-      case 'İncelemede':
+      case t('applications:inReview'):
         return 50;
-      case 'Kabul Edildi':
-      case 'Reddedildi':
+      case t('applications:accepted'):
+      case t('applications:rejected'):
         return 100;
       default:
         return 0;
@@ -106,14 +108,14 @@ const Applications = () => {
           <div className="container mx-auto px-4 py-8">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
-                <h1 className="text-2xl font-bold">Başvurularım</h1>
-                <p className="text-gray-600 mt-1">Tüm iş başvurularınızı buradan takip edebilirsiniz</p>
+                <h1 className="text-2xl font-bold">{t('applications:myApplications')}</h1>
+                <p className="text-gray-600 mt-1">{t('applications:trackAllApplications')}</p>
               </div>
               <Button 
                 onClick={() => navigate('/individual/jobs')}
                 className="md:w-auto w-full justify-center"
               >
-                Yeni İş İlanlarını Keşfet
+                {t('applications:exploreNewJobs')}
               </Button>
             </div>
           </div>
@@ -123,7 +125,7 @@ const Applications = () => {
           <div className="container mx-auto px-4 py-8">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Başvurularınız yükleniyor...</p>
+              <p className="text-gray-600">{t('applications:loadingApplications')}</p>
             </div>
           </div>
         ) : filteredApplications.length === 0 ? (
@@ -134,10 +136,10 @@ const Applications = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Henüz başvuru yapmadınız</h3>
-              <p className="text-gray-600 mb-6">İş ilanlarına göz atın ve ilk başvurunuzu yapın!</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">{t('applications:noApplicationsYet')}</h3>
+              <p className="text-gray-600 mb-6">{t('applications:browseJobsAndApply')}</p>
               <Button onClick={() => navigate('/individual/jobs')}>
-                İş İlanlarını Görüntüle
+                {t('applications:viewJobListings')}
               </Button>
             </div>
           </div>
@@ -152,7 +154,7 @@ const Applications = () => {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                   <input
                     type="text"
-                    placeholder="Pozisyon veya şirket ara"
+                    placeholder={t('common:searchPlaceholder')}
                     className="pl-10 pr-3 py-2 w-full rounded-md border border-gray-200 focus:border-primary focus:ring-1 focus:ring-primary outline-none"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -165,11 +167,11 @@ const Applications = () => {
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value)}
                 >
-                  <option value="all">Tüm Başvurular</option>
-                  <option value="Beklemede">Beklemede</option>
-                  <option value="İncelemede">İncelemede</option>
-                  <option value="Kabul Edildi">Kabul Edildi</option>
-                  <option value="Reddedildi">Reddedildi</option>
+                  <option value="all">{t('common:allApplications')}</option>
+                  <option value="Beklemede">{t('common:pending')}</option>
+                  <option value="İncelemede">{t('common:inReview')}</option>
+                  <option value="Kabul Edildi">{t('common:accepted')}</option>
+                  <option value="Reddedildi">{t('common:rejected')}</option>
                 </select>
               </div>
             </div>
@@ -222,23 +224,23 @@ const Applications = () => {
                           size="sm"
                           onClick={() => navigate(`/individual/jobs/${application.id}`)}
                         >
-                          İlanı Görüntüle
+                          {t('applications:viewJobPosting')}
                         </Button>
                         <Button 
                           variant="outline" 
                           size="sm"
                           onClick={() => navigate(`/individual/applications/${application.id}`)}
                         >
-                          Başvuru Detayları
+                          {t('applications:applicationDetails')}
                         </Button>
                       </div>
                     </div>
                   </div>
                   <div className="mt-6">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium text-gray-700">Başvuru Durumu</span>
+                      <span className="font-medium text-gray-700">{t('applications:applicationStatus')}</span>
                       <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 text-blue-700 px-3 py-0.5 text-xs font-semibold">
-                        <span>İLERLEME</span>
+                        <span>{t('applications:progress')}</span>
                         <span className="ml-1 font-bold">{Math.round(progressPercent)}%</span>
                       </span>
                     </div>
@@ -299,9 +301,9 @@ const Applications = () => {
                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Filter className="text-gray-400" size={24} />
                 </div>
-                <h3 className="text-lg font-medium">Sonuç Bulunamadı</h3>
+                <h3 className="text-lg font-medium">{t('applications:noResultsFound')}</h3>
                 <p className="text-gray-600 mt-1">
-                  Arama kriterlerinize uygun başvuru bulunamadı.
+                  {t('applications:noMatchingApplications')}
                 </p>
                 <Button 
                   variant="outline"
@@ -311,7 +313,7 @@ const Applications = () => {
                     setFilterStatus('all');
                   }}
                 >
-                  Filtreleri Temizle
+                  {t('applications:clearFilters')}
                 </Button>
               </div>
             )}

@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, Bell, User, Briefcase, LogOut, Building, Home, Plus, Settings } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import Button from '../ui/Button';
 import BlobButton from '../ui/BlobButton';
 import LiquidButton from '../ui/LiquidButton';
+import LanguageSwitcher from '../LanguageSwitcher';
 import yollabiLogo from '../../assets/yollabi-logo.svg';
 
 interface HeaderProps {
@@ -15,6 +17,7 @@ const Header: React.FC<HeaderProps> = ({ userType, scrolled }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   
   // Check if we're on the landing page
   const isLandingPage = location.pathname === '/';
@@ -32,20 +35,20 @@ const Header: React.FC<HeaderProps> = ({ userType, scrolled }) => {
   };
   
   const individualLinks = [
-    { name: 'Ana Sayfa', path: '/individual/dashboard', icon: <Home size={16} /> },
-    { name: 'İş Ara', path: '/individual/jobs', icon: <Briefcase size={16} /> },
-    { name: 'Başvurularım', path: '/individual/applications', icon: <Briefcase size={16} /> },
-    { name: 'Bildirimler', path: '/individual/notifications', icon: <Bell size={16} /> },
-    { name: 'Profilim', path: '/individual/profile', icon: <User size={16} /> },
+    { name: t('dashboard:individualDashboard'), path: '/individual/dashboard', icon: <Home size={16} /> },
+    { name: t('jobs:searchJobs'), path: '/individual/jobs', icon: <Briefcase size={16} /> },
+    { name: t('dashboard:myApplications'), path: '/individual/applications', icon: <Briefcase size={16} /> },
+    { name: t('dashboard:notifications'), path: '/individual/notifications', icon: <Bell size={16} /> },
+    { name: t('dashboard:myProfile'), path: '/individual/profile', icon: <User size={16} /> },
   ];
   
   const corporateLinks = [
-    { name: 'Ana Sayfa', path: '/corporate/dashboard', icon: <Home size={16} /> },
-    { name: 'İlan Oluştur', path: '/corporate/post-job', icon: <Plus size={16} /> },
-    { name: 'İlanlarım', path: '/corporate/jobs', icon: <Briefcase size={16} /> },
-    { name: 'Başvurular', path: '/corporate/applications', icon: <User size={16} /> },
-    { name: 'Bildirimler', path: '/corporate/notifications', icon: <Bell size={16} /> },
-    { name: 'Ayarlar', path: '/corporate/settings', icon: <Settings size={16} /> },
+    { name: t('dashboard:corporateDashboard'), path: '/corporate/dashboard', icon: <Home size={16} /> },
+    { name: t('jobs:postNewJob'), path: '/corporate/post-job', icon: <Plus size={16} /> },
+    { name: t('dashboard:myJobs'), path: '/corporate/jobs', icon: <Briefcase size={16} /> },
+    { name: t('dashboard:applications'), path: '/corporate/applications', icon: <User size={16} /> },
+    { name: t('dashboard:notifications'), path: '/corporate/notifications', icon: <Bell size={16} /> },
+    { name: t('dashboard:settings'), path: '/corporate/settings', icon: <Settings size={16} /> },
   ];
   
   const activeLinks = userType === 'individual' 
@@ -78,28 +81,31 @@ const Header: React.FC<HeaderProps> = ({ userType, scrolled }) => {
           
           {/* Desktop Nav */}
           {userType ? (
-            <nav className="hidden md:flex space-x-2">
-              {activeLinks.map((link) => (
+            <div className="hidden md:flex items-center space-x-4">
+              <nav className="flex space-x-2">
+                {activeLinks.map((link) => (
+                  <LiquidButton
+                    key={link.path}
+                    onClick={() => navigate(link.path)}
+                    active={location.pathname === link.path}
+                    dark={isLandingPage && !scrolled}
+                    icon={link.icon}
+                  >
+                    {link.name}
+                  </LiquidButton>
+                ))}
                 <LiquidButton
-                  key={link.path}
-                  onClick={() => navigate(link.path)}
-                  active={location.pathname === link.path}
+                  onClick={handleLogout}
                   dark={isLandingPage && !scrolled}
-                  icon={link.icon}
+                  icon={<LogOut size={16} />}
                 >
-                  {link.name}
+                  {t('common:logout')}
                 </LiquidButton>
-              ))}
-              <LiquidButton
-                onClick={handleLogout}
-                dark={isLandingPage && !scrolled}
-                icon={<LogOut size={16} />}
-              >
-                Çıkış
-              </LiquidButton>
-            </nav>
+              </nav>
+              {/* Language switcher hidden after login as requested */}
+            </div>
           ) : !isLoginPage ? (
-            <div className="hidden md:flex space-x-4">
+            <div className="hidden md:flex items-center space-x-4">
               <div className="flex items-center gap-4">
                 <BlobButton
                   onClick={() => navigate('/login/individual')}
@@ -107,7 +113,7 @@ const Header: React.FC<HeaderProps> = ({ userType, scrolled }) => {
                   className="flex items-center gap-2"
                 >
                   <User className="w-4 h-4" />
-                  Bireysel Giriş
+                  {t('auth:loginAsIndividual')}
                 </BlobButton>
                 <BlobButton
                   onClick={() => navigate('/login/corporate')}
@@ -115,9 +121,13 @@ const Header: React.FC<HeaderProps> = ({ userType, scrolled }) => {
                   className="flex items-center gap-2"
                 >
                   <Building className="w-4 h-4" />
-                  Kurumsal Giriş
+                  {t('auth:loginAsCorporate')}
                 </BlobButton>
               </div>
+              <LanguageSwitcher 
+                variant="dropdown" 
+                className={isLandingPage && !scrolled ? "text-white" : ""}
+              />
             </div>
           ) : null}
           
@@ -176,7 +186,7 @@ const Header: React.FC<HeaderProps> = ({ userType, scrolled }) => {
                   icon={<LogOut size={16} />}
                   className="justify-start"
                 >
-                  Çıkış
+                  {t('common:logout')}
                 </LiquidButton>
               </div>
             ) : !isLoginPage ? (
@@ -191,7 +201,7 @@ const Header: React.FC<HeaderProps> = ({ userType, scrolled }) => {
                     className="flex items-center justify-center gap-2"
                   >
                     <User className="w-4 h-4" />
-                    Bireysel Giriş
+                    {t('auth:loginAsIndividual')}
                   </BlobButton>
                   <BlobButton
                     onClick={() => {
@@ -202,8 +212,11 @@ const Header: React.FC<HeaderProps> = ({ userType, scrolled }) => {
                     className="flex items-center justify-center gap-2"
                   >
                     <Building className="w-4 h-4" />
-                    Kurumsal Giriş
+                    {t('auth:loginAsCorporate')}
                   </BlobButton>
+                </div>
+                <div className="flex justify-center pt-4">
+                  <LanguageSwitcher variant="buttons" />
                 </div>
               </div>
             ) : null}

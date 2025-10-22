@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { 
   PlusCircle, 
   Users, 
@@ -21,6 +22,7 @@ import { getCorporateApplications } from '../../lib/applicationsService';
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [stats, setStats] = useState<any[]>([]);
   const [recentApplications, setRecentApplications] = useState<any[]>([]);
   const [companyInfo, setCompanyInfo] = useState<any>(null);
@@ -50,38 +52,38 @@ const Dashboard = () => {
 
         setStats([
           {
-            title: 'Yayındaki İlanlar',
+            title: t('dashboard:activeJobs'),
             value: String(activeCount),
             icon: <FileText className="text-primary" />,
             bgColor: 'bg-primary/10',
-            change: `${jobs.length} toplam ilan`,
+            change: `${jobs.length} ${t('dashboard:totalJobs')}`,
             changeUp: true,
             onClick: () => navigate('/corporate/jobs'),
           },
           {
-            title: 'Toplam Başvurular',
+            title: t('dashboard:totalApplications'),
             value: String(totalApplications),
             icon: <Users className="text-secondary" />,
             bgColor: 'bg-secondary/10',
-            change: `${pendingApplications} bekleyen`,
+            change: `${pendingApplications} ${t('dashboard:pendingApplications')}`,
             changeUp: true,
             onClick: () => navigate('/corporate/applications'),
           },
           {
-            title: 'Bekleyen Başvurular',
+            title: t('dashboard:pendingApplications'),
             value: String(pendingApplications),
             icon: <Clock className="text-accent" />,
             bgColor: 'bg-accent/10',
-            change: 'İncelenmeyi bekliyor',
+            change: t('dashboard:waitingForReview'),
             changeUp: true,
             onClick: () => navigate('/corporate/applications'),
           },
           {
-            title: 'Kabul Edilenler',
+            title: t('dashboard:approvedApplications'),
             value: String(acceptedApplications),
             icon: <TrendingUp className="text-success" />,
             bgColor: 'bg-success/10',
-            change: 'İşe alım süreci',
+            change: t('dashboard:hiringProcess'),
             changeUp: false,
             onClick: () => navigate('/corporate/applications'),
           },
@@ -89,8 +91,8 @@ const Dashboard = () => {
 
         const recentApps = applications.slice(0, 5).map((app: any) => ({
           id: app.id,
-          name: app.users?.full_name || 'Aday',
-          position: app.jobs?.title || 'Pozisyon',
+          name: app.users?.full_name || t('dashboard:candidate'),
+          position: app.jobs?.title || t('dashboard:position'),
           location: app.users?.location || '-',
           date: new Date(app.created_at).toLocaleDateString('tr-TR'),
         }));
@@ -111,8 +113,8 @@ const Dashboard = () => {
         <section className="bg-gradient-to-r from-primary to-primary/80 pt-24 pb-12">
           <div className="container mx-auto px-4">
             <div className="text-center text-white">
-              <h1 className="text-2xl md:text-3xl font-bold mb-2">Hoş Geldiniz, {companyInfo?.name || 'Şirket'}!</h1>
-              <p className="text-sm md:text-base text-white/90">İş ilanlarınızı ve başvuruları buradan yönetebilirsiniz.</p>
+              <h1 className="text-2xl md:text-3xl font-bold mb-2">{t('dashboard:welcome')}, {companyInfo?.name || t('dashboard:company')}!</h1>
+              <p className="text-sm md:text-base text-white/90">{t('dashboard:corporateDescription')}</p>
             </div>
           </div>
         </section>
@@ -148,9 +150,9 @@ const Dashboard = () => {
             <div className="lg:col-span-2">
               <div className="bg-white rounded-lg shadow p-4 md:p-6">
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-lg md:text-xl font-semibold">Son Başvurular</h2>
+                  <h2 className="text-lg md:text-xl font-semibold">{t('dashboard:recentApplications')}</h2>
                   <Link to="/corporate/applications" className="text-secondary hover:underline text-xs md:text-sm font-medium flex items-center">
-                    Tümünü Gör
+                    {t('dashboard:viewAll')}
                     <ChevronRight size={16} />
                   </Link>
                 </div>
@@ -187,7 +189,7 @@ const Dashboard = () => {
                             to={`/corporate/applications/${application.id}`}
                             className="text-xs md:text-sm text-primary hover:text-primary/80 font-medium"
                           >
-                            Detayları Gör
+{t('dashboard:viewDetails')}
                           </Link>
                         </div>
                       </div>
@@ -200,12 +202,12 @@ const Dashboard = () => {
             {/* Company Profile */}
             <div className="space-y-6">
               <div className="bg-white rounded-lg shadow p-4 md:p-6">
-                <h2 className="text-lg md:text-xl font-semibold mb-4">Şirket Profili</h2>
+                <h2 className="text-lg md:text-xl font-semibold mb-4">{t('dashboard:companyProfile')}</h2>
                 {companyInfo?.logo && (
                   <div className="flex justify-center mb-4">
                     <img 
                       src={companyInfo.logo} 
-                      alt="Şirket Logosu" 
+                      alt={t('dashboard:companyLogo')} 
                       className="w-16 h-16 rounded-full object-cover border-2 border-gray-200"
                     />
                   </div>
@@ -214,35 +216,35 @@ const Dashboard = () => {
                   <div className="flex items-center gap-3">
                     <Building className="w-4 h-4 md:w-5 md:h-5 text-gray-400" />
                     <div>
-                      <p className="text-xs md:text-sm text-gray-500">Şirket Adı</p>
+                      <p className="text-xs md:text-sm text-gray-500">{t('dashboard:companyName')}</p>
                       <p className="text-sm md:text-base font-medium">{companyInfo?.name || '-'}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <Mail className="w-4 h-4 md:w-5 md:h-5 text-gray-400" />
                     <div>
-                      <p className="text-xs md:text-sm text-gray-500">E-posta</p>
+                      <p className="text-xs md:text-sm text-gray-500">{t('dashboard:email')}</p>
                       <p className="text-sm md:text-base font-medium">{companyInfo?.email || '-'}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <Phone className="w-4 h-4 md:w-5 md:h-5 text-gray-400" />
                     <div>
-                      <p className="text-xs md:text-sm text-gray-500">Telefon</p>
+                      <p className="text-xs md:text-sm text-gray-500">{t('dashboard:phone')}</p>
                       <p className="text-sm md:text-base font-medium">{companyInfo?.phone || '-'}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <MapPin className="w-4 h-4 md:w-5 md:h-5 text-gray-400" />
                     <div>
-                      <p className="text-xs md:text-sm text-gray-500">Adres</p>
+                      <p className="text-xs md:text-sm text-gray-500">{t('dashboard:address')}</p>
                       <p className="text-sm md:text-base font-medium">{companyInfo?.address || companyInfo?.location || '-'}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <Building className="w-4 h-4 md:w-5 md:h-5 text-gray-400" />
                     <div>
-                      <p className="text-xs md:text-sm text-gray-500">Website</p>
+                      <p className="text-xs md:text-sm text-gray-500">{t('dashboard:website')}</p>
                       <p className="text-sm md:text-base font-medium">
                         {companyInfo?.website ? (
                           <a 
@@ -260,7 +262,7 @@ const Dashboard = () => {
                   <div className="flex items-center gap-3">
                     <Briefcase className="w-4 h-4 md:w-5 md:h-5 text-gray-400" />
                     <div>
-                      <p className="text-xs md:text-sm text-gray-500">Sektör</p>
+                      <p className="text-xs md:text-sm text-gray-500">{t('dashboard:industry')}</p>
                       <p className="text-sm md:text-base font-medium">{companyInfo?.industry || '-'}</p>
                     </div>
                   </div>
@@ -269,31 +271,31 @@ const Dashboard = () => {
                   onClick={() => navigate('/corporate/settings')}
                   className="w-full mt-4 text-xs md:text-sm text-primary hover:text-primary/80 font-medium"
                 >
-                  Profili Düzenle
+{t('dashboard:editProfile')}
                 </button>
               </div>
 
               {/* Quick Actions */}
               <div className="bg-white rounded-lg shadow p-4 md:p-6">
-                <h2 className="text-lg md:text-xl font-semibold mb-4">Hızlı İşlemler</h2>
+                <h2 className="text-lg md:text-xl font-semibold mb-4">{t('dashboard:quickActions')}</h2>
                 <div className="space-y-3">
                   <button
                     onClick={() => navigate('/corporate/job-post')}
                     className="w-full flex items-center gap-2 text-xs md:text-sm font-medium text-gray-700 hover:text-primary transition-colors"
                   >
-                    <PlusCircle size={16} /> Yeni İlan Oluştur
+                    <PlusCircle size={16} /> {t('dashboard:createNewJob')}
                   </button>
                   <button
                     onClick={() => navigate('/corporate/applications')}
                     className="w-full flex items-center gap-2 text-xs md:text-sm font-medium text-gray-700 hover:text-primary transition-colors"
                   >
-                    <Users size={16} /> Başvuruları Yönet
+                    <Users size={16} /> {t('dashboard:manageApplications')}
                   </button>
                   <button
                     onClick={() => navigate('/corporate/jobs')}
                     className="w-full flex items-center gap-2 text-xs md:text-sm font-medium text-gray-700 hover:text-primary transition-colors"
                   >
-                    <FileText size={16} /> İlanları Görüntüle
+                    <FileText size={16} /> {t('dashboard:viewJobs')}
                   </button>
                 </div>
               </div>

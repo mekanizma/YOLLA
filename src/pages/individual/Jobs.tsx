@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Search, MapPin, Filter, ChevronDown, Star, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Search, MapPin, Star, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 import Header from '../../components/layout/Header';
 import Footer from '../../components/layout/Footer';
 import Button from '../../components/ui/Button';
-import { jobCategories, cities, experienceLevels, workTypes, updateMetaTags, pageSEOContent } from '../../lib/utils';
+import { jobCategories, workTypes, updateMetaTags, pageSEOContent, getJobCategories } from '../../lib/utils';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { fetchPublishedJobsOptimized } from '../../lib/cacheService';
 import { applyToJob } from '../../lib/applicationsService';
@@ -12,13 +13,9 @@ import supabase from '../../lib/supabaseClient';
 import { useToast } from '../../components/ui/ToastProvider';
 
 const Jobs = () => {
+  const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [selectedCity, setSelectedCity] = useState('');
-  const [selectedExperience, setSelectedExperience] = useState('');
-  const [selectedWorkType, setSelectedWorkType] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
-  const [minSalary, setMinSalary] = useState('');
   const [workType, setWorkType] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const jobsPerPage = 10;
@@ -202,8 +199,8 @@ const Jobs = () => {
       if (!auth.user?.id) {
         showToast({
           type: 'warning',
-          title: 'Giriş Gerekli',
-          message: 'Başvuru yapmak için giriş yapmalısınız.'
+          title: t('jobs:loginRequired'),
+          message: t('jobs:loginRequiredMessage')
         });
         navigate('/login/individual');
         return;
@@ -213,8 +210,8 @@ const Jobs = () => {
       if (appliedJobs.has(jobId)) {
         showToast({
           type: 'info',
-          title: 'Zaten Başvuru Yapıldı',
-          message: 'Bu ilana zaten başvuru yaptınız.'
+          title: t('jobs:alreadyApplied'),
+          message: t('jobs:alreadyAppliedMessage')
         });
         return;
       }
@@ -229,8 +226,8 @@ const Jobs = () => {
       if (!job) {
         showToast({
           type: 'error',
-          title: 'Hata',
-          message: 'İş ilanı bulunamadı.'
+          title: t('common:error'),
+          message: t('jobs:jobNotFound')
         });
         return;
       }
@@ -239,8 +236,8 @@ const Jobs = () => {
       // Başvuru yap
       await applyToJob(jobId, auth.user.id, {
         cover_letter: '', // İleride özelleştirilebilir
-        resume_url: null,
-        answers: null
+        resume_url: undefined,
+        answers: undefined
       });
       console.log('Başvuru tamamlandı');
 
@@ -277,17 +274,17 @@ const Jobs = () => {
           console.log('Bildirim parametreleri:', {
             company_id: jobData.company_id,
             title: 'Yeni Başvuru',
-            message: `${applicantName} adlı kullanıcı "${jobData.title}" pozisyonu için başvuru yaptı.`,
+            message: `${applicantName} ${t('common:applicationMessage').replace('""', `"${jobData.title}"`)}`,
             type: 'application',
-            data: { job_id: jobId, application_id: applicationId }
+            data: { job_id: jobId, application_id: jobId }
           });
           
           const notificationResult = await createNotification({
             company_id: jobData.company_id,
             title: 'Yeni Başvuru',
-            message: `${applicantName} adlı kullanıcı "${jobData.title}" pozisyonu için başvuru yaptı.`,
+            message: `${applicantName} ${t('common:applicationMessage').replace('""', `"${jobData.title}"`)}`,
             type: 'application',
-            data: { job_id: jobId, application_id: applicationId }
+            data: { job_id: jobId, application_id: jobId }
           });
           console.log('=== BİLDİRİM OLUŞTURMA SONUCU ===');
           console.log('Bildirim oluşturma sonucu:', notificationResult);
@@ -309,16 +306,16 @@ const Jobs = () => {
 
       showToast({
         type: 'success',
-        title: 'Başvuru Başarılı!',
-        message: 'Başvurunuz başarıyla gönderildi. İşveren tarafından değerlendirilecek.'
+        title: t('jobs:applicationSubmitted'),
+        message: t('jobs:applicationSubmittedMessage')
       });
       
     } catch (error: any) {
       console.error('Başvuru hatası:', error);
       showToast({
         type: 'error',
-        title: 'Başvuru Hatası',
-        message: error.message || 'Başvuru gönderilemedi. Lütfen tekrar deneyin.'
+        title: t('jobs:applicationError'),
+        message: error.message || t('jobs:applicationErrorMessage')
       });
     } finally {
       // Başvuru işlemi tamamlandığını göster
@@ -345,7 +342,7 @@ const Jobs = () => {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                   <input
                     type="text"
-                    placeholder="Pozisyon, şirket veya anahtar kelime"
+                    placeholder={t('jobs:searchPlaceholder')}
                     className="pl-10 pr-3 py-3 w-full rounded-lg border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none bg-white shadow-sm"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -355,7 +352,7 @@ const Jobs = () => {
                   type="submit" 
                   className="px-8 py-3 text-base font-semibold bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center gap-2"
                 >
-                  <Search size={20} /> Ara
+                  <Search size={20} /> {t('jobs:search')}
                 </Button>
               </div>
               
@@ -367,9 +364,9 @@ const Jobs = () => {
                     value={selectedCategory}
                     onChange={(e) => setSelectedCategory(e.target.value)}
                   >
-                    <option value="">İş kategorisi</option>
-                    {jobCategories.map((category) => (
-                      <option key={category} value={category}>{category}</option>
+                    <option value="">{t('jobs:jobCategory')}</option>
+                    {getJobCategories(t).map((cat, i) => (
+                      <option key={i} value={jobCategories[i]}>{cat}</option>
                     ))}
                   </select>
                 </div>
@@ -379,7 +376,7 @@ const Jobs = () => {
                     value={workType}
                     onChange={(e) => setWorkType(e.target.value)}
                   >
-                    <option value="">Çalışma şekli</option>
+                    <option value="">{t('jobs:workType')}</option>
                     {workTypes.map((type) => (
                       <option key={type} value={type}>{type}</option>
                     ))}
@@ -394,16 +391,16 @@ const Jobs = () => {
         <section className="container mx-auto px-4 py-8">
           <div className="mb-6 flex justify-between items-center">
             <div className="text-gray-600 text-sm">
-              {loading ? 'Yükleniyor...' : `${filteredJobs.length} iş ilanı bulundu`}
+              {loading ? t('jobs:loading') : `${filteredJobs.length} ${t('jobs:jobsFound')}`}
               {totalPages > 1 && (
                 <span className="ml-2 text-gray-500">
-                  (Sayfa {currentPage} / {totalPages})
+                  ({t('jobs:page')} {currentPage} {t('jobs:of')} {totalPages})
                 </span>
               )}
             </div>
             {totalPages > 1 && (
               <div className="text-sm text-gray-500">
-                {startIndex + 1}-{Math.min(endIndex, filteredJobs.length)} arası gösteriliyor
+                {startIndex + 1}-{Math.min(endIndex, filteredJobs.length)} {t('jobs:showingRange')}
               </div>
             )}
           </div>
@@ -432,7 +429,7 @@ const Jobs = () => {
             ) : error ? (
               <div className="text-red-600">{error}</div>
             ) : (
-              currentJobs.map((job, index) => (
+              currentJobs.map((job) => (
               <div 
                 key={job.id} 
                 className={`bg-white rounded-xl shadow-sm border p-4 md:p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 group ${
@@ -464,55 +461,55 @@ const Jobs = () => {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-gray-500 text-sm mb-3">
                           <div className="flex items-center gap-1">
                             <MapPin size={14} className="text-blue-500" /> 
-                            <span className="font-medium">Konum:</span>
+                            <span className="font-medium">{t('jobs:location')}:</span>
                             <span>{job.location}</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <Clock size={14} className="text-green-500" /> 
-                            <span className="font-medium">Yayın:</span>
+                            <span className="font-medium">{t('jobs:published')}:</span>
                             <span>{job.postedDate}</span>
                           </div>
                           {job.salary && (
                             <div className="flex items-center gap-1">
-                              <span className="text-green-600 font-semibold">💰 Maaş:</span>
+                              <span className="text-green-600 font-semibold">💰 {t('jobs:salary')}:</span>
                               <span className="text-green-600 font-semibold">{job.salary}</span>
                             </div>
                           )}
                           {job.category && (
                             <div className="flex items-center gap-1">
-                              <span className="font-medium">Sektör:</span>
+                              <span className="font-medium">{t('jobs:sector')}:</span>
                               <span>{job.category}</span>
                             </div>
                           )}
                           {(job.workStartTime || job.workEndTime) && (
                             <div className="flex items-center gap-1">
                               <Clock size={14} className="text-orange-500" />
-                              <span className="font-medium">Çalışma Saatleri:</span>
+                              <span className="font-medium">{t('jobs:workingHours')}:</span>
                               <span>
                                 {job.workStartTime && job.workEndTime 
                                   ? `${job.workStartTime} - ${job.workEndTime}`
                                   : job.workStartTime 
-                                    ? `${job.workStartTime} başlangıç`
-                                    : `${job.workEndTime} bitiş`
+                                    ? `${job.workStartTime} ${t('jobs:start')}`
+                                    : `${job.workEndTime} ${t('jobs:end')}`
                                 }
                               </span>
                             </div>
                           )}
                           {job.companyIndustry && (
                             <div className="flex items-center gap-1">
-                              <span className="font-medium">Şirket Sektörü:</span>
+                              <span className="font-medium">{t('jobs:companySector')}:</span>
                               <span>{job.companyIndustry}</span>
                             </div>
                           )}
                           {job.applicationDeadline && (
                             <div className="flex items-center gap-1">
-                              <span className="font-medium text-red-600">⏰ Son Başvuru:</span>
+                              <span className="font-medium text-red-600">⏰ {t('jobs:lastApplication')}:</span>
                               <span className="text-red-600">{new Date(job.applicationDeadline).toLocaleDateString('tr-TR')}</span>
                             </div>
                           )}
                           {job.educationLevel && (
                             <div className="flex items-center gap-1">
-                              <span className="font-medium">🎓 Eğitim:</span>
+                              <span className="font-medium">🎓 {t('jobs:education')}:</span>
                               <span>{job.educationLevel}</span>
                             </div>
                           )}
@@ -537,23 +534,23 @@ const Jobs = () => {
                     
                     {/* İş Açıklaması */}
                     <div className="mt-3 text-gray-700 text-sm line-clamp-3 mb-3">
-                      <span className="font-medium text-gray-600">📝 Açıklama:</span>
+                      <span className="font-medium text-gray-600">📝 {t('jobs:description')}:</span>
                       <div className="mt-1">{job.description}</div>
                     </div>
                     
                     {/* Gereksinimler */}
                     {job.requirements && job.requirements.length > 0 && (
                       <div className="mt-3 mb-4">
-                        <div className="text-gray-600 text-sm font-medium mb-2">🔧 Gereksinimler:</div>
+                        <div className="text-gray-600 text-sm font-medium mb-2">🔧 {t('jobs:requirements')}:</div>
                         <div className="flex flex-wrap gap-2">
-                          {job.requirements.slice(0, 4).map((req, index) => (
+                          {job.requirements.slice(0, 4).map((req: string, index: number) => (
                             <span key={index} className="inline-block bg-gray-100 text-gray-800 px-2 py-1 rounded-md text-xs font-medium hover:bg-gray-200 transition-colors duration-200">
                               {req}
                             </span>
                           ))}
                           {job.requirements.length > 4 && (
                             <span className="inline-block bg-gray-200 text-gray-600 px-2 py-1 rounded-md text-xs font-medium">
-                              +{job.requirements.length - 4} daha
+                              +{job.requirements.length - 4} {t('jobs:moreBenefits')}
                             </span>
                           )}
                         </div>
@@ -563,17 +560,17 @@ const Jobs = () => {
                     {/* Yan Haklar */}
                     {job.benefits && job.benefits.length > 0 && (
                       <div className="mt-3 mb-4">
-                        <div className="text-gray-600 text-sm font-medium mb-2">🎁 Yan Haklar:</div>
+                        <div className="text-gray-600 text-sm font-medium mb-2">🎁 {t('jobs:benefits')}:</div>
                         <div className="flex flex-wrap gap-2">
                           {expandedBenefits === job.id 
-                            ? job.benefits.map((benefit, index) => (
+                            ? job.benefits.map((benefit: string, index: number) => (
                                 <span key={index} className="inline-block bg-green-100 text-green-800 px-2 py-1 rounded-md text-xs font-medium hover:bg-green-200 transition-colors duration-200">
                                   {benefit}
                                 </span>
                               ))
                             : (
                               <>
-                                {job.benefits.slice(0, 3).map((benefit, index) => (
+                                {job.benefits.slice(0, 3).map((benefit: string, index: number) => (
                                   <span key={index} className="inline-block bg-green-100 text-green-800 px-2 py-1 rounded-md text-xs font-medium hover:bg-green-200 transition-colors duration-200">
                                     {benefit}
                                   </span>
@@ -586,7 +583,7 @@ const Jobs = () => {
                                       setExpandedBenefits(expandedBenefits === job.id ? null : job.id);
                                     }}
                                   >
-                                    +{job.benefits.length - 3} daha
+                                    +{job.benefits.length - 3} {t('jobs:moreBenefits')}
                                   </span>
                                 )}
                               </>
@@ -596,7 +593,7 @@ const Jobs = () => {
                       </div>
                     )}
                     <div className="mt-3 flex items-center gap-2 text-sm mb-4">
-                      <span className="text-gray-500">Uyumluluk:</span>
+                      <span className="text-gray-500">{t('jobs:compatibility')}:</span>
                       <span className="flex items-center">
                         <Star className="text-yellow-400 fill-yellow-400" size={16} />
                         <Star className="text-yellow-400 fill-yellow-400" size={16} />
@@ -613,7 +610,7 @@ const Jobs = () => {
                           disabled
                           className="flex items-center gap-1 bg-green-50 text-green-700 border-green-200"
                         >
-                          <span>✓ Başvuru Yapıldı</span>
+                          <span>✓ {t('jobs:applicationSubmitted')}</span>
                         </Button>
                       ) : (
                         <Button 
@@ -629,10 +626,10 @@ const Jobs = () => {
                           {applyingJobs.has(job.id) ? (
                             <>
                               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                              <span>Başvuru Yapılıyor...</span>
+                              <span>{t('jobs:applying')}</span>
                             </>
                           ) : (
-                            <span>Başvur</span>
+                            <span>{t('jobs:apply')}</span>
                           )}
                         </Button>
                       )}

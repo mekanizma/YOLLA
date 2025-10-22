@@ -1,19 +1,17 @@
-import React from 'react';
 import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Search, Briefcase, Users, Building, TrendingUp, ChevronRight, MapPin, User } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { Briefcase, User } from 'lucide-react';
 import Header from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import Button from '../components/ui/Button';
-import Input from '../components/ui/Input';
-import { jobCategories, cities, updateMetaTags, pageSEOContent } from '../lib/utils';
+import { updateMetaTags, pageSEOContent } from '../lib/utils';
 
 const LandingPage = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCity, setSelectedCity] = useState('');
+  const { t } = useTranslation();
   const [scrolled, setScrolled] = useState(false);
+  const [heroIndex, setHeroIndex] = useState(0);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -41,40 +39,15 @@ const LandingPage = () => {
     );
   }, []);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    navigate(`/individual/jobs?search=${searchTerm}&city=${selectedCity}`);
-  };
-
-  const featuredJobs = [
-    {
-      id: 1,
-      title: 'Yazılım Geliştirme Uzmanı',
-      company: 'TechSoft A.Ş.',
-      location: 'İstanbul',
-      type: 'Tam Zamanlı',
-      postedDate: '3 gün önce',
-      logo: 'https://images.pexels.com/photos/15144262/pexels-photo-15144262.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1',
-    },
-    {
-      id: 2,
-      title: 'Satış Müdürü',
-      company: 'Global Ticaret Ltd. Şti.',
-      location: 'Ankara',
-      type: 'Tam Zamanlı',
-      postedDate: '1 hafta önce',
-      logo: 'https://images.pexels.com/photos/11288118/pexels-photo-11288118.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1',
-    },
-    {
-      id: 3,
-      title: 'Pazarlama Uzmanı',
-      company: 'Dijital Medya A.Ş.',
-      location: 'İzmir',
-      type: 'Uzaktan',
-      postedDate: '2 gün önce',
-      logo: 'https://images.pexels.com/photos/3585088/pexels-photo-3585088.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1',
-    },
-  ];
+  // Hero rotating text
+  useEffect(() => {
+    const titles = t('landing:rotatingTitles', { returnObjects: true }) as string[];
+    if (!Array.isArray(titles) || titles.length === 0) return;
+    const interval = setInterval(() => {
+      setHeroIndex((prev) => (prev + 1) % titles.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [t]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -93,12 +66,14 @@ const LandingPage = () => {
         
         <div className="container mx-auto px-4 py-20 md:py-32 relative z-10">
           <div className="max-w-3xl mx-auto text-center">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 animate-slideUp">
-              Kariyerinizde Yeni Bir Sayfa Açın
-            </h1>
-            <p className="text-white/90 text-xl mb-8 animate-slideUp" style={{ animationDelay: '0.1s' }}>
-              Binlerce iş fırsatı ve kariyer seçeneği sizleri bekliyor. Hayalinizdeki işi bulmanın tam zamanı!
-            </p>
+            <div className="h-40 md:h-40 lg:h-44 relative overflow-hidden">
+              <h1 key={`title-${heroIndex}`} className="text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-4 transition-opacity duration-1000 opacity-100 whitespace-nowrap overflow-hidden text-ellipsis">
+                {heroIndex === 0 ? t('landing:heroTitle') : (t('landing:rotatingTitles', { returnObjects: true }) as string[])[heroIndex - 0]}
+              </h1>
+              <p key={`subtitle-${heroIndex}`} className="text-white/90 text-base md:text-lg transition-opacity duration-1000 whitespace-nowrap overflow-hidden text-ellipsis">
+                {heroIndex === 0 ? t('landing:heroSubtitle') : (t('landing:rotatingSubtitles', { returnObjects: true }) as string[])[heroIndex - 0]}
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -107,14 +82,23 @@ const LandingPage = () => {
       <section className="py-16 bg-white">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">Popüler İş Kategorileri</h2>
+            <h2 className="text-3xl font-bold mb-4">{t('landing:features')}</h2>
             <p className="text-gray-600 max-w-2xl mx-auto">
-              En çok aranan ve en fazla iş ilanı bulunan kategorileri keşfedin.
+              {t('landing:feature1Description')}
             </p>
           </div>
           
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {jobCategories.slice(0, 8).map((category, index) => (
+            {[
+              t('jobs:categoryIT'),
+              t('jobs:categoryFinance'),
+              t('jobs:categorySales'),
+              t('jobs:categoryEngineering'),
+              t('jobs:categoryHealth'),
+              t('jobs:categoryDesign'),
+              t('jobs:categoryEducation'),
+              t('common:categoryProduction')
+            ].map((category, index) => (
               <div 
                 key={category}
                 className="group bg-white p-6 rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-primary/20 hover:-translate-y-1"
@@ -135,10 +119,9 @@ const LandingPage = () => {
       <section className="py-16 bg-primary">
         <div className="container mx-auto px-4">
           <div className="text-center max-w-3xl mx-auto">
-            <h2 className="text-3xl font-bold mb-6 text-white">Kariyerinizde Bir Sonraki Adımı Atmaya Hazır Mısınız?</h2>
+            <h2 className="text-3xl font-bold mb-6 text-white">{t('landing:ctaTitle')}</h2>
             <p className="text-white/90 mb-8">
-              İster iş arıyor olun, ister en iyi yetenekleri işe almak istiyor olun, İşBul sizin yanınızda. 
-              Hemen kaydolun ve tüm özelliklere ücretsiz erişim sağlayın.
+              {t('landing:ctaSubtitle')}
             </p>
             <div className="flex flex-col sm:flex-row gap-6 justify-center mt-10">
               <Button 
@@ -149,7 +132,7 @@ const LandingPage = () => {
               >
                 <span className="relative z-10 flex items-center justify-center gap-2">
                   <User className="w-5 h-5" />
-                  Ücretsiz Kaydol
+                  {t('landing:ctaButton')}
                 </span>
                 <div className="absolute inset-0 bg-gradient-to-r from-white/0 to-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               </Button>

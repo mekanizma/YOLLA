@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Box,
   Container,
@@ -25,7 +26,6 @@ import AddIcon from '@mui/icons-material/Add';
 import EmailIcon from '@mui/icons-material/Email';
 import PhoneIcon from '@mui/icons-material/Phone';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
-import LanguageIcon from '@mui/icons-material/Language';
 import PhotoCamera from '@mui/icons-material/PhotoCamera';
 import DeleteIcon from '@mui/icons-material/Delete';
 import Header from '../../components/layout/Header';
@@ -40,7 +40,6 @@ import { CreativeCV } from '../../components/cv-templates/CreativeCV';
 import Radio from '@mui/material/Radio';
 import RadioGroup from '@mui/material/RadioGroup';
 import FormControlLabel from '@mui/material/FormControlLabel';
-import ProfileCompletionBox from '../../components/ProfileCompletionBox';
 import supabase from '../../lib/supabaseClient';
 import Slide from '@mui/material/Slide';
 import type { TransitionProps } from '@mui/material/transitions';
@@ -60,6 +59,7 @@ const cvTemplates = [
 // Rozetler artık Dashboard'da gerçek verilerle gösteriliyor
 
 const Profile = () => {
+  const { t } = useTranslation();
   const [editMode, setEditMode] = useState(false);
   const [avatarDialogOpen, setAvatarDialogOpen] = useState(false);
   const [profileImage, setProfileImage] = useState('');
@@ -247,7 +247,7 @@ const Profile = () => {
                   <Typography variant="h6" fontWeight={600}>{form.name}</Typography>
                 )}
                 <Typography color="text.secondary" fontSize={16}>{form.title}</Typography>
-                <Button size="small" variant="outlined" sx={{ mt: 1, mb: 2 }}>5 Yıl Deneyim</Button>
+                <Button size="small" variant="outlined" sx={{ mt: 1, mb: 2 }}>{t('profile:experienceYears', { years: 5 })}</Button>
               </Box>
               <Divider sx={{ my: 2 }} />
               <Stack spacing={1}>
@@ -265,18 +265,18 @@ const Profile = () => {
                 </Box>
               </Stack>
               <Divider sx={{ my: 2 }} />
-              <Typography fontWeight={500} fontSize={15} mb={1}>Profil Tamamlama</Typography>
+              <Typography fontWeight={500} fontSize={15} mb={1}>{t('profile:profileCompletion')}</Typography>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <Button size="small" variant="outlined">İLERLEME</Button>
+                <Button size="small" variant="outlined">{t('profile:progress')}</Button>
                 <Box sx={{ flex: 1, ml: 2, fontWeight: 600 }}>{completion}%</Box>
               </Box>
               <LinearProgress variant="determinate" value={completion} sx={{ height: 8, borderRadius: 5, mb: 2 }} />
               {!editMode && (
                 <>
-                  <Button variant="contained" fullWidth sx={{ mt: 1 }} onClick={handleEditClick}>Profili Düzenle</Button>
-                  <Button variant="outlined" fullWidth sx={{ mt: 1 }} onClick={handleOpenCvDialog}>Otomatik CV Oluştur</Button>
+                  <Button variant="contained" fullWidth sx={{ mt: 1 }} onClick={handleEditClick}>{t('profile:editProfile')}</Button>
+                  <Button variant="outlined" fullWidth sx={{ mt: 1 }} onClick={handleOpenCvDialog}>{t('profile:createAutoCV')}</Button>
                   <Dialog open={cvDialogOpen} onClose={handleCloseCvDialog} fullScreen={fullScreen} maxWidth="md">
-                    <DialogTitle>CV Tasarımını Seç</DialogTitle>
+                    <DialogTitle>{t('profile:selectCVDesign')}</DialogTitle>
                     <DialogContent>
                       <RadioGroup
                         row
@@ -296,14 +296,15 @@ const Profile = () => {
                       </Box>
                     </DialogContent>
                     <DialogActions>
-                      <Button onClick={handleCloseCvDialog}>İptal</Button>
+                      <Button onClick={handleCloseCvDialog}>{t('profile:cancel')}</Button>
                       {SelectedCV && (
-                        <PDFDownloadLink document={<SelectedCV profile={profileData} />} fileName={`${form.name.replace(/ /g, '_')}_CV.pdf`}>
-                          {({ loading }) => (
-                            <Button variant="contained" disabled={loading}>
-                              {loading ? 'Hazırlanıyor...' : 'Oluştur ve İndir'}
-                            </Button>
-                          )}
+                        <PDFDownloadLink 
+                          document={<SelectedCV profile={profileData} />} 
+                          fileName={`${form.name.replace(/ /g, '_')}_CV.pdf`}
+                        >
+                          <Button variant="contained">
+                            {t('profile:createAndDownload')}
+                          </Button>
                         </PDFDownloadLink>
                       )}
                     </DialogActions>
@@ -312,8 +313,8 @@ const Profile = () => {
               )}
               {editMode && (
                 <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
-                  <Button variant="contained" color="primary" onClick={handleSaveEdit} fullWidth>Kaydet</Button>
-                  <Button variant="outlined" color="secondary" onClick={handleCancelEdit} fullWidth>İptal</Button>
+                  <Button variant="contained" color="primary" onClick={handleSaveEdit} fullWidth>{t('profile:save')}</Button>
+                  <Button variant="outlined" color="secondary" onClick={handleCancelEdit} fullWidth>{t('profile:cancel')}</Button>
                 </Stack>
               )}
             </Paper>
@@ -325,8 +326,8 @@ const Profile = () => {
             <Stack spacing={3}>
               <Paper elevation={2} sx={{ p: 3, position: 'relative' }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                  <Typography fontWeight={600}>Hakkımda</Typography>
-                  <Tooltip title="Düzenle">
+                  <Typography fontWeight={600}>{t('common:aboutMe')}</Typography>
+                  <Tooltip title={t('common:edit')}>
                     <IconButton size="small"><EditIcon /></IconButton>
                   </Tooltip>
                 </Box>
@@ -350,8 +351,8 @@ const Profile = () => {
 
               <Paper elevation={2} sx={{ p: 3, position: 'relative' }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                  <Typography fontWeight={600}>İş Deneyimi</Typography>
-                  <Button size="small" startIcon={<AddIcon />} sx={{ textTransform: 'none' }} onClick={() => { if (!editMode) setEditMode(true); setExperienceDialogOpen(true); }}>Deneyim Ekle</Button>
+                  <Typography fontWeight={600}>{t('profile:workExperience')}</Typography>
+                  <Button size="small" startIcon={<AddIcon />} sx={{ textTransform: 'none' }} onClick={() => { if (!editMode) setEditMode(true); setExperienceDialogOpen(true); }}>{t('profile:addExperience')}</Button>
                 </Box>
                 <Stack spacing={2}>
                   {experiencesState.map((exp, i) => (
@@ -363,7 +364,7 @@ const Profile = () => {
                       <Typography color="text.secondary" fontSize={15} fontWeight={500}>{exp.company}</Typography>
                       <Typography color="text.secondary" fontSize={15}>{exp.desc}</Typography>
                       {editMode && (
-                        <Button size="small" color="error" onClick={() => setExperiencesState(prev => prev.filter((_, idx) => idx !== i))} sx={{ mt: 0.5 }}>Sil</Button>
+                        <Button size="small" color="error" onClick={() => setExperiencesState(prev => prev.filter((_, idx) => idx !== i))} sx={{ mt: 0.5 }}>{t('profile:delete')}</Button>
                       )}
                     </Box>
                   ))}
@@ -372,8 +373,8 @@ const Profile = () => {
 
               <Paper elevation={2} sx={{ p: 3, position: 'relative' }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                  <Typography fontWeight={600}>Eğitim</Typography>
-                  <Button size="small" startIcon={<AddIcon />} sx={{ textTransform: 'none' }} onClick={() => { if (!editMode) setEditMode(true); setEducationDialogOpen(true); }}>Eğitim Ekle</Button>
+                  <Typography fontWeight={600}>{t('profile:education')}</Typography>
+                  <Button size="small" startIcon={<AddIcon />} sx={{ textTransform: 'none' }} onClick={() => { if (!editMode) setEditMode(true); setEducationDialogOpen(true); }}>{t('profile:addEducation')}</Button>
                 </Box>
                 <Stack spacing={2}>
                   {educationsState.map((edu, i) => (
@@ -385,7 +386,7 @@ const Profile = () => {
                       <Typography color="text.secondary" fontSize={15} fontWeight={500}>{edu.school}</Typography>
                       <Typography color="text.secondary" fontSize={15}>{edu.desc}</Typography>
                       {editMode && (
-                        <Button size="small" color="error" onClick={() => setEducationsState(prev => prev.filter((_, idx) => idx !== i))} sx={{ mt: 0.5 }}>Sil</Button>
+                        <Button size="small" color="error" onClick={() => setEducationsState(prev => prev.filter((_, idx) => idx !== i))} sx={{ mt: 0.5 }}>{t('profile:delete')}</Button>
                       )}
                     </Box>
                   ))}
@@ -395,8 +396,8 @@ const Profile = () => {
               {/* Skills moved under Education */}
               <Paper elevation={2} sx={{ p: 3, position: 'relative' }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                  <Typography fontWeight={600}>Beceriler</Typography>
-                  <Button size="small" startIcon={<AddIcon />} sx={{ textTransform: 'none' }} onClick={() => { if (!editMode) setEditMode(true); setSkillDialogOpen(true); }}>Beceri Ekle</Button>
+                  <Typography fontWeight={600}>{t('profile:skills')}</Typography>
+                  <Button size="small" startIcon={<AddIcon />} sx={{ textTransform: 'none' }} onClick={() => { if (!editMode) setEditMode(true); setSkillDialogOpen(true); }}>{t('profile:addSkill')}</Button>
                 </Box>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                   {skillsState.map((skill, i) => (
@@ -408,8 +409,8 @@ const Profile = () => {
               {/* Languages moved under Education */}
               <Paper elevation={2} sx={{ p: 3, position: 'relative' }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                  <Typography fontWeight={600}>Diller</Typography>
-                  <Button size="small" startIcon={<AddIcon />} sx={{ textTransform: 'none' }} onClick={() => { if (!editMode) setEditMode(true); setLanguageDialogOpen(true); }}>Dil Ekle</Button>
+                  <Typography fontWeight={600}>{t('profile:languages')}</Typography>
+                  <Button size="small" startIcon={<AddIcon />} sx={{ textTransform: 'none' }} onClick={() => { if (!editMode) setEditMode(true); setLanguageDialogOpen(true); }}>{t('profile:addLanguage')}</Button>
                 </Box>
                 <Stack spacing={2}>
                   {languagesState.map((lang, i) => (
@@ -420,7 +421,7 @@ const Profile = () => {
                       </Box>
                       <LinearProgress variant="determinate" value={lang.percent || 0} sx={{ height: 8, borderRadius: 5, mt: 0.5 }} />
                       {editMode && (
-                        <Button size="small" color="error" onClick={() => setLanguagesState(prev => prev.filter((_, idx) => idx !== i))} sx={{ mt: 0.5 }}>Sil</Button>
+                        <Button size="small" color="error" onClick={() => setLanguagesState(prev => prev.filter((_, idx) => idx !== i))} sx={{ mt: 0.5 }}>{t('profile:delete')}</Button>
                       )}
                     </Box>
                   ))}
@@ -432,7 +433,7 @@ const Profile = () => {
 
         {/* Avatar Dialog */}
         <Dialog open={avatarDialogOpen} onClose={handleDialogClose} fullScreen={fullScreen}>
-          <DialogTitle>Profil Fotoğrafı</DialogTitle>
+          <DialogTitle>{t('profile:profilePhoto')}</DialogTitle>
           <DialogContent>
             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 2 }}>
               <Avatar src={newImage || profileImage || undefined} sx={{ width: 120, height: 120, mb: 2 }}>
@@ -444,7 +445,7 @@ const Profile = () => {
                 startIcon={<PhotoCamera />}
                 sx={{ mb: 1 }}
               >
-                Yeni Fotoğraf Yükle
+                {t('profile:uploadNewPhoto')}
                 <input type="file" accept="image/*" hidden onChange={handleImageChange} />
               </Button>
               {profileImage && (
@@ -455,77 +456,77 @@ const Profile = () => {
                   onClick={handleRemoveImage}
                   sx={{ mb: 1 }}
                 >
-                  Fotoğrafı Kaldır
+                  {t('profile:removePhoto')}
                 </Button>
               )}
             </Box>
           </DialogContent>
           <DialogActions>
-            <Button onClick={handleDialogClose}>İptal</Button>
+            <Button onClick={handleDialogClose}>{t('profile:cancel')}</Button>
             <Button onClick={handleSaveImage} variant="contained" disabled={!newImage && !profileImage}>
-              Kaydet
+              {t('profile:save')}
             </Button>
           </DialogActions>
         </Dialog>
       </Container>
       {/* Add Skill Dialog */}
       <Dialog open={skillDialogOpen} onClose={() => setSkillDialogOpen(false)} maxWidth="xs" fullWidth TransitionComponent={Transition} PaperProps={{ sx: { borderRadius: 3, backdropFilter: 'saturate(180%) blur(6px)' } }}>
-        <DialogTitle sx={{ fontWeight: 700 }}>Yeni Beceri Ekle</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 700 }}>{t('common:addNewSkill')}</DialogTitle>
         <DialogContent dividers>
-          <TextField label="Beceri" placeholder="Örn: React" fullWidth value={newSkill} onChange={e => setNewSkill(e.target.value)} autoFocus />
+          <TextField label={t('common:skill')} placeholder={t('common:skillPlaceholder')} fullWidth value={newSkill} onChange={e => setNewSkill(e.target.value)} autoFocus />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setSkillDialogOpen(false)} variant="text">İptal</Button>
-          <Button disabled={!newSkill.trim()} onClick={() => { if (newSkill.trim()) setSkillsState(prev => Array.from(new Set([...prev, newSkill.trim()]))); setNewSkill(''); setSkillDialogOpen(false); }} variant="contained">Ekle</Button>
+          <Button onClick={() => setSkillDialogOpen(false)} variant="text">{t('common:cancel')}</Button>
+          <Button disabled={!newSkill.trim()} onClick={() => { if (newSkill.trim()) setSkillsState(prev => Array.from(new Set([...prev, newSkill.trim()]))); setNewSkill(''); setSkillDialogOpen(false); }} variant="contained">{t('common:create')}</Button>
         </DialogActions>
       </Dialog>
 
       {/* Add Language Dialog */}
       <Dialog open={languageDialogOpen} onClose={() => setLanguageDialogOpen(false)} maxWidth="xs" fullWidth TransitionComponent={Transition} PaperProps={{ sx: { borderRadius: 3, backdropFilter: 'saturate(180%) blur(6px)' } }}>
-        <DialogTitle sx={{ fontWeight: 700 }}>Yeni Dil Ekle</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 700 }}>{t('common:addNewLanguage')}</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2} sx={{ mt: 1 }}>
-            <TextField label="Dil" placeholder="Örn: İngilizce" fullWidth value={newLangName} onChange={e => setNewLangName(e.target.value)} autoFocus />
-            <TextField label="Yüzde (0-100)" type="number" fullWidth value={newLangPercent} onChange={e => setNewLangPercent(e.target.value === '' ? '' : Number(e.target.value))} inputProps={{ min: 0, max: 100 }} helperText="Yeterlilik yüzdesi" />
+            <TextField label={t('common:languageName')} placeholder={t('common:languagePlaceholder')} fullWidth value={newLangName} onChange={e => setNewLangName(e.target.value)} autoFocus />
+            <TextField label={t('common:percentage')} type="number" fullWidth value={newLangPercent} onChange={e => setNewLangPercent(e.target.value === '' ? '' : Number(e.target.value))} inputProps={{ min: 0, max: 100 }} helperText={t('common:proficiencyHelper')} />
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setLanguageDialogOpen(false)} variant="text">İptal</Button>
-          <Button disabled={!newLangName.trim()} onClick={() => { if (newLangName.trim()) setLanguagesState(prev => [...prev, { name: newLangName.trim(), percent: typeof newLangPercent === 'number' ? Math.max(0, Math.min(100, newLangPercent)) : 0 }]); setNewLangName(''); setNewLangPercent(''); setLanguageDialogOpen(false); }} variant="contained">Ekle</Button>
+          <Button onClick={() => setLanguageDialogOpen(false)} variant="text">{t('common:cancel')}</Button>
+          <Button disabled={!newLangName.trim()} onClick={() => { if (newLangName.trim()) setLanguagesState(prev => [...prev, { name: newLangName.trim(), percent: typeof newLangPercent === 'number' ? Math.max(0, Math.min(100, newLangPercent)) : 0 }]); setNewLangName(''); setNewLangPercent(''); setLanguageDialogOpen(false); }} variant="contained">{t('common:create')}</Button>
         </DialogActions>
       </Dialog>
 
       {/* Add Experience Dialog */}
       <Dialog open={experienceDialogOpen} onClose={() => setExperienceDialogOpen(false)} maxWidth="sm" fullWidth TransitionComponent={Transition} PaperProps={{ sx: { borderRadius: 3, backdropFilter: 'saturate(180%) blur(6px)' } }}>
-        <DialogTitle sx={{ fontWeight: 700 }}>Deneyim Ekle</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 700 }}>{t('profile:addExperienceTitle')}</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2} sx={{ mt: 1 }}>
-            <TextField label="Pozisyon" placeholder="Örn: Frontend Geliştirici" fullWidth value={newExpTitle} onChange={e => setNewExpTitle(e.target.value)} autoFocus />
-            <TextField label="Şirket" placeholder="Örn: ABC Teknoloji" fullWidth value={newExpCompany} onChange={e => setNewExpCompany(e.target.value)} />
-            <TextField label="Tarih aralığı" placeholder="Örn: 2022 - 2024" fullWidth value={newExpDate} onChange={e => setNewExpDate(e.target.value)} />
-            <TextField label="Açıklama" placeholder="Sorumluluklar ve başarılar" multiline minRows={3} fullWidth value={newExpDesc} onChange={e => setNewExpDesc(e.target.value)} />
+            <TextField label={t('profile:position')} placeholder={t('profile:positionPlaceholder')} fullWidth value={newExpTitle} onChange={e => setNewExpTitle(e.target.value)} autoFocus />
+            <TextField label={t('profile:company')} placeholder={t('profile:companyPlaceholder')} fullWidth value={newExpCompany} onChange={e => setNewExpCompany(e.target.value)} />
+            <TextField label={t('profile:dateRange')} placeholder={t('profile:dateRangePlaceholder')} fullWidth value={newExpDate} onChange={e => setNewExpDate(e.target.value)} />
+            <TextField label={t('profile:description')} placeholder={t('profile:descriptionPlaceholder')} multiline minRows={3} fullWidth value={newExpDesc} onChange={e => setNewExpDesc(e.target.value)} />
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setExperienceDialogOpen(false)} variant="text">İptal</Button>
-          <Button disabled={!newExpTitle.trim()} onClick={() => { if (newExpTitle.trim()) setExperiencesState(prev => [...prev, { title: newExpTitle.trim(), company: newExpCompany.trim(), date: newExpDate.trim(), desc: newExpDesc.trim() }]); setNewExpTitle(''); setNewExpCompany(''); setNewExpDate(''); setNewExpDesc(''); setExperienceDialogOpen(false); }} variant="contained">Ekle</Button>
+          <Button onClick={() => setExperienceDialogOpen(false)} variant="text">{t('profile:cancel')}</Button>
+          <Button disabled={!newExpTitle.trim()} onClick={() => { if (newExpTitle.trim()) setExperiencesState(prev => [...prev, { title: newExpTitle.trim(), company: newExpCompany.trim(), date: newExpDate.trim(), desc: newExpDesc.trim() }]); setNewExpTitle(''); setNewExpCompany(''); setNewExpDate(''); setNewExpDesc(''); setExperienceDialogOpen(false); }} variant="contained">{t('profile:add')}</Button>
         </DialogActions>
       </Dialog>
 
       {/* Add Education Dialog */}
       <Dialog open={educationDialogOpen} onClose={() => setEducationDialogOpen(false)} maxWidth="sm" fullWidth TransitionComponent={Transition} PaperProps={{ sx: { borderRadius: 3, backdropFilter: 'saturate(180%) blur(6px)' } }}>
-        <DialogTitle sx={{ fontWeight: 700 }}>Eğitim Ekle</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 700 }}>{t('profile:addEducationTitle')}</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2} sx={{ mt: 1 }}>
-            <TextField label="Bölüm/Program" placeholder="Örn: Bilgisayar Mühendisliği" fullWidth value={newEduDegree} onChange={e => setNewEduDegree(e.target.value)} autoFocus />
-            <TextField label="Okul" placeholder="Örn: ABC Üniversitesi" fullWidth value={newEduSchool} onChange={e => setNewEduSchool(e.target.value)} />
-            <TextField label="Tarih aralığı" placeholder="Örn: 2018 - 2022" fullWidth value={newEduDate} onChange={e => setNewEduDate(e.target.value)} />
-            <TextField label="Açıklama" placeholder="Öne çıkan dersler / projeler" multiline minRows={3} fullWidth value={newEduDesc} onChange={e => setNewEduDesc(e.target.value)} />
+            <TextField label={t('profile:degree')} placeholder={t('profile:degreePlaceholder')} fullWidth value={newEduDegree} onChange={e => setNewEduDegree(e.target.value)} autoFocus />
+            <TextField label={t('profile:school')} placeholder={t('profile:schoolPlaceholder')} fullWidth value={newEduSchool} onChange={e => setNewEduSchool(e.target.value)} />
+            <TextField label={t('profile:dateRange')} placeholder={t('profile:dateRangePlaceholder')} fullWidth value={newEduDate} onChange={e => setNewEduDate(e.target.value)} />
+            <TextField label={t('profile:description')} placeholder={t('profile:educationDescriptionPlaceholder')} multiline minRows={3} fullWidth value={newEduDesc} onChange={e => setNewEduDesc(e.target.value)} />
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setEducationDialogOpen(false)} variant="text">İptal</Button>
-          <Button disabled={!newEduDegree.trim()} onClick={() => { if (newEduDegree.trim()) setEducationsState(prev => [...prev, { degree: newEduDegree.trim(), school: newEduSchool.trim(), date: newEduDate.trim(), desc: newEduDesc.trim() }]); setNewEduDegree(''); setNewEduSchool(''); setNewEduDate(''); setNewEduDesc(''); setEducationDialogOpen(false); }} variant="contained">Ekle</Button>
+          <Button onClick={() => setEducationDialogOpen(false)} variant="text">{t('profile:cancel')}</Button>
+          <Button disabled={!newEduDegree.trim()} onClick={() => { if (newEduDegree.trim()) setEducationsState(prev => [...prev, { degree: newEduDegree.trim(), school: newEduSchool.trim(), date: newEduDate.trim(), desc: newEduDesc.trim() }]); setNewEduDegree(''); setNewEduSchool(''); setNewEduDate(''); setNewEduDesc(''); setEducationDialogOpen(false); }} variant="contained">{t('profile:add')}</Button>
         </DialogActions>
       </Dialog>
       <Footer />

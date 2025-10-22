@@ -20,6 +20,7 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import { styled } from '@mui/material/styles';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { 
   Bell, 
   CheckCircle, 
@@ -50,7 +51,7 @@ interface Notification {
   data?: Record<string, any>;
 }
 
-const tabLabels = ['Tümü', 'Okunmamış', 'Okunmuş'];
+// tabLabels will be defined inside component to use translation
 
 // Styled components for modern design
 const StyledPaper = styled(Paper)(({ theme }) => ({
@@ -124,12 +125,52 @@ const getNotificationIcon = (type: string, read: boolean) => {
 };
 
 const CorporateNotifications: React.FC = () => {
+  const { t } = useTranslation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [tab, setTab] = useState<TabType>('all');
   const [chats, setChats] = useState<any[]>([]);
   const navigate = useNavigate();
+
+  const tabLabels = [t('notifications:all'), t('notifications:unread'), t('notifications:read')];
+
+  // Bildirim mesajlarını çevir
+  const getTranslatedMessage = (title: string, message: string) => {
+    // Yeni Başvuru bildirimleri için özel çeviriler
+    if (title.toLowerCase().includes('yeni başvuru') || title.toLowerCase().includes('new application')) {
+      return {
+        title: t('notifications:newApplication'),
+        message: message.replace(
+          /(\w+)\s+adlı\s+kullanıcı\s+"([^"]+)"\s+pozisyonu\s+için\s+başvuru\s+yaptı\.?/i,
+          (match, userName, jobTitle) => {
+            return t('notifications:newApplicationMessage', { 
+              applicantName: userName, 
+              jobTitle: jobTitle 
+            });
+          }
+        )
+      };
+    }
+    
+    // Başvuru durumu güncellemeleri için özel çeviriler
+    if (title.toLowerCase().includes('başvuru durumu güncellendi') || title.toLowerCase().includes('application status update')) {
+      if (message.toLowerCase().includes('kabul edildi') || message.toLowerCase().includes('accepted')) {
+        return {
+          title: t('notifications:applicationStatusUpdate'),
+          message: t('notifications:applicationAccepted')
+        };
+      } else if (message.toLowerCase().includes('değerlendiriliyor') || message.toLowerCase().includes('being evaluated')) {
+        return {
+          title: t('notifications:applicationStatusUpdate'),
+          message: t('notifications:applicationUnderReview')
+        };
+      }
+    }
+    
+    // Diğer durumlar için mevcut metinleri kullan
+    return { title, message };
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -242,7 +283,7 @@ const CorporateNotifications: React.FC = () => {
                 mb: 2,
               }}
             >
-              Bildirimler
+              {t('notifications:notifications')}
             </Typography>
             
             {/* İstatistik Kartları */}
@@ -265,7 +306,7 @@ const CorporateNotifications: React.FC = () => {
                   {stats.total}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  Toplam Bildirim
+                  {t('notifications:totalNotifications')}
                 </Typography>
               </Paper>
               
@@ -282,7 +323,7 @@ const CorporateNotifications: React.FC = () => {
                   {stats.unread}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  Okunmamış
+                  {t('notifications:unread')}
                 </Typography>
               </Paper>
               
@@ -299,7 +340,7 @@ const CorporateNotifications: React.FC = () => {
                   {stats.read}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  Okunmuş
+                  {t('notifications:read')}
                 </Typography>
               </Paper>
             </Box>
@@ -403,7 +444,7 @@ const CorporateNotifications: React.FC = () => {
                   }
                 }}
               >
-                TÜMÜNÜ OKUNDU İŞARETLE
+                {t('notifications:markAllAsRead')}
               </Button>
             </Box>
           </Box>
@@ -472,23 +513,17 @@ const CorporateNotifications: React.FC = () => {
                 <EmptyStateContainer>
                   <Bell size={64} color="#94a3b8" />
                   <Typography variant="h5" sx={{ fontWeight: 600, color: '#64748b', mb: 1 }}>
-                    {tab === 'unread'
-                      ? 'Okunmamış bildiriminiz bulunmuyor'
-                      : tab === 'read'
-                      ? 'Okunmuş bildiriminiz bulunmuyor'
-                      : 'Bildiriminiz bulunmuyor'}
+                    {t('notifications:noNotifications')}
                   </Typography>
                   <Typography variant="body1" color="text.secondary">
-                    {tab === 'unread'
-                      ? 'Yeni bildirimler geldiğinde burada görünecek.'
-                      : tab === 'read'
-                      ? 'Okuduğunuz bildirimler burada görünecek.'
-                      : 'Henüz hiç bildiriminiz bulunmuyor.'}
+                    {t('notifications:noNotifications')}
                   </Typography>
                 </EmptyStateContainer>
               ) : (
                 <Stack spacing={3}>
-                  {sortedNotifications.map((notification, index) => (
+                  {sortedNotifications.map((notification, index) => {
+                    const translated = getTranslatedMessage(notification.title, notification.message);
+                    return (
                     <Fade in timeout={300 + index * 100} key={notification.id}>
                       <StyledPaper
                         sx={{
@@ -553,7 +588,7 @@ const CorporateNotifications: React.FC = () => {
                                   mb: 0.5,
                                 }}
                               >
-                                {notification.title}
+                                {translated.title}
                               </Typography>
                               
                               <IconButton
@@ -583,7 +618,7 @@ const CorporateNotifications: React.FC = () => {
                                 mb: 2,
                               }}
                             >
-                              {notification.message}
+                              {translated.message}
                             </Typography>
                             
                             <Divider sx={{ my: 2 }} />
@@ -610,7 +645,7 @@ const CorporateNotifications: React.FC = () => {
                                 </Box>
                                 
                                 <Chip
-                                  label={notification.read ? '✓ Okundu' : '● Okunmadı'}
+                                  label={notification.read ? t('notifications:readStatus') : t('notifications:unreadStatus')}
                                   size="small"
                                   sx={{
                                     height: 24,
@@ -629,7 +664,8 @@ const CorporateNotifications: React.FC = () => {
                         </Box>
                       </StyledPaper>
                     </Fade>
-                  ))}
+                    );
+                  })}
                 </Stack>
               )}
             </Box>

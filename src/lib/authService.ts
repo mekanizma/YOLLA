@@ -68,7 +68,7 @@ async function ensureUserRowByUserId(payload: { user_id: string; email: string; 
 }
 
 export async function signUp(email: string, password: string, metadata?: Record<string, any>) {
-  const redirectTo = typeof window !== 'undefined' ? `${window.location.origin}/login/individual` : undefined;
+  const redirectTo = 'https://yollabi.net';
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -290,7 +290,7 @@ export async function adminCreateCorporateAccount(payload: {
     password,
     options: {
       data: { userType: 'corporate', name: companyName, phone },
-      emailRedirectTo: typeof window !== 'undefined' ? `${window.location.origin}/login/corporate` : undefined
+      emailRedirectTo: 'https://yollabi.net'
     }
   });
   if (signUpErr) throw signUpErr;

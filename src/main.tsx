@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import App from './App.tsx'
 import './index.css'
+import './i18n/i18n'
 
 const router = createBrowserRouter([
   {
@@ -11,8 +12,7 @@ const router = createBrowserRouter([
   }
 ], {
   future: {
-    v7_relativeSplatPath: true,
-    v7_startTransition: true
+    v7_relativeSplatPath: true
   }
 });
 

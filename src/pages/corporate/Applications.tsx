@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Container,
   Paper,
@@ -28,33 +29,31 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import TextField from '@mui/material/TextField';
-import Checkbox from '@mui/material/Checkbox';
-import FormControlLabel from '@mui/material/FormControlLabel';
 import Snackbar from '@mui/material/Snackbar';
 import { Link } from 'react-router-dom';
 import { ChevronRight, Users, Clock, CheckCircle, XCircle, Eye, Calendar, TrendingUp } from 'lucide-react';
 import supabase from '../../lib/supabaseClient';
-import { JobRecord, fetchCompanyByEmail } from '../../lib/jobsService';
+import { fetchCompanyByEmail } from '../../lib/jobsService';
 import { createNotification } from '../../lib/notificationsService';
 import { getCorporateApplications, updateApplicationStatus } from '../../lib/applicationsService';
 
 // Styled components for modern design
-const StyledPaper = styled(Paper)(({ theme }) => ({
-  padding: theme.spacing(4),
-  marginTop: theme.spacing(3),
+const StyledPaper = styled(Paper)(() => ({
+  padding: 32,
+  marginTop: 24,
   borderRadius: 16,
   background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
   boxShadow: '0 10px 25px rgba(0, 0, 0, 0.08), 0 4px 10px rgba(0, 0, 0, 0.05)',
   border: '1px solid rgba(255, 255, 255, 0.2)',
   backdropFilter: 'blur(10px)',
-  [theme.breakpoints.down('sm')]: {
-    padding: theme.spacing(2),
+  '@media (max-width: 600px)': {
+    padding: 16,
     borderRadius: 12,
   },
 }));
 
-const ApplicationCard = styled(Card)(({ theme }) => ({
-  marginBottom: theme.spacing(3),
+const ApplicationCard = styled(Card)(() => ({
+  marginBottom: 24,
   borderRadius: 16,
   background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
   boxShadow: '0 4px 15px rgba(0, 0, 0, 0.05), 0 2px 8px rgba(0, 0, 0, 0.03)',
@@ -65,8 +64,8 @@ const ApplicationCard = styled(Card)(({ theme }) => ({
     boxShadow: '0 12px 30px rgba(0, 0, 0, 0.12), 0 6px 20px rgba(0, 0, 0, 0.08)',
     border: '1px solid rgba(59, 130, 246, 0.2)',
   },
-  [theme.breakpoints.down('sm')]: {
-    marginBottom: theme.spacing(2),
+  '@media (max-width: 600px)': {
+    marginBottom: 16,
     borderRadius: 12,
   },
 }));
@@ -94,7 +93,7 @@ const StyledTabs = styled(Tabs)(({ theme }) => ({
   },
 }));
 
-const StatusChip = styled(Chip)(({ theme }) => ({
+const StatusChip = styled(Chip)(() => ({
   fontWeight: 600,
   borderRadius: 20,
   fontSize: '0.8rem',
@@ -155,14 +154,6 @@ interface Application {
   contractAccepted?: boolean;
 }
 
-type ApplicationRow = {
-  id: number;
-  status: 'pending' | 'in_review' | 'accepted' | 'rejected' | 'approved';
-  created_at: string;
-  user_id: number;
-  users: { full_name?: string; avatar_url?: string } | null;
-  jobs: Pick<JobRecord, 'title'> | null;
-};
 
 const statusConfig = {
   pending: { 
@@ -203,8 +194,8 @@ const statusConfig = {
 } as const;
 
 const CorporateApplications: React.FC = () => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const { t } = useTranslation();
+  const isMobile = useMediaQuery(useTheme().breakpoints.down('sm'));
   const [currentTab, setCurrentTab] = useState(0);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
@@ -260,11 +251,9 @@ const CorporateApplications: React.FC = () => {
   const [rejectReason, setRejectReason] = useState('');
   const [acceptDialogOpen, setAcceptDialogOpen] = useState(false);
   const [acceptDetails, setAcceptDetails] = useState({ date: '', time: '', details: '' });
-  const [contractDialogOpen, setContractDialogOpen] = useState(false);
-  const [contractAccepted, setContractAccepted] = useState(false);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string }>({ open: false, message: '' });
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+  const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
     setCurrentTab(newValue);
   };
 
@@ -298,7 +287,8 @@ const CorporateApplications: React.FC = () => {
           if (user) {
             const company = await fetchCompanyByEmail(user.email || '');
             if (company && selectedApplication.user_id) {
-              const statusMessage = {
+              const statusMessage: Record<string, string> = {
+                'pending': 'Başvurunuz beklemede.',
                 'accepted': 'Başvurunuz kabul edildi!',
                 'rejected': 'Başvurunuz reddedildi.',
                 'in_review': 'Başvurunuz değerlendiriliyor.',
@@ -306,7 +296,7 @@ const CorporateApplications: React.FC = () => {
               };
               
               await createNotification({
-                user_id: selectedApplication.user_id,
+                user_id: selectedApplication.user_id.toString(),
                 title: 'Başvuru Durumu Güncellendi',
                 message: statusMessage[newStatus] || 'Başvuru durumunuz güncellendi.',
                 type: newStatus === 'accepted' || newStatus === 'approved' ? 'success' : 'info',
@@ -355,12 +345,7 @@ const CorporateApplications: React.FC = () => {
     handleMenuClose();
   };
 
-  const handleAcceptConfirm = () => {
-    setAcceptDialogOpen(false);
-    setContractDialogOpen(true);
-  };
-
-  const handleContractConfirm = async () => {
+  const handleAcceptConfirm = async () => {
     if (selectedApplication) {
       try {
         await updateApplicationStatus(selectedApplication.id, 'accepted');
@@ -382,7 +367,7 @@ const CorporateApplications: React.FC = () => {
               const fullMessage = `Başvurunuz kabul edildi! İşe başlama tarihi: ${acceptDetails.date}, Saat: ${acceptDetails.time}.${detailsMessage}`;
               
               await createNotification({
-                user_id: selectedApplication.user_id,
+                user_id: selectedApplication.user_id.toString(),
                 title: 'Başvuru Kabul Edildi! 🎉',
                 message: fullMessage,
                 type: 'success',
@@ -406,8 +391,7 @@ const CorporateApplications: React.FC = () => {
         setSnackbar({ open: true, message: e?.message || 'Güncelleme başarısız.' });
       }
     }
-    setContractDialogOpen(false);
-    setContractAccepted(false);
+    setAcceptDialogOpen(false);
     setAcceptDetails({ date: '', time: '', details: '' });
     handleMenuClose();
   };
@@ -455,7 +439,7 @@ const CorporateApplications: React.FC = () => {
                 mb: 2,
               }}
             >
-              Başvurular
+              {t('common:applicationsTitle')}
             </Typography>
             
             {/* İstatistik Kartları */}
@@ -478,7 +462,7 @@ const CorporateApplications: React.FC = () => {
                   {stats.total}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  Toplam Başvuru
+                  {t('common:totalApplications')}
                 </Typography>
               </Paper>
               
@@ -495,7 +479,7 @@ const CorporateApplications: React.FC = () => {
                   {stats.pending}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  Beklemede
+                  {t('common:pending')}
                 </Typography>
               </Paper>
               
@@ -512,7 +496,7 @@ const CorporateApplications: React.FC = () => {
                   {stats.inReview}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  İnceleniyor
+                  {t('common:underReview')}
                 </Typography>
               </Paper>
               
@@ -529,7 +513,7 @@ const CorporateApplications: React.FC = () => {
                   {stats.accepted}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  Kabul Edildi
+                  {t('common:accepted')}
                 </Typography>
               </Paper>
               
@@ -546,7 +530,7 @@ const CorporateApplications: React.FC = () => {
                   {stats.approved}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  Onaylandı
+                  {t('common:approved')}
                 </Typography>
               </Paper>
             </Box>
@@ -565,7 +549,7 @@ const CorporateApplications: React.FC = () => {
                   label={
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <Clock size={18} />
-                      Bekleyen
+                      {t('common:pendingTab')}
                       {stats.pending > 0 && (
                         <Chip 
                           label={stats.pending} 
@@ -585,7 +569,7 @@ const CorporateApplications: React.FC = () => {
                   label={
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <Eye size={18} />
-                      İncelenen
+                      {t('common:reviewedTab')}
                       {stats.inReview > 0 && (
                         <Chip 
                           label={stats.inReview} 
@@ -605,7 +589,7 @@ const CorporateApplications: React.FC = () => {
                   label={
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <CheckCircle size={18} />
-                      Kabul Edilen
+                      {t('common:acceptedTab')}
                       {stats.accepted > 0 && (
                         <Chip 
                           label={stats.accepted} 
@@ -625,7 +609,7 @@ const CorporateApplications: React.FC = () => {
                   label={
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <XCircle size={18} />
-                      Reddedilen
+                      {t('common:rejectedTab')}
                       {stats.rejected > 0 && (
                         <Chip 
                           label={stats.rejected} 
@@ -645,7 +629,7 @@ const CorporateApplications: React.FC = () => {
                   label={
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <TrendingUp size={18} />
-                      Onaylanan
+                      {t('common:approvedTab')}
                       {stats.approved > 0 && (
                         <Chip 
                           label={stats.approved} 
@@ -727,7 +711,7 @@ const CorporateApplications: React.FC = () => {
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                   <Calendar size={16} color="#64748b" />
                                   <Typography variant="caption" color="text.secondary">
-                                    Başvuru Tarihi: {application.appliedDate}
+                                    {t('common:applicationDate')}: {application.appliedDate}
                                   </Typography>
                                 </Box>
                               </Box>
@@ -737,7 +721,12 @@ const CorporateApplications: React.FC = () => {
                                 label={
                                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                     {statusInfo.icon}
-                                    {application.status}
+                                    {application.status === 'Beklemede' ? t('common:pending') : 
+                                     application.status === 'İnceleniyor' ? t('common:underReview') :
+                                     application.status === 'Kabul Edildi' ? t('common:accepted') :
+                                     application.status === 'Reddedildi' ? t('common:rejected') :
+                                     application.status === 'Onaylandı' ? t('common:approved') :
+                                     application.status}
                                   </Box>
                                 }
                                 className={statusInfo.color}
@@ -763,7 +752,7 @@ const CorporateApplications: React.FC = () => {
                           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                               <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                                Deneyim: {application.experience}
+                                {t('common:experience')}: {application.experience}
                               </Typography>
                               {application.skills.length > 0 && (
                                 <Box sx={{ display: 'flex', gap: 1 }}>
@@ -809,7 +798,7 @@ const CorporateApplications: React.FC = () => {
                                 e.currentTarget.style.transform = 'translateX(0)';
                               }}
                             >
-                              Detayları Görüntüle <ChevronRight size={16} />
+                              {t('common:viewDetails')} <ChevronRight size={16} />
                             </Link>
                           </Box>
                         </CardContent>
@@ -828,13 +817,13 @@ const CorporateApplications: React.FC = () => {
             onClose={handleMenuClose}
           >
             {selectedApplication?.status === 'Beklemede' && (
-              <MenuItem onClick={() => handleStatusChange('in_review')}>İncelemeye Al</MenuItem>
+              <MenuItem onClick={() => handleStatusChange('in_review')}>{t('common:takeUnderReview')}</MenuItem>
             )}
             {selectedApplication?.status === 'Beklemede' || selectedApplication?.status === 'İnceleniyor' ? (
-              <MenuItem onClick={() => handleStatusChange('accepted')}>Kabul Et</MenuItem>
+              <MenuItem onClick={() => handleStatusChange('accepted')}>{t('common:accept')}</MenuItem>
             ) : null}
             {selectedApplication?.status !== 'Reddedildi' && (
-              <MenuItem onClick={() => handleStatusChange('rejected')}>Reddet</MenuItem>
+              <MenuItem onClick={() => handleStatusChange('rejected')}>{t('common:reject')}</MenuItem>
             )}
           </Menu>
 
@@ -845,7 +834,7 @@ const CorporateApplications: React.FC = () => {
               <TextField
                 autoFocus
                 margin="dense"
-                label="Red Sebebi"
+                label={t('common:rejectionReason')}
                 type="text"
                 fullWidth
                 required
@@ -878,7 +867,7 @@ const CorporateApplications: React.FC = () => {
             <DialogContent>
               <TextField
                 margin="dense"
-                label="Tarih"
+                label={t('common:date')}
                 type="date"
                 fullWidth
                 InputLabelProps={{ shrink: true }}
@@ -887,7 +876,7 @@ const CorporateApplications: React.FC = () => {
               />
               <TextField
                 margin="dense"
-                label="Saat"
+                label={t('common:time')}
                 type="time"
                 fullWidth
                 InputLabelProps={{ shrink: true }}
@@ -896,11 +885,11 @@ const CorporateApplications: React.FC = () => {
               />
               <TextField
                 margin="dense"
-                label="Diğer Detaylar"
+                label={t('common:otherDetails')}
                 multiline
                 rows={4}
                 fullWidth
-                placeholder="İşe başlama tarihi, çalışma saatleri, maaş bilgileri, özel koşullar vb. detayları buraya yazabilirsiniz..."
+                placeholder={t('common:otherDetailsPlaceholder')}
                 value={acceptDetails.details}
                 onChange={e => setAcceptDetails({ ...acceptDetails, details: e.target.value })}
               />

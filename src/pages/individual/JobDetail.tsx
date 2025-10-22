@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import Header from '../../components/layout/Header';
 import Footer from '../../components/layout/Footer';
 import Button from '../../components/ui/Button';
@@ -12,7 +13,7 @@ import supabase from '../../lib/supabaseClient';
 import { useToast } from '../../components/ui/ToastProvider';
 
 type UiJob = {
-  id: number;
+  id: string;
   title: string;
   company: string;
   location: string;
@@ -32,6 +33,7 @@ type UiJob = {
 const JobDetail = () => {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { t } = useTranslation();
 
   const jobId = useMemo(() => {
     const parsed = Number(id);
@@ -66,8 +68,8 @@ const JobDetail = () => {
       // Başvuru yap
       await applyToJob(jobId.toString(), auth.user.id, {
         cover_letter: '',
-        resume_url: null,
-        answers: null
+        resume_url: undefined,
+        answers: undefined
       });
 
       // Şirkete bildirim gönder
@@ -95,7 +97,7 @@ const JobDetail = () => {
           await createNotification({
             company_id: jobData.company_id,
             title: 'Yeni Başvuru',
-            message: `${applicantName} adlı kullanıcı "${jobData.title}" pozisyonu için başvuru yaptı.`,
+            message: `${applicantName} ${t('common:applicationMessage').replace('""', `"${jobData.title}"`)}`,
             type: 'info'
           });
           
@@ -125,26 +127,6 @@ const JobDetail = () => {
     }
   };
 
-  // Başvuru durumunu kontrol et
-  const checkApplicationStatus = async () => {
-    if (!jobId) return;
-    
-    const { data: auth } = await supabase.auth.getUser();
-    const user = auth.user;
-    if (!user?.id) return;
-
-    const { data: application } = await supabase
-      .from('applications')
-      .select('status')
-      .eq('job_id', jobId)
-      .eq('user_id', user.id)
-      .single();
-
-    if (application) {
-      setApplicationStatus(application.status || 'pending');
-    }
-  };
-
   useEffect(() => {
     let isMounted = true;
     const loadData = async () => {
@@ -153,7 +135,7 @@ const JobDetail = () => {
       try {
         // Paralel veri yükleme
         const [jobData, authData] = await Promise.all([
-          fetchJobById(jobId),
+          fetchJobById(jobId.toString()),
           supabase.auth.getUser()
         ]);
 
@@ -165,7 +147,7 @@ const JobDetail = () => {
         }
 
         const mapped: UiJob = {
-          id: jobData.id,
+          id: jobData.id.toString(),
           title: (jobData as any).title,
           company: (jobData as any).company_name || 'Şirket',
           location: (jobData as any).location,

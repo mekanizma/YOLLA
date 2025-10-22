@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Briefcase, Eye, EyeOff } from 'lucide-react';
 import { signInWithRole } from '../../lib/authService';
 import Header from '../../components/layout/Header';
@@ -9,6 +10,7 @@ import Input from '../../components/ui/Input';
 
 const CorporateLogin = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -25,7 +27,7 @@ const CorporateLogin = () => {
       await signInWithRole(email, password, 'corporate');
       navigate('/corporate/dashboard');
     } catch (err: any) {
-      setError(err.message || 'Giriş yapılamadı. Lütfen bilgilerinizi kontrol edin.');
+      setError(err.message || t('auth:loginError'));
     } finally {
       setIsLoading(false);
     }
@@ -44,8 +46,8 @@ const CorporateLogin = () => {
               </div>
             </div>
             
-            <h1 className="text-2xl font-bold text-center mb-2">Kurumsal Giriş</h1>
-            <p className="text-gray-600 text-center mb-6">Şirket hesabınıza giriş yaparak ilanlarınızı yönetin</p>
+            <h1 className="text-2xl font-bold text-center mb-2">{t('auth:loginAsCorporate')}</h1>
+            <p className="text-gray-600 text-center mb-6">{t('auth:corporateLoginDescription')}</p>
             
             {error && (
               <div className="bg-error/10 text-error p-3 rounded-md mb-4 text-sm">
@@ -55,7 +57,7 @@ const CorporateLogin = () => {
             
             <form onSubmit={handleLogin} className="space-y-4">
               <Input
-                label="Şirket E-posta Adresi"
+                label={t('auth:corporateEmail')}
                 type="email"
                 placeholder="sirket@mail.com"
                 value={email}
@@ -65,7 +67,7 @@ const CorporateLogin = () => {
               
               <div className="w-full">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Şifre
+                  {t('auth:password')}
                 </label>
                 <div className="relative">
                   <Input
@@ -94,10 +96,10 @@ const CorporateLogin = () => {
                     checked={rememberMe}
                     onChange={() => setRememberMe(!rememberMe)}
                   />
-                  <span className="ml-2 text-sm text-gray-600">Beni Hatırla</span>
+                  <span className="ml-2 text-sm text-gray-600">{t('auth:rememberMe')}</span>
                 </label>
                 <Link to="/forgot-password" className="text-sm text-secondary hover:underline">
-                  Şifremi Unuttum
+                  {t('auth:forgotPassword')}
                 </Link>
               </div>
               
@@ -107,14 +109,14 @@ const CorporateLogin = () => {
                 isLoading={isLoading}
                 variant="secondary"
               >
-                Giriş Yap
+                {t('auth:loginButton')}
               </Button>
             </form>
             
             <div className="text-center mt-6">
               <Link to="/login/individual" className="text-sm text-gray-600 hover:text-secondary flex items-center justify-center">
                 <span className="mr-1 w-4 h-4 flex items-center justify-center">👤</span>
-                <span>Bireysel kullanıcıysanız, buradan giriş yapabilirsiniz</span>
+                <span>{t('auth:individualUserLink')}</span>
               </Link>
             </div>
           </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Mail, Phone, MapPin, Calendar, X, Check, Award } from 'lucide-react';
 import Header from '../../components/layout/Header';
 import Button from '../../components/ui/Button';
@@ -8,6 +9,7 @@ import supabase from '../../lib/supabaseClient';
 const ApplicationDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [application, setApplication] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -62,7 +64,7 @@ const ApplicationDetail = () => {
         }
         
         // Eğer auth_user_id ile "Bilinmeyen Kullanıcı" bulunduysa, user_id ile dene
-        if (applicantUser && applicantUser.first_name === 'Bilinmeyen') {
+        if (applicantUser && applicantUser.first_name === t('common:unknownUser')) {
           console.log('auth_user_id ile "Bilinmeyen Kullanıcı" bulundu, user_id ile deneniyor...');
           const { data: applicantUser2 } = await supabase
             .from('users')
@@ -282,20 +284,7 @@ const ApplicationDetail = () => {
               Başvuru Tarihi: {application.appliedDate}
             </p>
           </div>
-          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-            <button
-              onClick={handleReject}
-              className="px-4 py-2 text-sm md:text-base bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors flex items-center justify-center gap-2"
-            >
-              <X size={18} /> Reddet
-            </button>
-            <button
-              onClick={handleAccept}
-              className="px-4 py-2 text-sm md:text-base bg-green-100 text-green-600 rounded-lg hover:bg-green-200 transition-colors flex items-center justify-center gap-2"
-            >
-              <Check size={18} /> Kabul Et
-            </button>
-          </div>
+          {/* Action buttons removed as requested */}
         </div>
 
         {/* Ana İçerik */}
@@ -304,7 +293,7 @@ const ApplicationDetail = () => {
           <div className="lg:col-span-2 space-y-6">
             {/* Kişisel Bilgiler */}
             <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6">
-              <h2 className="text-lg md:text-xl font-bold mb-4">Kişisel Bilgiler</h2>
+              <h2 className="text-lg md:text-xl font-bold mb-4">{t('common:personalInfo')}</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex items-center gap-3">
                   <Mail className="w-4 h-4 md:w-5 md:h-5 text-gray-400" />
@@ -320,45 +309,45 @@ const ApplicationDetail = () => {
                 </div>
                 <div className="flex items-center gap-3">
                   <Calendar className="w-4 h-4 md:w-5 md:h-5 text-gray-400" />
-                  <span className="text-sm md:text-base">Başvuru: {application.appliedDate}</span>
+                  <span className="text-sm md:text-base">{t('common:appliedOn', { date: application.appliedDate })}</span>
                 </div>
               </div>
             </div>
 
             {/* Deneyim */}
             <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6">
-              <h2 className="text-lg md:text-xl font-bold mb-4">Deneyim</h2>
+              <h2 className="text-lg md:text-xl font-bold mb-4">{t('common:experienceTitle')}</h2>
               <div className="space-y-4">
                 {application.experience && application.experience.length > 0 ? (
                   application.experience.map((exp: any, index: number) => (
                     <div key={index} className="border-b border-gray-100 last:border-0 pb-4 last:pb-0">
-                      <h3 className="text-base md:text-lg font-semibold text-gray-900">{exp.title || exp.position || 'Pozisyon'}</h3>
-                      <p className="text-sm md:text-base text-gray-600 mt-1">{exp.company || exp.employer || 'Şirket'}</p>
-                      <p className="text-xs md:text-sm text-gray-500 mt-1">{exp.period || exp.duration || exp.start_date || 'Tarih'}</p>
+                      <h3 className="text-base md:text-lg font-semibold text-gray-900">{exp.title || exp.position || t('common:positionPlaceholderLabel')}</h3>
+                      <p className="text-sm md:text-base text-gray-600 mt-1">{exp.company || exp.employer || t('common:companyPlaceholderLabel')}</p>
+                      <p className="text-xs md:text-sm text-gray-500 mt-1">{exp.period || exp.duration || exp.start_date || t('common:date')}</p>
                       <p className="text-sm md:text-base text-gray-700 mt-2">{exp.description || exp.desc || ''}</p>
                     </div>
                   ))
                 ) : (
-                  <p className="text-gray-500 italic">Deneyim bilgisi bulunmuyor.</p>
+                  <p className="text-gray-500 italic">{t('common:noExperienceInfo')}</p>
                 )}
               </div>
             </div>
 
             {/* Eğitim */}
             <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6">
-              <h2 className="text-lg md:text-xl font-bold mb-4">Eğitim</h2>
+              <h2 className="text-lg md:text-xl font-bold mb-4">{t('common:educationTitle')}</h2>
               <div className="space-y-4">
                 {application.education && application.education.length > 0 ? (
                   application.education.map((edu: any, index: number) => (
                     <div key={index} className="border-b border-gray-100 last:border-0 pb-4 last:pb-0">
-                      <h3 className="text-base md:text-lg font-semibold text-gray-900">{edu.school || edu.institution || 'Okul'}</h3>
-                      <p className="text-sm md:text-base text-gray-600 mt-1">{edu.degree || edu.field || 'Bölüm'}</p>
-                      <p className="text-xs md:text-sm text-gray-500 mt-1">{edu.period || edu.duration || edu.graduation_year || 'Tarih'}</p>
+                      <h3 className="text-base md:text-lg font-semibold text-gray-900">{edu.school || edu.institution || t('common:schoolPlaceholderLabel')}</h3>
+                      <p className="text-sm md:text-base text-gray-600 mt-1">{edu.degree || edu.field || t('common:degreePlaceholderLabel')}</p>
+                      <p className="text-xs md:text-sm text-gray-500 mt-1">{edu.period || edu.duration || edu.graduation_year || t('common:date')}</p>
                       <p className="text-sm md:text-base text-gray-700 mt-2">{edu.description || edu.desc || ''}</p>
                     </div>
                   ))
                 ) : (
-                  <p className="text-gray-500 italic">Eğitim bilgisi bulunmuyor.</p>
+                  <p className="text-gray-500 italic">{t('common:noEducationInfo')}</p>
                 )}
               </div>
             </div>
@@ -366,7 +355,7 @@ const ApplicationDetail = () => {
             {/* Hakkında */}
             {application.about && (
               <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6">
-                <h2 className="text-lg md:text-xl font-bold mb-4">Hakkında</h2>
+              <h2 className="text-lg md:text-xl font-bold mb-4">{t('common:aboutTitle')}</h2>
                 <p className="text-sm md:text-base text-gray-700 leading-relaxed">
                   {application.about}
                 </p>
@@ -378,7 +367,7 @@ const ApplicationDetail = () => {
           <div className="space-y-6">
             {/* Yetenekler */}
             <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6">
-              <h2 className="text-lg md:text-xl font-bold mb-4">Yetenekler</h2>
+              <h2 className="text-lg md:text-xl font-bold mb-4">{t('common:skillsTitle')}</h2>
               <div className="flex flex-wrap gap-2">
                 {application.skills && application.skills.length > 0 ? (
                   application.skills.map((skill: any, index: number) => (
@@ -390,21 +379,21 @@ const ApplicationDetail = () => {
                     </span>
                   ))
                 ) : (
-                  <p className="text-gray-500 italic">Yetenek bilgisi bulunmuyor.</p>
+                  <p className="text-gray-500 italic">{t('common:noSkillInfo')}</p>
                 )}
               </div>
             </div>
 
             {/* Diller */}
             <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6">
-              <h2 className="text-lg md:text-xl font-bold mb-4">Diller</h2>
+              <h2 className="text-lg md:text-xl font-bold mb-4">{t('common:languagesTitle')}</h2>
               <div className="space-y-3">
                 {application.languages && application.languages.length > 0 ? (
                   application.languages.map((lang: any, index: number) => (
                     <div key={index}>
                       <div className="flex justify-between items-center mb-1">
-                        <span className="text-sm md:text-base text-gray-700">{lang.name || lang.language || 'Dil'}</span>
-                        <span className="text-xs md:text-sm text-gray-500">{lang.level || lang.proficiency || 'Seviye'}</span>
+                        <span className="text-sm md:text-base text-gray-700">{lang.name || lang.language || t('common:languageName')}</span>
+                        <span className="text-xs md:text-sm text-gray-500">{lang.level || lang.proficiency || t('common:level')}</span>
                       </div>
                       <div className="h-2 bg-gray-100 rounded-full">
                         <div
@@ -415,27 +404,27 @@ const ApplicationDetail = () => {
                     </div>
                   ))
                 ) : (
-                  <p className="text-gray-500 italic">Dil bilgisi bulunmuyor.</p>
+                  <p className="text-gray-500 italic">{t('common:noLanguageInfo')}</p>
                 )}
               </div>
             </div>
 
             {/* Sertifikalar */}
             <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6">
-              <h2 className="text-lg md:text-xl font-bold mb-4">Sertifikalar</h2>
+              <h2 className="text-lg md:text-xl font-bold mb-4">{t('common:certificatesTitle')}</h2>
               <div className="space-y-3">
                 {application.certificates && application.certificates.length > 0 ? (
                   application.certificates.map((cert: any, index: number) => (
                     <div key={index} className="flex items-start gap-3">
                       <Award className="w-4 h-4 md:w-5 md:h-5 text-blue-500 mt-1" />
                       <div>
-                        <h3 className="text-sm md:text-base font-medium text-gray-900">{cert.name || cert.title || 'Sertifika'}</h3>
-                        <p className="text-xs md:text-sm text-gray-500">{cert.issuer || cert.institution || 'Kurum'} - {cert.date || cert.issued_date || 'Tarih'}</p>
+                        <h3 className="text-sm md:text-base font-medium text-gray-900">{cert.name || cert.title || t('common:certificatePlaceholderLabel')}</h3>
+                        <p className="text-xs md:text-sm text-gray-500">{(cert.issuer || cert.institution || t('common:issuerPlaceholderLabel'))} - {(cert.date || cert.issued_date || t('common:date'))}</p>
                       </div>
                     </div>
                   ))
                 ) : (
-                  <p className="text-gray-500 italic">Sertifika bilgisi bulunmuyor.</p>
+                  <p className="text-gray-500 italic">{t('common:noCertificateInfo')}</p>
                 )}
               </div>
             </div>

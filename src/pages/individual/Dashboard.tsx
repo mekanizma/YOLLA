@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Clock, MapPin, ChevronRight, User, MessageCircle } from 'lucide-react';
 import Header from '../../components/layout/Header';
 import Footer from '../../components/layout/Footer';
 import Button from '../../components/ui/Button';
-import { jobCategories, cities } from '../../lib/utils';
+import { jobCategories, cities, getJobCategories } from '../../lib/utils';
 import BadgesSection from '../../components/BadgesSection';
 import { fetchPublishedJobsOptimized } from '../../lib/cacheService';
 import { getMyApplications, applyToJob } from '../../lib/applicationsService';
@@ -14,6 +15,7 @@ import supabase from '../../lib/supabaseClient';
 import { useToast } from '../../components/ui/ToastProvider';
 
 const Dashboard = () => {
+  const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedCity, setSelectedCity] = useState('');
@@ -47,8 +49,8 @@ const Dashboard = () => {
       if (!auth.user?.id) {
         showToast({
           type: 'warning',
-          title: 'Giriş Gerekli',
-          message: 'Başvuru yapmak için giriş yapmalısınız.'
+          title: t('common:loginRequired'),
+          message: t('jobs:loginRequiredMessage')
         });
         navigate('/login/individual');
         return;
@@ -58,8 +60,8 @@ const Dashboard = () => {
       if (appliedJobs.has(jobId)) {
         showToast({
           type: 'info',
-          title: 'Zaten Başvuru Yapıldı',
-          message: 'Bu ilana zaten başvuru yaptınız.'
+          title: t('jobs:alreadyApplied'),
+          message: t('jobs:alreadyAppliedMessage')
         });
         return;
       }
@@ -81,8 +83,8 @@ const Dashboard = () => {
       // Başvuru yap
       await applyToJob(jobId, auth.user.id, {
         cover_letter: '',
-        resume_url: null,
-        answers: null
+        resume_url: undefined,
+        answers: undefined
       });
 
       // Başvuru yapıldığını işaretle
@@ -104,12 +106,12 @@ const Dashboard = () => {
           .single();
 
         if (jobData?.company_id && userData) {
-          const applicantName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || userData.email?.split('@')[0] || 'Kullanıcı';
+          const applicantName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || userData.email?.split('@')[0] || t('common:user');
           
           await createNotification({
             company_id: jobData.company_id,
-            title: 'Yeni Başvuru',
-            message: `${applicantName} adlı kullanıcı "${jobData.title}" pozisyonu için başvuru yaptı.`,
+            title: t('notifications:newApplication'),
+            message: t('notifications:newApplicationMessage', { applicantName, jobTitle: jobData.title }),
             type: 'info'
           });
         }
@@ -119,16 +121,16 @@ const Dashboard = () => {
 
       showToast({
         type: 'success',
-        title: 'Başvuru Başarılı!',
-        message: 'Başvurunuz başarıyla gönderildi. İşveren tarafından değerlendirilecek.'
+        title: t('jobs:applicationSubmitted'),
+        message: t('jobs:applicationSubmittedMessage')
       });
       
     } catch (error: any) {
       console.error('Başvuru hatası:', error);
       showToast({
         type: 'error',
-        title: 'Başvuru Hatası',
-        message: error.message || 'Başvuru gönderilemedi. Lütfen tekrar deneyin.'
+        title: t('jobs:applicationError'),
+        message: error.message || t('jobs:applicationErrorMessage')
       });
     } finally {
       // Başvuru işlemi tamamlandığını göster
@@ -202,13 +204,13 @@ const Dashboard = () => {
         if (user?.id) {
           const apps = await getMyApplications(user.id);
           const mappedApps = apps.slice(0, 5).map((a: any) => {
-            // Status'u Türkçe'ye çevir
+            // Status'u çeviri sistemi ile çevir
             const statusMap: { [key: string]: { text: string; color: string } } = {
-              'pending': { text: 'Beklemede', color: 'bg-yellow-100 text-yellow-800' },
-              'in_review': { text: 'İnceleniyor', color: 'bg-blue-100 text-blue-800' },
-              'accepted': { text: 'Kabul Edildi', color: 'bg-green-100 text-green-800' },
-              'rejected': { text: 'Reddedildi', color: 'bg-red-100 text-red-800' },
-              'approved': { text: 'Onaylandı', color: 'bg-green-100 text-green-800' }
+              'pending': { text: t('dashboard:pending'), color: 'bg-yellow-100 text-yellow-800' },
+              'in_review': { text: t('dashboard:inReview'), color: 'bg-blue-100 text-blue-800' },
+              'accepted': { text: t('dashboard:accepted'), color: 'bg-green-100 text-green-800' },
+              'rejected': { text: t('dashboard:rejected'), color: 'bg-red-100 text-red-800' },
+              'approved': { text: t('dashboard:approved'), color: 'bg-green-100 text-green-800' }
             };
             
             const statusInfo = statusMap[a.status] || { text: a.status, color: 'bg-gray-100 text-gray-800' };
@@ -289,8 +291,8 @@ const Dashboard = () => {
         {/* Welcome Banner */}
         <section className="bg-gradient-to-r from-primary to-primary/80 text-white py-10 rounded-b-3xl shadow-lg mb-6">
           <div className="container mx-auto px-4 text-center">
-            <h1 className="text-3xl md:text-4xl font-bold mb-2 animate-fadeIn">Hoş Geldiniz{displayName ? `, ${displayName}` : ''}! 👋</h1>
-            <p className="text-white/90 text-lg max-w-xl mx-auto animate-fadeIn delay-100">Kariyer yolculuğunuzda size yardımcı olmaktan memnuniyet duyarız. Hemen aramaya başlayın!</p>
+            <h1 className="text-3xl md:text-4xl font-bold mb-2 animate-fadeIn">{t('common:welcomeMessage')}{displayName ? `, ${displayName}` : ''}! 👋</h1>
+            <p className="text-white/90 text-lg max-w-xl mx-auto animate-fadeIn delay-100">{t('common:welcomeSubtitle')}</p>
           </div>
         </section>
 
@@ -303,7 +305,7 @@ const Dashboard = () => {
                 <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-3 items-center bg-white rounded-2xl shadow p-4">
                   <input
                     type="text"
-                    placeholder="Pozisyon, şirket veya anahtar kelime..."
+                    placeholder={t('common:searchJobsPlaceholder')}
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
                     className="flex-1 px-4 py-2 rounded-md border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary"
@@ -313,9 +315,9 @@ const Dashboard = () => {
                     onChange={e => setSelectedCategory(e.target.value)}
                     className="px-4 py-2 rounded-md border border-gray-200 focus:outline-none"
                   >
-                    <option value="">Kategori</option>
-                    {jobCategories.map((cat, i) => (
-                      <option key={i} value={cat}>{cat}</option>
+                    <option value="">{t('dashboard:category')}</option>
+                    {getJobCategories(t).map((cat, i) => (
+                      <option key={i} value={jobCategories[i]}>{cat}</option>
                     ))}
                   </select>
                   <select
@@ -323,19 +325,19 @@ const Dashboard = () => {
                     onChange={e => setSelectedCity(e.target.value)}
                     className="px-4 py-2 rounded-md border border-gray-200 focus:outline-none"
                   >
-                    <option value="">Şehir</option>
+                    <option value="">{t('dashboard:city')}</option>
                     {cities.map((city, i) => (
                       <option key={i} value={city}>{city}</option>
                     ))}
                   </select>
-                  <Button type="submit" className="px-6 py-2">İş Ara</Button>
+                  <Button type="submit" className="px-6 py-2">{t('common:searchJobs')}</Button>
                 </form>
               </section>
               <div className="bg-white rounded-2xl shadow-lg p-6 animate-fadeInUp">
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold">Size Önerilen İşler</h2>
+                  <h2 className="text-2xl font-bold">{t('dashboard:recommendedJobs')}</h2>
                   <Link to="/individual/jobs" className="text-primary hover:underline text-sm font-medium flex items-center gap-1">
-                    Tümünü Gör <ChevronRight size={16} />
+                    {t('common:viewAll')} <ChevronRight size={16} />
                   </Link>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -388,7 +390,7 @@ const Dashboard = () => {
                               disabled
                               className="flex items-center gap-1 bg-green-50 text-green-700 border-green-200"
                             >
-                              <span>✓ Başvuru Yapıldı</span>
+                              <span>{t('dashboard:applicationSubmitted')}</span>
                             </Button>
                           ) : (
                             <Button 
@@ -404,10 +406,10 @@ const Dashboard = () => {
                               {applyingJobs.has(job.id) ? (
                                 <>
                                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                  <span>Başvuru Yapılıyor...</span>
+                                  <span>{t('dashboard:applying')}</span>
                                 </>
                               ) : (
-                                <span>Başvur</span>
+                                <span>{t('dashboard:apply')}</span>
                               )}
                             </Button>
                           )}
@@ -420,7 +422,7 @@ const Dashboard = () => {
                               navigate(`/individual/jobs?jobId=${job.id}`);
                             }}
                           >
-                            Detayları Gör
+                            {t('dashboard:viewDetails')}
                           </Button>
                         </div>
                       </div>
@@ -435,21 +437,21 @@ const Dashboard = () => {
             <div className="space-y-8">
               {/* Quick Actions */}
               <div className="bg-white rounded-2xl shadow-lg p-6 animate-fadeInUp">
-                <h2 className="text-xl font-bold mb-4">Hızlı Erişim</h2>
+                <h2 className="text-xl font-bold mb-4">{t('dashboard:quickAccess')}</h2>
                 <div className="grid grid-cols-2 gap-3">
                   <Link
                     to="/individual/profile"
                     className="flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
                   >
                     <User className="h-5 w-5" />
-                    Profil
+                    {t('dashboard:profile')}
                   </Link>
                   <Link
                     to="/individual/chats"
                     className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
                   >
                     <MessageCircle className="h-5 w-5" />
-                    Mesajlar
+                    {t('dashboard:messages')}
                   </Link>
                 </div>
               </div>
@@ -457,9 +459,9 @@ const Dashboard = () => {
               {/* Recent Applications */}
               <div className="bg-white rounded-2xl shadow-lg p-6 animate-fadeInUp">
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-bold">Son Başvurularım</h2>
+                  <h2 className="text-xl font-bold">{t('dashboard:myRecentApplications')}</h2>
                   <Link to="/individual/applications" className="text-primary hover:underline text-sm font-medium flex items-center gap-1">
-                    Tümünü Gör <ChevronRight size={16} />
+                    {t('common:viewAll')} <ChevronRight size={16} />
                   </Link>
                 </div>
                 {recentApplications.length > 0 ? (
@@ -477,14 +479,14 @@ const Dashboard = () => {
                   </div>
                 ) : (
                   <div className="text-center py-8 flex flex-col items-center">
-                    <img src="/empty-application.svg" alt="Başvuru yok" className="w-24 h-24 mb-4 opacity-80" />
-                    <p className="text-gray-500 mb-2">Henüz bir başvurunuz bulunmamaktadır.</p>
+                    <img src="/empty-application.svg" alt={t('common:noApplications')} className="w-24 h-24 mb-4 opacity-80" />
+                    <p className="text-gray-500 mb-2">{t('dashboard:noApplicationsYet')}</p>
                     <Button
                       variant="outline"
                       className="mt-3"
                       onClick={() => {/* Navigate to jobs */}}
                     >
-                      İş İlanlarını Keşfet
+                      {t('dashboard:exploreJobs')}
                     </Button>
                   </div>
                 )}

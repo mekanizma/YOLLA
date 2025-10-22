@@ -13,6 +13,23 @@ export function formatDate(date: string | Date): string {
   });
 }
 
+export const getJobCategories = (t: (key: string) => string) => [
+  t('common:categoryIT'),
+  t('common:categoryFinance'),
+  t('common:categorySales'),
+  t('common:categoryEngineering'),
+  t('common:categoryHealth'),
+  t('common:categoryDesign'),
+  t('common:categoryEducation'),
+  t('common:categoryProductionOps'),
+  t('common:categoryLogistics'),
+  t('common:categoryHR'),
+  t('common:categoryLegal'),
+  t('common:categoryCustomerService'),
+  t('common:categoryTourism'),
+  t('common:categoryOther'),
+];
+
 export const jobCategories = [
   'Bilişim / Teknoloji',
   'Finans / Muhasebe',

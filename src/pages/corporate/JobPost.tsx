@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Container, Paper, Typography, Box, TextField, Button, FormControl, InputLabel, Select, MenuItem, Grid, RadioGroup, FormControlLabel, Radio, Stepper, Step, StepLabel, IconButton, Switch, Divider, SelectChangeEvent } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { MapPin, Building, Clock, Users, Calendar } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import Header from '../../components/layout/Header';
 import supabase from '../../lib/supabaseClient';
 import { createCorporateJob, fetchCompanyByEmail } from '../../lib/jobsService';
@@ -43,42 +44,52 @@ const locations = [
   'LEFKE',
   'GÜZELYURT',
 ];
-const experienceLevels = [
-  { label: 'Başlangıç Seviyesi', value: 'junior', desc: '0-2 yıl deneyim' },
-  { label: 'Orta Seviye', value: 'mid', desc: '2-5 yıl deneyim' },
-  { label: 'Kıdemli', value: 'senior', desc: '5+ yıl deneyim' },
+const getExperienceLevels = (t: any) => [
+  { label: t('common:juniorLevel'), value: 'junior', desc: t('common:juniorExperience') },
+  { label: t('common:midLevel'), value: 'mid', desc: t('common:midExperience') },
+  { label: t('common:seniorLevel'), value: 'senior', desc: t('common:seniorExperience') },
 ];
-const employmentTypes = ['Tam Zamanlı', 'Yarı Zamanlı', 'Sözleşmeli', 'Staj', 'Geçici'];
-
-const workDays = [
-  { value: 'monday', label: 'Pazartesi' },
-  { value: 'tuesday', label: 'Salı' },
-  { value: 'wednesday', label: 'Çarşamba' },
-  { value: 'thursday', label: 'Perşembe' },
-  { value: 'friday', label: 'Cuma' },
-  { value: 'saturday', label: 'Cumartesi' },
-  { value: 'sunday', label: 'Pazar' }
+const getEmploymentTypes = (t: any) => [
+  t('common:fullTime'), 
+  t('common:partTime'), 
+  t('common:contract'), 
+  t('common:internship'), 
+  t('common:temporary')
 ];
 
-const commonBenefits = [
-  'Özel Sağlık Sigortası',
-  'Yemek Kartı',
-  'Servis',
-  'Esnek Çalışma Saatleri',
-  'Uzaktan Çalışma',
-  'Yıllık İzin',
-  'Performans Primi',
-  'Eğitim Desteği',
-  'Yabancı Dil Kursu',
-  'Spor Salonu Üyeliği',
-  'Kreş Desteği',
-  'Telefon Hattı',
-  'Şirket Telefonu',
-  'Şirket Bilgisayarı',
-  'Doğum Günü İzni'
+const getWorkDays = (t: any) => [
+  { value: 'monday', label: t('common:monday') },
+  { value: 'tuesday', label: t('common:tuesday') },
+  { value: 'wednesday', label: t('common:wednesday') },
+  { value: 'thursday', label: t('common:thursday') },
+  { value: 'friday', label: t('common:friday') },
+  { value: 'saturday', label: t('common:saturday') },
+  { value: 'sunday', label: t('common:sunday') }
 ];
 
-const steps = ['Temel Bilgiler', 'İş Detayları', 'İnceleme'];
+const getCommonBenefits = (t: any) => [
+  t('common:privateHealthInsurance'),
+  t('common:mealCard'),
+  t('common:shuttleService'),
+  t('common:flexibleWorkingHours'),
+  t('common:remoteWork'),
+  t('common:annualLeave'),
+  t('common:performanceBonus'),
+  t('common:educationSupport'),
+  t('common:foreignLanguageCourse'),
+  t('common:gymMembership'),
+  t('common:daycareSupport'),
+  t('common:phoneLine'),
+  t('common:companyPhone'),
+  t('common:companyLaptop'),
+  t('common:birthdayLeave')
+];
+
+const getSteps = (t: any) => [
+  t('common:basicInformation'), 
+  t('common:jobDetails'), 
+  t('common:review')
+];
 
 interface JobForm {
   title: string;
@@ -104,7 +115,13 @@ interface JobForm {
 }
 
 const JobPost: React.FC = () => {
+  const { t } = useTranslation();
   const [activeStep, setActiveStep] = useState(0);
+  const experienceLevels = getExperienceLevels(t);
+  const employmentTypes = getEmploymentTypes(t);
+  const steps = getSteps(t);
+  const workDays = getWorkDays(t);
+  const commonBenefits = getCommonBenefits(t);
   const [form, setForm] = useState<JobForm>({
     title: '',
     department: '',
@@ -215,7 +232,7 @@ const JobPost: React.FC = () => {
   const renderJobDetailsStep = () => (
     <Paper elevation={0} sx={{ borderRadius: 4, p: { xs: 2, md: 4 }, boxShadow: '0 2px 8px #ececec' }}>
       <Typography variant="h6" fontWeight={700} mb={2}>
-        İş Detayları
+{t('common:jobDetails')}
       </Typography>
       <Grid container spacing={2}>
         {/* İş Tanımı */}
@@ -223,9 +240,9 @@ const JobPost: React.FC = () => {
           <TextField
             fullWidth
             required
-            label="İş Tanımı"
+            label={t('common:jobDescription')}
             name="description"
-            placeholder="İş tanımını detaylı bir şekilde yazın..."
+            placeholder={t('common:jobDescriptionPlaceholder')}
             multiline
             minRows={5}
             value={form.description}
@@ -233,7 +250,7 @@ const JobPost: React.FC = () => {
             margin="dense"
           />
           <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-            Pozisyonun sorumluluklarını, beklentileri ve görevleri detaylı bir şekilde açıklayın
+            {t('common:jobDescriptionHint')}
           </Typography>
         </Grid>
 
@@ -242,9 +259,9 @@ const JobPost: React.FC = () => {
           <TextField
             fullWidth
             required
-            label="Aranan Nitelikler"
+            label={t('common:requirements')}
             name="requirements"
-            placeholder="Adaylarda aradığınız nitelikleri yazın..."
+            placeholder={t('common:requirementsPlaceholder')}
             multiline
             minRows={5}
             value={form.requirements}
@@ -252,7 +269,7 @@ const JobPost: React.FC = () => {
             margin="dense"
           />
           <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-            Adaylarda olmasını beklediğiniz teknik ve kişisel becerileri, deneyimleri ve eğitim gereksinimlerini belirtin
+            {t('common:requirementsHint')}
           </Typography>
         </Grid>
 
@@ -261,7 +278,7 @@ const JobPost: React.FC = () => {
           <TextField
             fullWidth
             required
-            label="Son Başvuru Tarihi"
+            label={t('common:applicationDeadline')}
             name="deadline"
             type="date"
             value={form.deadline}
@@ -271,20 +288,20 @@ const JobPost: React.FC = () => {
             inputProps={{ min: new Date().toISOString().split('T')[0] }}
           />
           <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-            İlanın yayında kalacağı son tarihi belirtin
+            {t('common:applicationDeadlineHint')}
           </Typography>
         </Grid>
 
         {/* Çalışma Saatleri */}
         <Grid item xs={12}>
           <Typography variant="subtitle1" fontWeight={600} mb={2}>
-            Çalışma Saatleri
+            {t('common:workingHours')}
           </Typography>
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                label="İşe Başlama Saati"
+                label={t('common:workStartTime')}
                 name="workHours.startTime"
                 type="time"
                 value={form.workHours.startTime}
@@ -296,7 +313,7 @@ const JobPost: React.FC = () => {
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                label="İşten Çıkış Saati"
+                label={t('common:workEndTime')}
                 name="workHours.endTime"
                 type="time"
                 value={form.workHours.endTime}
@@ -307,7 +324,7 @@ const JobPost: React.FC = () => {
             </Grid>
             <Grid item xs={12}>
               <Typography variant="body2" color="text.secondary" mb={1}>
-                Çalışma Günleri
+                {t('common:workDays')}
               </Typography>
               <Box display="flex" gap={1} flexWrap="wrap">
                 {workDays.map((day) => (
@@ -343,13 +360,13 @@ const JobPost: React.FC = () => {
         {/* Maaş Bilgisi */}
         <Grid item xs={12}>
           <Typography variant="subtitle1" fontWeight={600} mb={1}>
-            Maaş Aralığı
+            {t('common:salaryRange')}
           </Typography>
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                label="Minimum Maaş"
+                label={t('common:minSalary')}
                 name="salary.min"
                 type="number"
                 placeholder="30000"
@@ -364,7 +381,7 @@ const JobPost: React.FC = () => {
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                label="Maksimum Maaş"
+                label={t('common:maxSalary')}
                 name="salary.max"
                 type="number"
                 placeholder="45000"
@@ -393,20 +410,20 @@ const JobPost: React.FC = () => {
                 size="small"
               />
             }
-            label="Maaş bilgisini adaylara göster"
+            label={t('common:showSalaryToCandidates')}
           />
         </Grid>
 
         {/* Yan Haklar */}
         <Grid item xs={12}>
           <Typography variant="subtitle1" fontWeight={600} mb={1}>
-            Yan Haklar
+            {t('common:benefits')}
           </Typography>
           
           {/* Hazır Yan Haklar */}
           <Box mb={2}>
             <Typography variant="body2" color="text.secondary" mb={1}>
-              Sık Kullanılan Yan Haklar
+              {t('common:commonBenefits')}
             </Typography>
             <Box display="flex" gap={1} flexWrap="wrap">
               {commonBenefits.map((benefit) => (
@@ -437,8 +454,8 @@ const JobPost: React.FC = () => {
           {/* Özel Yan Hak Ekleme */}
           <TextField
             fullWidth
-            label="Özel Yan Hak Ekle"
-            placeholder="Yan hak eklemek için yazın ve Enter'a basın"
+            label={t('common:addCustomBenefit')}
+            placeholder={t('common:addBenefitPlaceholder')}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && (e.target as HTMLInputElement).value.trim()) {
                 e.preventDefault();
@@ -459,7 +476,7 @@ const JobPost: React.FC = () => {
           {form.benefits.length > 0 && (
             <Box mt={2}>
               <Typography variant="body2" color="text.secondary" mb={1}>
-                Seçilen Yan Haklar
+                {t('common:selectedBenefits')}
               </Typography>
               <Box display="flex" gap={1} flexWrap="wrap">
                 {form.benefits.map((benefit, index) => (
@@ -531,7 +548,7 @@ const JobPost: React.FC = () => {
                   <ArrowBackIcon />
                 </IconButton>
                 <Typography variant="h5" fontWeight={700}>
-                  Yeni İş İlanı Oluştur
+                  {t('common:createNewJobPosting')}
                 </Typography>
               </Box>
             </Box>
@@ -549,29 +566,29 @@ const JobPost: React.FC = () => {
             {activeStep === 0 && (
               <Paper elevation={0} sx={{ borderRadius: 4, p: { xs: 2, md: 4 }, boxShadow: '0 2px 8px #ececec' }}>
                 <Typography variant="h6" fontWeight={700} mb={2}>
-                  Temel Bilgiler
+                  {t('common:basicInformation')}
                 </Typography>
                 <Grid container spacing={2}>
                   <Grid item xs={12}>
             <TextField
               fullWidth
               required
-                      label="İlan Başlığı"
+                      label={t('common:jobTitle')}
               name="title"
-                      placeholder="Örn: Kıdemli Yazılım Geliştirici"
+                      placeholder={t('common:jobTitlePlaceholder')}
                       value={form.title}
               onChange={handleChange}
                       margin="dense"
                     />
                     <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-                      Aday aramalarında öne çıkması için açıklayıcı bir başlık seçin
+                      {t('common:jobTitleHint')}
                     </Typography>
                   </Grid>
                   <Grid item xs={12} md={6}>
                     <FormControl fullWidth required margin="dense" sx={{ minWidth: { xs: '100%', md: 250 } }}>
-                      <InputLabel>Departman seçin</InputLabel>
+                      <InputLabel>{t('common:selectDepartment')}</InputLabel>
                 <Select
-                        label="Departman seçin"
+                        label={t('common:selectDepartment')}
                         name="department"
                         value={form.department}
                   onChange={handleChange}
@@ -585,9 +602,9 @@ const JobPost: React.FC = () => {
                   </Grid>
                   <Grid item xs={12} md={6}>
                     <FormControl fullWidth required margin="dense" sx={{ minWidth: { xs: '100%', md: 250 } }}>
-                      <InputLabel>Konum seçin</InputLabel>
+                      <InputLabel>{t('common:selectLocation')}</InputLabel>
                 <Select
-                        label="Konum seçin"
+                        label={t('common:selectLocation')}
                         name="location"
                         value={form.location}
                   onChange={handleChange}
@@ -600,7 +617,7 @@ const JobPost: React.FC = () => {
               </FormControl>
                   </Grid>
                   <Grid item xs={12}>
-                    <Typography fontWeight={600} mb={1} mt={2}>Deneyim Seviyesi *</Typography>
+                    <Typography fontWeight={600} mb={1} mt={2}>{t('common:experienceLevel')} *</Typography>
                     <RadioGroup row name="experience" value={form.experience} onChange={handleChange}>
                       {experienceLevels.map((exp) => (
                         <FormControlLabel
@@ -635,7 +652,7 @@ const JobPost: React.FC = () => {
                     </RadioGroup>
                   </Grid>
                   <Grid item xs={12}>
-                    <Typography fontWeight={600} mb={1} mt={2}>İstihdam Türü *</Typography>
+                    <Typography fontWeight={600} mb={1} mt={2}>{t('common:employmentType')} *</Typography>
                     <RadioGroup row name="employment" value={form.employment} onChange={handleChange}>
                       {employmentTypes.map((type) => (
                         <FormControlLabel
@@ -670,7 +687,7 @@ const JobPost: React.FC = () => {
                   </Grid>
                   <Grid item xs={12} display="flex" justifyContent="flex-end" mt={2}>
                     <Button variant="contained" sx={{ borderRadius: 2, px: 4, bgcolor: '#1746a2', '&:hover': { bgcolor: '#12306b' } }} onClick={() => setActiveStep((prev) => prev + 1)}>
-                      Sonraki Adım
+                      {t('common:nextStep')}
                     </Button>
                   </Grid>
                 </Grid>
@@ -680,7 +697,7 @@ const JobPost: React.FC = () => {
             {activeStep === 2 && (
               <Paper elevation={0} sx={{ borderRadius: 4, p: { xs: 2, md: 4 }, boxShadow: '0 2px 8px #ececec' }}>
                 <Typography variant="h6" fontWeight={700} mb={4}>
-                  İlan Önizleme
+                  {t('common:jobPreview')}
                 </Typography>
 
                 {/* İlan Başlığı ve Temel Bilgiler */}
@@ -726,7 +743,7 @@ const JobPost: React.FC = () => {
                       <Box display="flex" alignItems="center" gap={1}>
                         <Calendar size={18} className="text-gray-500" />
                         <Typography variant="body2" color="text.secondary">
-                          Son Başvuru: {new Date(form.deadline).toLocaleDateString('tr-TR', {
+                          {t('common:lastApplication')}: {new Date(form.deadline).toLocaleDateString('tr-TR', {
                             year: 'numeric',
                             month: 'long',
                             day: 'numeric'
@@ -741,7 +758,7 @@ const JobPost: React.FC = () => {
                         <Box display="flex" alignItems="center" gap={1}>
                           <Clock size={18} className="text-gray-500" />
                           <Typography variant="body2" color="text.secondary">
-                            Çalışma Saatleri: {
+                            {t('common:workingHours')}: {
                               form.workHours.startTime && form.workHours.endTime 
                                 ? `${form.workHours.startTime} - ${form.workHours.endTime}`
                                 : form.workHours.startTime 
@@ -767,7 +784,7 @@ const JobPost: React.FC = () => {
                 {/* İş Tanımı */}
                 <Box mb={4}>
                   <Typography variant="h6" fontWeight={600} mb={2}>
-                    İş Tanımı
+                    {t('common:jobDescription')}
                   </Typography>
                   <Typography variant="body1" whiteSpace="pre-line">
                     {form.description}
@@ -777,7 +794,7 @@ const JobPost: React.FC = () => {
                 {/* Gereksinimler */}
                 <Box mb={4}>
                   <Typography variant="h6" fontWeight={600} mb={2}>
-                    Aranan Nitelikler
+                    {t('common:requirements')}
                   </Typography>
                   <Typography variant="body1" whiteSpace="pre-line">
                     {form.requirements}
@@ -788,7 +805,7 @@ const JobPost: React.FC = () => {
                 {form.salary.showSalary && form.salary.min && form.salary.max && (
                   <Box mb={4}>
                     <Typography variant="h6" fontWeight={600} mb={2}>
-                      Maaş Aralığı
+                      {t('common:salaryRange')}
                     </Typography>
                     <Typography variant="body1">
                       {form.salary.min} ₺ - {form.salary.max} ₺
@@ -800,7 +817,7 @@ const JobPost: React.FC = () => {
                 {form.benefits.length > 0 && (
                   <Box mb={4}>
                     <Typography variant="h6" fontWeight={600} mb={2}>
-                      Yan Haklar
+                      {t('common:benefits')}
                     </Typography>
                     <Grid container spacing={1}>
                       {form.benefits.map((benefit, index) => (
@@ -830,14 +847,14 @@ const JobPost: React.FC = () => {
                     onClick={() => setActiveStep(prev => prev - 1)}
                     sx={{ borderRadius: 2, px: 4 }}
                   >
-                    Geri Dön
+                    {t('common:goBack')}
                   </Button>
                   <Button
                     variant="contained"
                     onClick={handleSubmit}
                     sx={{ borderRadius: 2, px: 4, bgcolor: '#1746a2', '&:hover': { bgcolor: '#12306b' } }}
                   >
-                    İlanı Yayınla
+                    {t('common:publishJob')}
                   </Button>
                 </Box>
               </Paper>

@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Typography, Box, Tabs, Tab, Paper, Avatar, Button, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
-import { Bell, CalendarCheck, Lightbulb, Award, Eye, CheckCircle, Briefcase, Trash2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Container, Typography, Box, Tabs, Tab, Paper, Button, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { Bell, Award, CheckCircle, Briefcase, Trash2 } from 'lucide-react';
 import Header from '../../components/layout/Header';
 import Footer from '../../components/layout/Footer';
 import Snackbar from '@mui/material/Snackbar';
 import Checkbox from '@mui/material/Checkbox';
 import FormControlLabel from '@mui/material/FormControlLabel';
-import { useNavigate } from 'react-router-dom';
 import supabase from '../../lib/supabaseClient';
 import { getMyNotifications, markNotificationRead } from '../../lib/notificationsService';
 
@@ -32,21 +32,20 @@ const iconMap = {
   error: <Bell className="w-6 h-6 text-red-500" />,
 };
 
-const tabOptions = [
-  { label: 'Tümü', value: 'all' },
-  { label: 'Okunmamış', value: 'unread' },
-  { label: 'Okunmuş', value: 'read' },
-];
-
 const IndividualNotifications: React.FC = () => {
+  const { t } = useTranslation();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [tab, setTab] = useState<'all' | 'unread' | 'read'>('all');
   const [openDetail, setOpenDetail] = useState<Notification | null>(null);
   const [contractDialogOpen, setContractDialogOpen] = useState(false);
   const [contractAccepted, setContractAccepted] = useState(false);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string }>({ open: false, message: '' });
-  const [acceptedOffer, setAcceptedOffer] = useState(false); // mock kayıt
-  const navigate = useNavigate();
+
+  const tabOptions = [
+    { label: t('notifications:all'), value: 'all' },
+    { label: t('notifications:unread'), value: 'unread' },
+    { label: t('notifications:read'), value: 'read' },
+  ];
 
   useEffect(() => {
     const load = async () => {
@@ -111,8 +110,7 @@ const IndividualNotifications: React.FC = () => {
   const handleContractConfirm = () => {
     setContractDialogOpen(false);
     setContractAccepted(false);
-    setAcceptedOffer(true); // mock olarak sisteme kaydet
-    setSnackbar({ open: true, message: 'Teklif kabul edildi ve işe alımınız tamamlandı.' });
+    setSnackbar({ open: true, message: t('notifications:offerAccepted') });
     // Dummy olarak onaylanan başvuruyu localStorage'a ekle
     if (openDetail && openDetail.applicationId) {
       const approved = JSON.parse(localStorage.getItem('approved_applications') || '[]');
@@ -124,8 +122,40 @@ const IndividualNotifications: React.FC = () => {
   };
 
   // Bildirimi sil fonksiyonu (opsiyonel: supabase'de soft delete/flag)
-  const handleDeleteNotification = (id: number) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
+  const getTranslatedMessage = (title: string, desc: string) => {
+    // Yeni Başvuru bildirimleri için özel çeviriler
+    if (title.toLowerCase().includes('yeni başvuru') || title.toLowerCase().includes('new application')) {
+      return {
+        title: t('notifications:newApplication'),
+        desc: desc.replace(
+          /(\w+)\s+adlı\s+kullanıcı\s+"([^"]+)"\s+pozisyonu\s+için\s+başvuru\s+yaptı\.?/i,
+          (match, userName, jobTitle) => {
+            return t('notifications:newApplicationMessage', { 
+              applicantName: userName, 
+              jobTitle: jobTitle 
+            });
+          }
+        )
+      };
+    }
+    
+    // Başvuru durumu güncellemeleri için özel çeviriler
+    if (title.toLowerCase().includes('başvuru durumu güncellendi') || title.toLowerCase().includes('application status update')) {
+      if (desc.toLowerCase().includes('kabul edildi') || desc.toLowerCase().includes('accepted')) {
+        return {
+          title: t('notifications:applicationStatusUpdate'),
+          desc: t('notifications:applicationAccepted')
+        };
+      } else if (desc.toLowerCase().includes('değerlendiriliyor') || desc.toLowerCase().includes('being evaluated')) {
+        return {
+          title: t('notifications:applicationStatusUpdate'),
+          desc: t('notifications:applicationUnderReview')
+        };
+      }
+    }
+    
+    // Diğer durumlar için mevcut metinleri kullan
+    return { title, desc };
   };
 
   return (
@@ -133,7 +163,7 @@ const IndividualNotifications: React.FC = () => {
       <Header userType="individual" />
       <Container maxWidth="lg" sx={{ py: 4, pt: { xs: 8, md: 10 }, flex: 1 }}>
         <Box className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
-          <Typography variant="h5" fontWeight={700}>Bildirimler</Typography>
+          <Typography variant="h5" fontWeight={700}>{t('notifications:notifications')}</Typography>
           <Box className="flex items-center gap-4">
             <Tabs
               value={tab}
@@ -147,12 +177,14 @@ const IndividualNotifications: React.FC = () => {
               ))}
             </Tabs>
             <Button onClick={markAllAsRead} variant="text" className="text-primary text-sm ml-2">
-              Tümünü Okundu İşaretle
+              {t('common:markAllAsRead')}
             </Button>
           </Box>
         </Box>
         <Box className="space-y-3">
-          {sortedNotifications.map((n) => (
+          {sortedNotifications.map((n) => {
+            const translated = getTranslatedMessage(n.title, n.desc);
+            return (
             <Paper
               key={n.id}
               elevation={0}
@@ -172,27 +204,28 @@ const IndividualNotifications: React.FC = () => {
               </div>
               <div className="flex-1 min-w-0">
                 <div className={`font-semibold mb-1 text-base ${!n.read ? 'text-blue-700' : 'text-gray-800'}`}>
-                  {n.title}
+                  {translated.title}
                 </div>
-                <div className="text-gray-600 text-sm truncate">{n.desc}</div>
+                <div className="text-gray-600 text-sm truncate">{translated.desc}</div>
                 <div className="flex items-center gap-2 mt-1">
                   <div className="text-xs text-gray-400">{n.date}</div>
                   <div className={`text-xs font-medium ${!n.read ? 'text-blue-600' : 'text-gray-500'}`}>
-                    {n.read ? '✓ Okundu' : '● Okunmadı'}
+                    {n.read ? t('notifications:readStatus') : t('notifications:unreadStatus')}
                   </div>
                 </div>
               </div>
               <button
                 className="ml-2 text-gray-400 hover:text-red-500"
                 onClick={e => { e.stopPropagation(); handleDeleteNotification(n.id); }}
-                title="Sil"
+                title={t('common:delete')}
               >
                 <Trash2 size={18} />
               </button>
             </Paper>
-          ))}
+            );
+          })}
           {sortedNotifications.length === 0 && (
-            <Paper elevation={0} className="p-8 text-center text-gray-400">Hiç bildirim yok.</Paper>
+            <Paper elevation={0} className="p-8 text-center text-gray-400">{t('notifications:noNotifications')}</Paper>
           )}
         </Box>
         {/* Bildirim Detay Modalı */}
@@ -201,34 +234,34 @@ const IndividualNotifications: React.FC = () => {
             {openDetail && (
               <Box className="flex items-center gap-2">
                 <span style={{ color: 'text-primary' }}>{iconMap[openDetail.type]}</span>
-                <span>{openDetail.title}</span>
+                <span>{getTranslatedMessage(openDetail.title, openDetail.desc).title}</span>
               </Box>
             )}
           </DialogTitle>
           <DialogContent dividers>
             <Typography variant="body1" sx={{ mb: 2, whiteSpace: 'pre-line' }}>
-              {openDetail?.desc}
+              {getTranslatedMessage(openDetail?.title || '', openDetail?.desc || '').desc}
             </Typography>
             
             {/* Kabul detayları varsa göster */}
             {openDetail?.data && (openDetail.data.accept_date || openDetail.data.details) && (
               <Box sx={{ mt: 3, p: 2, bgcolor: 'success.light', borderRadius: 1 }}>
                 <Typography variant="h6" sx={{ mb: 1, color: 'success.dark' }}>
-                  📋 Kabul Detayları
+                  📋 {t('notifications:acceptanceDetails')}
                 </Typography>
                 {openDetail.data.accept_date && (
                   <Typography variant="body2" sx={{ mb: 1 }}>
-                    <strong>İşe Başlama Tarihi:</strong> {new Date(openDetail.data.accept_date).toLocaleDateString('tr-TR')}
+                    <strong>{t('notifications:startDate')}:</strong> {new Date(openDetail.data.accept_date).toLocaleDateString('tr-TR')}
                   </Typography>
                 )}
                 {openDetail.data.accept_time && (
                   <Typography variant="body2" sx={{ mb: 1 }}>
-                    <strong>Saat:</strong> {openDetail.data.accept_time}
+                    <strong>{t('notifications:time')}:</strong> {openDetail.data.accept_time}
                   </Typography>
                 )}
                 {openDetail.data.details && (
                   <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
-                    <strong>Detaylar:</strong><br />
+                    <strong>{t('notifications:details')}:</strong><br />
                     {openDetail.data.details}
                   </Typography>
                 )}
@@ -241,32 +274,32 @@ const IndividualNotifications: React.FC = () => {
           </DialogContent>
           <DialogActions>
             <Button onClick={handleCloseDetail} variant="contained" color="primary">
-              Kapat
+              {t('notifications:close')}
             </Button>
           </DialogActions>
         </Dialog>
 
         {/* Sözleşme Onayı Dialog */}
         <Dialog open={contractDialogOpen} onClose={() => setContractDialogOpen(false)}>
-          <DialogTitle>Sözleşme Onayı</DialogTitle>
+          <DialogTitle>{t('common:contractApproval')}</DialogTitle>
           <DialogContent>
             <Typography variant="body2" mb={2}>
-              Lütfen aşağıdaki sözleşme maddelerini okuyup onaylayın:
+              {t('common:contractTermsText')}
             </Typography>
             <ul className="list-disc pl-6 text-gray-700 mb-4">
-              <li>Çalışma koşulları ve iş tanımı tarafınıza iletilmiştir.</li>
-              <li>İşe başlama tarihi ve saati işveren tarafından bildirilecektir.</li>
-              <li>Tüm yasal haklarınız ve yükümlülükleriniz korunacaktır.</li>
-              <li>Gizlilik ve veri koruma kurallarına uyulacaktır.</li>
+              <li>{t('common:contractItem1')}</li>
+              <li>{t('common:contractItem2')}</li>
+              <li>{t('common:contractItem3')}</li>
+              <li>{t('common:contractItem4')}</li>
             </ul>
             <FormControlLabel
               control={<Checkbox checked={contractAccepted} onChange={e => setContractAccepted(e.target.checked)} />}
-              label="Sözleşme maddelerini okudum ve kabul ediyorum."
+              label={t('common:contractTerms')}
             />
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setContractDialogOpen(false)}>İptal</Button>
-            <Button onClick={handleContractConfirm} disabled={!contractAccepted}>Sözleşmeyi Onayla</Button>
+            <Button onClick={() => setContractDialogOpen(false)}>{t('common:cancel')}</Button>
+            <Button onClick={handleContractConfirm} disabled={!contractAccepted}>{t('common:approveContract')}</Button>
           </DialogActions>
         </Dialog>
 

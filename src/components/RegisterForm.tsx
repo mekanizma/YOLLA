@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Button, MenuItem, TextField, Select, InputLabel, FormControl, FormHelperText, Card, CardContent, Typography, Box, Divider
 } from '@mui/material';
@@ -21,20 +22,26 @@ import TimelineIcon from '@mui/icons-material/Timeline';
 import Grid from '@mui/material/Grid';
 import { cities } from '../lib/utils';
 
-const educationLevels = [
-  'İlköğretim', 'Lise', 'Ön Lisans', 'Lisans', 'Yüksek Lisans', 'Doktora'
-];
-const genders = [
-  { value: 'male', label: 'Erkek' },
-  { value: 'female', label: 'Kadın' },
-  { value: 'other', label: 'Diğer' },
-];
-
 interface RegisterFormProps {
   onSubmit?: (data: any) => void;
 }
 
 const RegisterForm: React.FC<RegisterFormProps> = ({ onSubmit }) => {
+  const { t } = useTranslation();
+  
+  const educationLevels = [
+    { value: 'primarySchool', label: t('auth:primarySchool') },
+    { value: 'highSchool', label: t('auth:highSchool') },
+    { value: 'associateDegree', label: t('auth:associateDegree') },
+    { value: 'bachelorDegree', label: t('auth:bachelorDegree') },
+    { value: 'masterDegree', label: t('auth:masterDegree') },
+    { value: 'phd', label: t('auth:phd') },
+  ];
+  const genders = [
+    { value: 'male', label: t('auth:male') },
+    { value: 'female', label: t('auth:female') },
+    { value: 'other', label: t('auth:other') },
+  ];
   const [form, setForm] = useState({
     name: '',
     surname: '',
@@ -55,22 +62,22 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSubmit }) => {
 
   const validate = () => {
     const newErrors: { [key: string]: string } = {};
-    if (!form.name) newErrors.name = 'Ad zorunlu';
-    if (!form.surname) newErrors.surname = 'Soyad zorunlu';
-    if (!form.email) newErrors.email = 'E-posta zorunlu';
-    else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email)) newErrors.email = 'Geçerli bir e-posta girin';
-    if (!form.password) newErrors.password = 'Şifre zorunlu';
-    else if (form.password.length < 8) newErrors.password = 'Şifre en az 8 karakter olmalı';
-    if (!form.confirmPassword) newErrors.confirmPassword = 'Şifre tekrar zorunlu';
-    else if (form.password !== form.confirmPassword) newErrors.confirmPassword = 'Şifreler eşleşmiyor';
-    if (!form.phone) newErrors.phone = 'Telefon zorunlu';
-    if (!form.birthDate) newErrors.birthDate = 'Doğum tarihi zorunlu';
-    if (!form.city) newErrors.city = 'Şehir zorunlu';
-    if (!form.gender) newErrors.gender = 'Cinsiyet zorunlu';
-    if (!form.education) newErrors.education = 'Eğitim seviyesi zorunlu';
-    if (!form.job) newErrors.job = 'Meslek zorunlu';
-    if (!form.experience) newErrors.experience = 'Deneyim yılı zorunlu';
-    if (!agree) newErrors.agree = 'Kullanım şartlarını ve gizlilik politikasını kabul etmelisiniz.';
+    if (!form.name) newErrors.name = t('auth:nameRequired');
+    if (!form.surname) newErrors.surname = t('auth:surnameRequired');
+    if (!form.email) newErrors.email = t('auth:emailRequired');
+    else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email)) newErrors.email = t('auth:validEmailRequired');
+    if (!form.password) newErrors.password = t('auth:passwordRequired');
+    else if (form.password.length < 8) newErrors.password = t('auth:passwordMinLength');
+    if (!form.confirmPassword) newErrors.confirmPassword = t('auth:confirmPasswordRequired');
+    else if (form.password !== form.confirmPassword) newErrors.confirmPassword = t('auth:passwordsDoNotMatch');
+    if (!form.phone) newErrors.phone = t('auth:phoneRequired');
+    if (!form.birthDate) newErrors.birthDate = t('auth:birthDateRequired');
+    if (!form.city) newErrors.city = t('auth:cityRequired');
+    if (!form.gender) newErrors.gender = t('auth:genderRequired');
+    if (!form.education) newErrors.education = t('auth:educationRequired');
+    if (!form.job) newErrors.job = t('auth:professionRequired');
+    if (!form.experience) newErrors.experience = t('auth:experienceRequired');
+    if (!agree) newErrors.agree = t('auth:termsAndPrivacyRequired');
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -103,17 +110,17 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSubmit }) => {
         <Box textAlign="center" mb={2}>
           <PersonIcon sx={{ fontSize: 40, color: 'primary.main', mb: 1 }} />
           <Typography variant="h5" fontWeight={700} mb={0.5} color="primary.main">
-            Kayıt Ol
+            {t('auth:registerTitle')}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Hemen kaydol, iş fırsatlarını kaçırma!
+            {t('auth:registerSubtitle')}
           </Typography>
         </Box>
         <form onSubmit={handleSubmit}>
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6}>
               <TextField
-                label="Ad"
+                label={t('auth:name')}
                 name="name"
                 value={form.name}
                 onChange={handleChange}
@@ -126,7 +133,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSubmit }) => {
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
-                label="Soyad"
+                label={t('auth:surname')}
                 name="surname"
                 value={form.surname}
                 onChange={handleChange}
@@ -139,7 +146,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSubmit }) => {
             </Grid>
             <Grid item xs={12}>
               <TextField
-                label="E-posta"
+                label={t('auth:email')}
                 name="email"
                 type="email"
                 value={form.email}
@@ -153,7 +160,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSubmit }) => {
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
-                label="Şifre"
+                label={t('auth:password')}
                 name="password"
                 type="password"
                 value={form.password}
@@ -167,7 +174,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSubmit }) => {
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
-                label="Şifre Tekrar"
+                label={t('auth:confirmPassword')}
                 name="confirmPassword"
                 type="password"
                 value={form.confirmPassword}
@@ -181,7 +188,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSubmit }) => {
             </Grid>
             <Grid item xs={12}>
               <TextField
-                label="Telefon"
+                label={t('auth:phone')}
                 name="phone"
                 value={form.phone}
                 onChange={handleChange}
@@ -195,7 +202,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSubmit }) => {
             <Grid item xs={12} sm={6}>
               <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={tr}>
                 <DatePicker
-                  label="Doğum Tarihi"
+                  label={t('auth:birthDate')}
                   value={form.birthDate}
                   onChange={handleDateChange}
                   slotProps={{
@@ -213,12 +220,12 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSubmit }) => {
             </Grid>
             <Grid item xs={12} sm={6}>
               <FormControl fullWidth required error={!!errors.city}>
-                <InputLabel><LocationCityIcon sx={{ mr: 1, mb: -0.5 }} />Şehir</InputLabel>
+                <InputLabel><LocationCityIcon sx={{ mr: 1, mb: -0.5 }} />{t('auth:city')}</InputLabel>
                 <Select
                   name="city"
                   value={form.city}
                   onChange={(e) => handleChange({ target: { name: 'city', value: e.target.value } } as any)}
-                  label="Şehir"
+                  label={t('auth:city')}
                 >
                   {cities.map((city) => (
                     <MenuItem key={city} value={city}>{city}</MenuItem>
@@ -229,12 +236,12 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSubmit }) => {
             </Grid>
             <Grid item xs={12} sm={6}>
               <FormControl fullWidth required error={!!errors.gender}>
-                <InputLabel><WcIcon sx={{ mr: 1, mb: -0.5 }} />Cinsiyet</InputLabel>
+                <InputLabel><WcIcon sx={{ mr: 1, mb: -0.5 }} />{t('auth:gender')}</InputLabel>
                 <Select
                   name="gender"
                   value={form.gender}
                   onChange={(e) => handleChange({ target: { name: 'gender', value: e.target.value } } as any)}
-                  label="Cinsiyet"
+                  label={t('auth:gender')}
                 >
                   {genders.map((g) => (
                     <MenuItem key={g.value} value={g.value}>{g.label}</MenuItem>
@@ -245,15 +252,15 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSubmit }) => {
             </Grid>
             <Grid item xs={12} sm={6}>
               <FormControl fullWidth required error={!!errors.education}>
-                <InputLabel><SchoolIcon sx={{ mr: 1, mb: -0.5 }} />Eğitim Seviyesi</InputLabel>
+                <InputLabel><SchoolIcon sx={{ mr: 1, mb: -0.5 }} />{t('auth:educationLevel')}</InputLabel>
                 <Select
                   name="education"
                   value={form.education}
                   onChange={(e) => handleChange({ target: { name: 'education', value: e.target.value } } as any)}
-                  label="Eğitim Seviyesi"
+                  label={t('auth:educationLevel')}
                 >
                   {educationLevels.map((level) => (
-                    <MenuItem key={level} value={level}>{level}</MenuItem>
+                    <MenuItem key={level.value} value={level.value}>{level.label}</MenuItem>
                   ))}
                 </Select>
                 <FormHelperText>{errors.education}</FormHelperText>
@@ -261,7 +268,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSubmit }) => {
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
-                label="Meslek"
+                label={t('auth:profession')}
                 name="job"
                 value={form.job}
                 onChange={handleChange}
@@ -274,7 +281,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSubmit }) => {
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
-                label="Deneyim Yılı"
+                label={t('auth:experienceYears')}
                 name="experience"
                 type="number"
                 value={form.experience}
@@ -294,7 +301,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSubmit }) => {
               control={<Checkbox checked={agree} onChange={(e) => setAgree(e.target.checked)} />}
               label={
                 <Typography variant="body2">
-                  <Link to="/terms" className="text-primary">Kullanım Şartları</Link> ve <Link to="/privacy" className="text-primary">Gizlilik Politikası</Link>'nı okudum ve kabul ediyorum.
+                  <Link to="/terms" className="text-primary">{t('common:terms')}</Link> ve <Link to="/privacy" className="text-primary">{t('common:privacy')}</Link>'nı okudum ve kabul ediyorum.
                 </Typography>
               }
             />
@@ -312,7 +319,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSubmit }) => {
             sx={{ mt: 1, py: 1.5, fontWeight: 600, fontSize: 18, borderRadius: 2, boxShadow: 2, transition: '0.2s', ':hover': { backgroundColor: 'primary.dark', boxShadow: 4 } }}
             disabled={loading}
           >
-            Kayıt Ol
+            {t('auth:registerButton')}
           </Button>
         </form>
       </CardContent>
