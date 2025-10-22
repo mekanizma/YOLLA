@@ -275,11 +275,21 @@ export async function getCorporateApplications(companyId: number) {
         
         try {
           // Auth.users tablosundan kullanıcı bilgilerini al
-          const { data: authUser } = await supabase.auth.admin.getUserById(app.user_id);
+          const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(app.user_id);
           
-          if (authUser?.user) {
+          if (authError) {
+            console.error('Auth.users sorgu hatası:', authError);
+            // Hata durumunda varsayılan bilgiler
+            finalApplicantUser = {
+              first_name: 'Aday',
+              last_name: '',
+              email: 'aday@example.com',
+              phone: null,
+              location: null
+            };
+          } else if (authUser?.user) {
             const userMetadata = authUser.user.user_metadata || {};
-            const email = authUser.user.email || 'user@example.com';
+            const email = authUser.user.email || 'aday@example.com';
             const fullName = userMetadata.name || userMetadata.full_name || '';
             const [firstName, ...rest] = fullName.split(' ');
             const lastName = rest.join(' ');
@@ -290,7 +300,7 @@ export async function getCorporateApplications(companyId: number) {
               .insert({
                 auth_user_id: app.user_id,
                 user_id: app.user_id,
-                first_name: firstName || email.split('@')[0] || 'Kullanıcı',
+                first_name: firstName || email.split('@')[0] || 'Aday',
                 last_name: lastName || '',
                 email: email,
                 phone: userMetadata.phone || null,
@@ -304,7 +314,7 @@ export async function getCorporateApplications(companyId: number) {
               console.error('Kullanıcı eklenemedi:', insertError);
               // Hata durumunda auth bilgilerini kullan
               finalApplicantUser = {
-                first_name: firstName || email.split('@')[0] || 'Kullanıcı',
+                first_name: firstName || email.split('@')[0] || 'Aday',
                 last_name: lastName || '',
                 email: email,
                 phone: userMetadata.phone || null,
@@ -317,9 +327,9 @@ export async function getCorporateApplications(companyId: number) {
           } else {
             // Auth.users'da da bulunamazsa varsayılan bilgiler
             finalApplicantUser = {
-              first_name: 'Kullanıcı',
+              first_name: 'Aday',
               last_name: '',
-              email: 'user@example.com',
+              email: 'aday@example.com',
               phone: null,
               location: null
             };
@@ -328,9 +338,9 @@ export async function getCorporateApplications(companyId: number) {
           console.error('Auth.users sorgusu başarısız:', authError);
           // Hata durumunda varsayılan bilgiler
           finalApplicantUser = {
-            first_name: 'Kullanıcı',
+            first_name: 'Aday',
             last_name: '',
-            email: 'user@example.com',
+            email: 'aday@example.com',
             phone: null,
             location: null
           };
