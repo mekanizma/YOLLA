@@ -338,8 +338,14 @@ export async function getCorporateApplications(companyId: number) {
       }
       
       const displayName = finalApplicantUser 
-        ? `${finalApplicantUser.first_name || ''} ${finalApplicantUser.last_name || ''}`.trim() || finalApplicantUser.email?.split('@')[0] || 'Kullanıcı'
-        : 'Bilinmeyen Kullanıcı';
+        ? (() => {
+            const fullName = `${finalApplicantUser.first_name || ''} ${finalApplicantUser.last_name || ''}`.trim();
+            if (fullName && fullName !== ' ') {
+              return fullName;
+            }
+            return finalApplicantUser.email?.split('@')[0] || 'Aday';
+          })()
+        : 'Aday';
       
       return {
         ...app,
