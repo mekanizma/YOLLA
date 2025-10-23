@@ -100,6 +100,19 @@ const CorporateSettings: React.FC = () => {
             website: company.website || '',
             industry: company.industry || '',
             companySize: company.size || '',
+            // Bildirim ayarları
+            notifications: {
+              newApplications: company.notification_new_applications ?? true,
+              applicationUpdates: company.notification_application_updates ?? true,
+              jobExpiry: company.notification_job_expiry ?? true,
+              marketingEmails: company.notification_marketing_emails ?? false,
+            },
+            // Gizlilik ayarları
+            privacy: {
+              showCompanyInfo: company.privacy_show_company_info ?? true,
+              allowDirectMessages: company.privacy_allow_direct_messages ?? true,
+              showActiveJobs: company.privacy_show_active_jobs ?? true,
+            },
           }));
           if (company.logo) {
             setLogo(company.logo);
@@ -232,6 +245,15 @@ const CorporateSettings: React.FC = () => {
             industry: settings.industry || '',
             size: settings.companySize || null,
             location: settings.address ? settings.address : (company.location || null),
+            // Bildirim ayarları
+            notification_new_applications: settings.notifications.newApplications,
+            notification_application_updates: settings.notifications.applicationUpdates,
+            notification_job_expiry: settings.notifications.jobExpiry,
+            notification_marketing_emails: settings.notifications.marketingEmails,
+            // Gizlilik ayarları
+            privacy_show_company_info: settings.privacy.showCompanyInfo,
+            privacy_allow_direct_messages: settings.privacy.allowDirectMessages,
+            privacy_show_active_jobs: settings.privacy.showActiveJobs,
           })
           .eq('id', company.id);
         if (error) throw error;

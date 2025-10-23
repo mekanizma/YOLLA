@@ -73,10 +73,10 @@ const LandingPage = () => {
         <div className="container mx-auto px-4 py-16 md:py-24 lg:py-32 relative z-10">
           <div className="max-w-4xl mx-auto text-center">
             <div className="min-h-[120px] md:min-h-[140px] lg:min-h-[160px] relative">
-              <h1 key={`title-${heroIndex}`} className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-white mb-3 md:mb-4 transition-opacity duration-1000 opacity-100 leading-tight px-2">
+              <h1 key={`title-${heroIndex}`} className="masked-text text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold mb-3 md:mb-4 transition-opacity duration-1000 opacity-100 leading-tight px-2">
                 {heroIndex === 0 ? t('landing:heroTitle') : (t('landing:rotatingTitles', { returnObjects: true }) as string[])[heroIndex - 0]}
               </h1>
-              <p key={`subtitle-${heroIndex}`} className="text-white/90 text-sm sm:text-base md:text-lg lg:text-xl transition-opacity duration-1000 leading-relaxed px-2">
+              <p key={`subtitle-${heroIndex}`} className="masked-text-subtitle text-sm sm:text-base md:text-lg lg:text-xl transition-opacity duration-1000 leading-relaxed px-2">
                 {heroIndex === 0 ? t('landing:heroSubtitle') : (t('landing:rotatingSubtitles', { returnObjects: true }) as string[])[heroIndex - 0]}
               </p>
             </div>

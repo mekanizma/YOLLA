@@ -82,7 +82,7 @@ export async function fetchJobById(id: string) {
 export async function fetchCompanyByEmail(email: string) {
   const { data, error } = await supabase
     .from('companies')
-    .select('id,name,email,phone,address,website,industry,location,description,size,founded_year,logo')
+    .select('id,name,email,phone,address,website,industry,location,description,size,founded_year,logo,notification_new_applications,notification_application_updates,notification_job_expiry,notification_marketing_emails,privacy_show_company_info,privacy_allow_direct_messages,privacy_show_active_jobs')
     .eq('email', email)
     .maybeSingle();
   if (error) throw error;
@@ -99,6 +99,15 @@ export async function fetchCompanyByEmail(email: string) {
     size?: string | null;
     founded_year?: number | null;
     logo?: string | null;
+    // Bildirim ayarları
+    notification_new_applications?: boolean | null;
+    notification_application_updates?: boolean | null;
+    notification_job_expiry?: boolean | null;
+    notification_marketing_emails?: boolean | null;
+    // Gizlilik ayarları
+    privacy_show_company_info?: boolean | null;
+    privacy_allow_direct_messages?: boolean | null;
+    privacy_show_active_jobs?: boolean | null;
   } | null;
 }
 
