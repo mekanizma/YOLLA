@@ -5,6 +5,7 @@ import Header from '../../components/layout/Header';
 import Footer from '../../components/layout/Footer';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
+import supabase from '../../lib/supabaseClient';
 
 const ForgotPassword = () => {
   const navigate = useNavigate();
@@ -19,13 +20,19 @@ const ForgotPassword = () => {
     setIsLoading(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const redirectTo = import.meta.env.VITE_APP_URL || 'https://dev.yollabi.net';
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${redirectTo}/reset-password`
+      });
+      
+      if (error) {
+        throw error;
+      }
       
       // Show success message
       setIsSubmitted(true);
-    } catch (err) {
-      setError('İşlem başarısız oldu. Lütfen tekrar deneyin.');
+    } catch (err: any) {
+      setError(err.message || 'İşlem başarısız oldu. Lütfen tekrar deneyin.');
     } finally {
       setIsLoading(false);
     }

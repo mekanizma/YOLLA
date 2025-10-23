@@ -68,6 +68,8 @@ Coolify dashboard'unda şu değişkenleri ekleyin:
 ```
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+VITE_APP_URL=https://your-domain.com
+VITE_APP_DOMAIN=your-domain.com
 ```
 
 ### 4. Deploy Ayarları

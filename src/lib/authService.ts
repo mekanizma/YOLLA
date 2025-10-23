@@ -68,7 +68,7 @@ async function ensureUserRowByUserId(payload: { user_id: string; email: string; 
 }
 
 export async function signUp(email: string, password: string, metadata?: Record<string, any>) {
-  const redirectTo = 'https://yollabi.net';
+  const redirectTo = import.meta.env.VITE_APP_URL || 'https://dev.yollabi.net';
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -285,12 +285,13 @@ export async function adminCreateCorporateAccount(payload: {
   const { email, password, companyName, phone, description, industry, location, website, size, founded_year } = payload;
 
   // 1) Auth kullanıcısı oluştur (rol bilgisini metadata'ya da yaz)
+  const redirectTo = import.meta.env.VITE_APP_URL || 'https://dev.yollabi.net';
   const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
     email,
     password,
     options: {
       data: { userType: 'corporate', name: companyName, phone },
-      emailRedirectTo: 'https://yollabi.net'
+      emailRedirectTo: redirectTo
     }
   });
   if (signUpErr) throw signUpErr;

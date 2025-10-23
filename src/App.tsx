@@ -7,6 +7,7 @@ import IndividualLogin from './pages/auth/IndividualLogin';
 import CorporateLogin from './pages/auth/CorporateLogin';
 import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
+import ResetPassword from './pages/auth/ResetPassword';
 import IndividualDashboard from './pages/individual/Dashboard';
 import IndividualJobs from './pages/individual/Jobs';
 import IndividualApplications from './pages/individual/Applications';
@@ -39,6 +40,7 @@ function App() {
         <Route path="/login/corporate" element={<CorporateLogin />} />
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         
         {/* Individual user routes */}
         <Route path="/individual/dashboard" element={<IndividualDashboard />} />

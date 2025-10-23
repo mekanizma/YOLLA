@@ -7,6 +7,8 @@ services:
     environment:
       - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
       - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
+      - VITE_APP_URL=${VITE_APP_URL}
+      - VITE_APP_DOMAIN=${VITE_APP_DOMAIN}
     restart: unless-stopped
     healthcheck:
       disable: true
