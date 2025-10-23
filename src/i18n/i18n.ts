@@ -65,6 +65,11 @@ i18n
     // Namespace ayarları
     defaultNS: 'common',
     ns: ['common', 'auth', 'dashboard', 'jobs', 'landing', 'notifications', 'profile', 'applications'],
+    
+    // Performans optimizasyonları
+    load: 'languageOnly',
+    preload: ['tr', 'en'],
+    initImmediate: false,
   });
 
 export default i18n;

@@ -1,5 +1,7 @@
 import { Routes, Route } from 'react-router-dom';
+import { Suspense } from 'react';
 import { ToastProvider } from './components/ui/ToastProvider';
+import Loading from './components/ui/Loading';
 import LandingPage from './pages/LandingPage';
 import IndividualLogin from './pages/auth/IndividualLogin';
 import CorporateLogin from './pages/auth/CorporateLogin';
@@ -29,7 +31,8 @@ import IndividualJobDetail from './pages/individual/JobDetail';
 function App() {
   return (
     <ToastProvider>
-      <Routes>
+      <Suspense fallback={<Loading />}>
+        <Routes>
         {/* Public routes */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/login/individual" element={<IndividualLogin />} />
@@ -70,7 +73,8 @@ function App() {
         
         {/* 404 page */}
         <Route path="*" element={<NotFound />} />
-      </Routes>
+        </Routes>
+      </Suspense>
     </ToastProvider>
   );
 }

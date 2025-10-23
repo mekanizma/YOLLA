@@ -1,6 +1,9 @@
 {
   "language": "English",
   "loading": "Loading...",
+  "pageLoading": "Page loading...",
+  "dashboardLoading": "Dashboard loading...",
+  "dataLoading": "Data loading...",
   "error": "Error",
   "success": "Success",
   "cancel": "Cancel",
@@ -84,7 +87,7 @@
   "viewAll": "View All",
   "noApplications": "No applications",
   "newApplication": "New Application",
-  "applicationMessage": "user applied for \"\" position.",
+  "applicationMessage": "applied for \"\" position.",
   "jobNotFound": "Job posting not found.",
   "alreadyAppliedMessage": "Already applied",
   "myJobs": "My Jobs",

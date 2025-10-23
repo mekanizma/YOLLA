@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Briefcase, Mail, Phone, MapPin, Facebook, Twitter, Linkedin, Instagram } from 'lucide-react';
+import { Briefcase, Mail, MapPin, Facebook, Twitter, Linkedin, Instagram } from 'lucide-react';
 
 const Footer = () => {
   const { t } = useTranslation();
@@ -59,10 +59,6 @@ const Footer = () => {
               <li className="flex items-start space-x-3">
                 <MapPin size={16} className="text-primary mt-1 flex-shrink-0" />
                 <span className="text-gray-300">{t('landing:footerLocation', { defaultValue: 'Kıbrıs / Girne' })}</span>
-              </li>
-              <li className="flex items-center space-x-3">
-                <Phone size={16} className="text-primary flex-shrink-0" />
-                <span className="text-gray-300">+90 392 111 11 11</span>
               </li>
               <li className="flex items-center space-x-3">
                 <Mail size={16} className="text-primary flex-shrink-0" />

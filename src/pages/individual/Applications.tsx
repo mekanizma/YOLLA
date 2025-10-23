@@ -49,6 +49,7 @@ const Applications = () => {
           const ui = mapStatusToUi(a.status as string);
           return {
             id: a.id,
+            jobId: a.job_id,
             position: a.jobs?.title || t('applications:jobPosting'),
             company: a.jobs?.companies?.name || t('applications:company'),
             location: a.jobs?.location || '-',
@@ -222,16 +223,9 @@ const Applications = () => {
                         <Button 
                           variant="outline" 
                           size="sm"
-                          onClick={() => navigate(`/individual/jobs/${application.id}`)}
+                          onClick={() => navigate(`/individual/jobs?jobId=${application.jobId}`)}
                         >
                           {t('applications:viewJobPosting')}
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => navigate(`/individual/applications/${application.id}`)}
-                        >
-                          {t('applications:applicationDetails')}
                         </Button>
                       </div>
                     </div>

@@ -102,8 +102,8 @@ const Dashboard = () => {
         const { data: userData } = await supabase
           .from('users')
           .select('first_name, last_name, email')
-          .eq('user_id', auth.user.id)
-          .single();
+          .eq('auth_user_id', auth.user.id)
+          .maybeSingle();
 
         if (jobData?.company_id && userData) {
           const applicantName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || userData.email?.split('@')[0] || t('common:user');
@@ -112,7 +112,7 @@ const Dashboard = () => {
             company_id: jobData.company_id,
             title: t('notifications:newApplication'),
             message: t('notifications:newApplicationMessage', { applicantName, jobTitle: jobData.title }),
-            type: 'info'
+            type: 'application'
           });
         }
       } catch (notificationError) {

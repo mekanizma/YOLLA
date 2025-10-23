@@ -190,17 +190,18 @@ const Header: React.FC<HeaderProps> = ({ userType, scrolled }) => {
                 </LiquidButton>
               </div>
             ) : !isLoginPage ? (
-              <div className="flex flex-col space-y-4 py-4">
-                <div className="flex flex-col sm:flex-row gap-4">
+              <div className="py-4">
+                {/* Login Buttons */}
+                <div className="space-y-3 mb-6">
                   <BlobButton
                     onClick={() => {
                       navigate('/login/individual');
                       setMobileMenuOpen(false);
                     }}
                     variant="primary"
-                    className="flex items-center justify-center gap-2"
+                    className="w-full flex items-center justify-center gap-3 py-4 text-base font-semibold"
                   >
-                    <User className="w-4 h-4" />
+                    <User className="w-5 h-5" />
                     {t('auth:loginAsIndividual')}
                   </BlobButton>
                   <BlobButton
@@ -209,14 +210,21 @@ const Header: React.FC<HeaderProps> = ({ userType, scrolled }) => {
                       setMobileMenuOpen(false);
                     }}
                     variant="secondary"
-                    className="flex items-center justify-center gap-2"
+                    className="w-full flex items-center justify-center gap-3 py-4 text-base font-semibold"
                   >
-                    <Building className="w-4 h-4" />
+                    <Building className="w-5 h-5" />
                     {t('auth:loginAsCorporate')}
                   </BlobButton>
                 </div>
-                <div className="flex justify-center pt-4">
-                  <LanguageSwitcher variant="buttons" />
+                
+                {/* Language Switcher */}
+                <div className="border-t border-gray-200 pt-4">
+                  <div className="text-center mb-3">
+                    <span className="text-sm font-medium text-gray-600">{t('common:language')}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <LanguageSwitcher variant="buttons" />
+                  </div>
                 </div>
               </div>
             ) : null}

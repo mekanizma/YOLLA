@@ -262,8 +262,8 @@ const Jobs = () => {
         const { data: userData } = await supabase
           .from('users')
           .select('first_name, last_name, email')
-          .eq('user_id', auth.user.id)
-          .single();
+          .eq('auth_user_id', auth.user.id)
+          .maybeSingle();
 
         console.log('Kullanıcı verisi:', userData);
 

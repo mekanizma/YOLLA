@@ -250,7 +250,14 @@ const JobDetail = () => {
           <div className="container mx-auto px-4 py-10">
             <div className="bg-white rounded-xl shadow p-6 text-center">
               <p className="text-gray-600 mb-6">İlan bulunamadı veya kaldırılmış olabilir.</p>
-              <Button onClick={() => navigate('/individual/jobs')}>İlanlara Dön</Button>
+              <div className="flex gap-2 justify-center">
+                <Button onClick={() => navigate('/individual/jobs')}>İlanlara Dön</Button>
+                {id ? (
+                  <Button variant="outline" onClick={() => navigate(`/individual/jobs?jobId=${id}`)}>
+                    İlan Kartına Git
+                  </Button>
+                ) : null}
+              </div>
             </div>
           </div>
         </main>

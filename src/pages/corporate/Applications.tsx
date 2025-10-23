@@ -226,7 +226,7 @@ const CorporateApplications: React.FC = () => {
           
           return {
             id: r.id,
-            applicantName: r.users?.full_name?.trim() || 'Aday',
+            applicantName: r.users?.full_name || 'Aday',
             position: r.jobs?.title || 'Pozisyon',
             appliedDate: new Date(r.created_at).toLocaleDateString('tr-TR'),
             status: statusInfo.label,

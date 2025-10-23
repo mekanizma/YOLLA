@@ -210,13 +210,13 @@ export async function getCorporateApplications(companyId: number) {
         .from('users')
         .select('first_name,last_name,email,phone,location')
         .eq('auth_user_id', app.user_id)
-        .single();
+        .maybeSingle();
       
       console.log('Başvuru user_id:', app.user_id);
       console.log('Kullanıcı sorgu hatası:', userError);
       console.log('Kullanıcı verisi:', applicantUser);
       
-      // Eğer auth_user_id ile bulunamazsa, user_id ile dene (hata olup olmamasına bakmadan)
+      // Eğer auth_user_id ile bulunamazsa, user_id ile dene
       let finalApplicantUser = applicantUser;
       if (!applicantUser) {
         console.log('auth_user_id ile bulunamadı, user_id ile deneniyor...');
@@ -224,7 +224,7 @@ export async function getCorporateApplications(companyId: number) {
           .from('users')
           .select('first_name,last_name,email,phone,location')
           .eq('user_id', app.user_id)
-          .single();
+          .maybeSingle();
         
         console.log('user_id ile sorgu hatası:', userError2);
         console.log('user_id ile kullanıcı verisi:', applicantUser2);
@@ -275,37 +275,30 @@ export async function getCorporateApplications(companyId: number) {
         
         try {
           // Auth.users tablosundan kullanıcı bilgilerini al
-          const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(app.user_id);
+          const { data: authUser } = await supabase.auth.admin.getUserById(app.user_id);
           
-          if (authError) {
-            console.error('Auth.users sorgu hatası:', authError);
-            // Hata durumunda varsayılan bilgiler
-            finalApplicantUser = {
-              first_name: 'Aday',
-              last_name: '',
-              email: 'aday@example.com',
-              phone: null,
-              location: null
-            };
-          } else if (authUser?.user) {
+          if (authUser?.user) {
             const userMetadata = authUser.user.user_metadata || {};
-            const email = authUser.user.email || 'aday@example.com';
+            const email = authUser.user.email || 'user@example.com';
             const fullName = userMetadata.name || userMetadata.full_name || '';
             const [firstName, ...rest] = fullName.split(' ');
             const lastName = rest.join(' ');
             
-            // Kullanıcıyı users tablosuna ekle
+            // Kullanıcıyı users tablosuna ekle (upsert kullan)
             const { data: newUser, error: insertError } = await supabase
               .from('users')
-              .insert({
+              .upsert({
                 auth_user_id: app.user_id,
                 user_id: app.user_id,
-                first_name: firstName || email.split('@')[0] || 'Aday',
+                first_name: firstName || email.split('@')[0] || 'Kullanıcı',
                 last_name: lastName || '',
                 email: email,
                 phone: userMetadata.phone || null,
                 location: userMetadata.city || null,
                 role: 'individual'
+              }, { 
+                onConflict: 'auth_user_id',
+                ignoreDuplicates: false 
               })
               .select()
               .single();
@@ -314,22 +307,22 @@ export async function getCorporateApplications(companyId: number) {
               console.error('Kullanıcı eklenemedi:', insertError);
               // Hata durumunda auth bilgilerini kullan
               finalApplicantUser = {
-                first_name: firstName || email.split('@')[0] || 'Aday',
+                first_name: firstName || email.split('@')[0] || 'Kullanıcı',
                 last_name: lastName || '',
                 email: email,
                 phone: userMetadata.phone || null,
                 location: userMetadata.city || null
               };
             } else {
-              console.log('Kullanıcı başarıyla eklendi:', newUser);
+              console.log('Kullanıcı başarıyla eklendi/güncellendi:', newUser);
               finalApplicantUser = newUser;
             }
           } else {
             // Auth.users'da da bulunamazsa varsayılan bilgiler
             finalApplicantUser = {
-              first_name: 'Aday',
+              first_name: 'Kullanıcı',
               last_name: '',
-              email: 'aday@example.com',
+              email: 'user@example.com',
               phone: null,
               location: null
             };
@@ -338,9 +331,9 @@ export async function getCorporateApplications(companyId: number) {
           console.error('Auth.users sorgusu başarısız:', authError);
           // Hata durumunda varsayılan bilgiler
           finalApplicantUser = {
-            first_name: 'Aday',
+            first_name: 'Kullanıcı',
             last_name: '',
-            email: 'aday@example.com',
+            email: 'user@example.com',
             phone: null,
             location: null
           };
@@ -348,14 +341,8 @@ export async function getCorporateApplications(companyId: number) {
       }
       
       const displayName = finalApplicantUser 
-        ? (() => {
-            const fullName = `${finalApplicantUser.first_name || ''} ${finalApplicantUser.last_name || ''}`.trim();
-            if (fullName && fullName !== ' ') {
-              return fullName;
-            }
-            return finalApplicantUser.email?.split('@')[0] || 'Aday';
-          })()
-        : 'Aday';
+        ? `${finalApplicantUser.first_name || ''} ${finalApplicantUser.last_name || ''}`.trim() || finalApplicantUser.email?.split('@')[0] || 'Kullanıcı'
+        : 'Bilinmeyen Kullanıcı';
       
       return {
         ...app,

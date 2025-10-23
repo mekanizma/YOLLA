@@ -5,11 +5,12 @@ import { Briefcase, User } from 'lucide-react';
 import Header from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import Button from '../components/ui/Button';
+import Loading from '../components/ui/Loading';
 import { updateMetaTags, pageSEOContent } from '../lib/utils';
 
 const LandingPage = () => {
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, ready } = useTranslation();
   const [scrolled, setScrolled] = useState(false);
   const [heroIndex, setHeroIndex] = useState(0);
 
@@ -41,13 +42,18 @@ const LandingPage = () => {
 
   // Hero rotating text
   useEffect(() => {
+    if (!ready) return;
     const titles = t('landing:rotatingTitles', { returnObjects: true }) as string[];
     if (!Array.isArray(titles) || titles.length === 0) return;
     const interval = setInterval(() => {
       setHeroIndex((prev) => (prev + 1) % titles.length);
     }, 5000);
     return () => clearInterval(interval);
-  }, [t]);
+  }, [t, ready]);
+
+  if (!ready) {
+    return <Loading text={t('common:pageLoading')} />;
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -64,13 +70,13 @@ const LandingPage = () => {
           }}
         ></div>
         
-        <div className="container mx-auto px-4 py-20 md:py-32 relative z-10">
-          <div className="max-w-3xl mx-auto text-center">
-            <div className="h-40 md:h-40 lg:h-44 relative overflow-hidden">
-              <h1 key={`title-${heroIndex}`} className="text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-4 transition-opacity duration-1000 opacity-100 whitespace-nowrap overflow-hidden text-ellipsis">
+        <div className="container mx-auto px-4 py-16 md:py-24 lg:py-32 relative z-10">
+          <div className="max-w-4xl mx-auto text-center">
+            <div className="min-h-[120px] md:min-h-[140px] lg:min-h-[160px] relative">
+              <h1 key={`title-${heroIndex}`} className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-white mb-3 md:mb-4 transition-opacity duration-1000 opacity-100 leading-tight px-2">
                 {heroIndex === 0 ? t('landing:heroTitle') : (t('landing:rotatingTitles', { returnObjects: true }) as string[])[heroIndex - 0]}
               </h1>
-              <p key={`subtitle-${heroIndex}`} className="text-white/90 text-base md:text-lg transition-opacity duration-1000 whitespace-nowrap overflow-hidden text-ellipsis">
+              <p key={`subtitle-${heroIndex}`} className="text-white/90 text-sm sm:text-base md:text-lg lg:text-xl transition-opacity duration-1000 leading-relaxed px-2">
                 {heroIndex === 0 ? t('landing:heroSubtitle') : (t('landing:rotatingSubtitles', { returnObjects: true }) as string[])[heroIndex - 0]}
               </p>
             </div>

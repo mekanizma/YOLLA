@@ -97,14 +97,14 @@ const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({
           <button
             key={lang.code}
             onClick={() => changeLanguage(lang.code)}
-            className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
               i18n.language === lang.code
                 ? 'bg-blue-600 text-white shadow-md'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
-            {showFlags && <span className="mr-2 flex-shrink-0">{lang.flag}</span>}
-            {lang.name}
+            {showFlags && <span className="flex-shrink-0">{lang.flag}</span>}
+            <span className="truncate">{lang.name}</span>
           </button>
         ))}
       </div>

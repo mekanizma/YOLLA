@@ -16,6 +16,7 @@ import {
   Building
 } from 'lucide-react';
 import Header from '../../components/layout/Header';
+import Loading from '../../components/ui/Loading';
 import supabase from '../../lib/supabaseClient';
 import { fetchCompanyByEmail, fetchCorporateJobs } from '../../lib/jobsService';
 import { getCorporateApplications } from '../../lib/applicationsService';
@@ -26,6 +27,7 @@ const Dashboard = () => {
   const [stats, setStats] = useState<any[]>([]);
   const [recentApplications, setRecentApplications] = useState<any[]>([]);
   const [companyInfo, setCompanyInfo] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
@@ -100,10 +102,21 @@ const Dashboard = () => {
       } catch (e) {
         // eslint-disable-next-line no-console
         console.warn('Dashboard load error:', e);
+      } finally {
+        setLoading(false);
       }
     };
     load();
   }, [navigate]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header userType="corporate" />
+        <Loading text={t('common:dashboardLoading')} />
+      </div>
+    );
+  }
 
   return (
     <>

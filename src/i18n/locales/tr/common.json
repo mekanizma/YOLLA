@@ -1,6 +1,9 @@
 {
   "language": "Türkçe",
   "loading": "Yükleniyor...",
+  "pageLoading": "Sayfa yükleniyor...",
+  "dashboardLoading": "Kontrol paneli yükleniyor...",
+  "dataLoading": "Veriler yükleniyor...",
   "error": "Hata",
   "success": "Başarılı",
   "cancel": "İptal",
