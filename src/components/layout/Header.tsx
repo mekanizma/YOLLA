@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, Bell, User, Briefcase, LogOut, Building, Home, Plus, Settings } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import Button from '../ui/Button';
 import BlobButton from '../ui/BlobButton';
 import LiquidButton from '../ui/LiquidButton';
 import LanguageSwitcher from '../LanguageSwitcher';
@@ -32,6 +31,16 @@ const Header: React.FC<HeaderProps> = ({ userType, scrolled }) => {
   const handleLogout = () => {
     // Handle logout logic here
     navigate('/');
+  };
+
+  const handleLogoClick = () => {
+    if (userType === 'individual') {
+      navigate('/individual/dashboard');
+    } else if (userType === 'corporate') {
+      navigate('/corporate/dashboard');
+    } else {
+      navigate('/');
+    }
   };
   
   const individualLinks = [
@@ -67,7 +76,7 @@ const Header: React.FC<HeaderProps> = ({ userType, scrolled }) => {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2 cursor-pointer select-none group">
+          <div onClick={handleLogoClick} className="flex items-center space-x-2 cursor-pointer select-none group">
             <div className="relative">
               <img 
                 src={yollabiLogo} 
@@ -77,7 +86,7 @@ const Header: React.FC<HeaderProps> = ({ userType, scrolled }) => {
               />
               <div className="absolute -inset-2 bg-gradient-to-r from-primary/20 to-secondary/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10" />
             </div>
-          </Link>
+          </div>
           
           {/* Desktop Nav */}
           {userType ? (
