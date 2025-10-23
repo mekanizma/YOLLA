@@ -11,7 +11,9 @@ services:
       - VITE_APP_DOMAIN=${VITE_APP_DOMAIN}
     restart: unless-stopped
     healthcheck:
-      disable: true
+    test:
+      - CMD-SHELL
+      - 'wget -qO- http://127.0.0.1:80/'
     networks:
       - yollabi-network
 networks:
