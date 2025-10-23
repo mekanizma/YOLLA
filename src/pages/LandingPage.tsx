@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Briefcase, User } from 'lucide-react';
+import { User } from 'lucide-react';
 import Header from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import Button from '../components/ui/Button';
 import Loading from '../components/ui/Loading';
 import { updateMetaTags, pageSEOContent } from '../lib/utils';
+import '../styles/animated-features.css';
+import '../styles/rotating-text.css';
 
 const LandingPage = () => {
   const navigate = useNavigate();
@@ -88,32 +90,68 @@ const LandingPage = () => {
       <section className="py-16 bg-white">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">{t('landing:features')}</h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">
-              {t('landing:feature1Description')}
-            </p>
+            <div className="features-title">
+              {t('landing:features').split('').map((letter, index) => (
+                <span key={index} className="features-key">
+                  {letter === ' ' ? '\u00A0' : letter}
+                </span>
+              ))}
+            </div>
+            <div className="rotating-text-container">
+              <div className="animation">
+                <div>
+                  <div className="first">{t('jobs:categoryHotel')}</div>
+                  <div className="second">{t('jobs:categoryIT')}</div>
+                  <div className="third">{t('jobs:categoryFinance')}</div>
+                  <div className="fourth">{t('jobs:categorySales')}</div>
+                  <div className="fifth">{t('jobs:categoryEngineering')}</div>
+                  <div className="sixth">{t('jobs:categoryHealth')}</div>
+                  <div className="seventh">{t('jobs:categoryDesign')}</div>
+                  <div className="eighth">{t('jobs:categoryEducation')}</div>
+                  <div className="ninth">{t('jobs:categoryLogistics')}</div>
+                  <div className="tenth">{t('jobs:categoryHR')}</div>
+                  <div className="eleventh">{t('jobs:categoryLegal')}</div>
+                  <div className="twelfth">{t('jobs:categoryMarketing')}</div>
+                </div>
+              </div>
+            </div>
           </div>
           
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {[
-              t('jobs:categoryIT'),
-              t('jobs:categoryFinance'),
-              t('jobs:categorySales'),
-              t('jobs:categoryEngineering'),
-              t('jobs:categoryHealth'),
-              t('jobs:categoryDesign'),
-              t('jobs:categoryEducation'),
-              t('common:categoryProduction')
+              { name: t('jobs:categoryHotel'), icon: '🏨', color: 'from-orange-500 to-red-500' },
+              { name: t('jobs:categoryIT'), icon: '💻', color: 'from-blue-500 to-purple-500' },
+              { name: t('jobs:categoryFinance'), icon: '💰', color: 'from-green-500 to-emerald-500' },
+              { name: t('jobs:categorySales'), icon: '📈', color: 'from-yellow-500 to-orange-500' },
+              { name: t('jobs:categoryEngineering'), icon: '⚙️', color: 'from-gray-500 to-slate-500' },
+              { name: t('jobs:categoryHealth'), icon: '🏥', color: 'from-red-500 to-pink-500' },
+              { name: t('jobs:categoryDesign'), icon: '🎨', color: 'from-purple-500 to-pink-500' },
+              { name: t('jobs:categoryEducation'), icon: '📚', color: 'from-indigo-500 to-blue-500' },
+              { name: t('jobs:categoryLogistics'), icon: '🚚', color: 'from-teal-500 to-cyan-500' },
+              { name: t('jobs:categoryHR'), icon: '👥', color: 'from-amber-500 to-yellow-500' },
+              { name: t('jobs:categoryLegal'), icon: '⚖️', color: 'from-slate-500 to-gray-500' },
+              { name: t('jobs:categoryMarketing'), icon: '📢', color: 'from-rose-500 to-red-500' }
             ].map((category, index) => (
               <div 
-                key={category}
-                className="group bg-white p-6 rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-primary/20 hover:-translate-y-1"
+                key={category.name}
+                className="group bg-white p-6 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 border border-gray-100 hover:border-transparent hover:-translate-y-2 relative overflow-hidden"
                 style={{ animationDelay: `${0.1 * index}s` }}
               >
-                <div className="w-14 h-14 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-                  <Briefcase className="text-primary" size={24} />
+                {/* Gradient background on hover */}
+                <div className={`absolute inset-0 bg-gradient-to-br ${category.color} opacity-0 group-hover:opacity-5 transition-opacity duration-500`}></div>
+                
+                {/* Icon container with gradient */}
+                <div className={`w-16 h-16 bg-gradient-to-br ${category.color} rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-all duration-500 shadow-lg group-hover:shadow-xl`}>
+                  <span className="text-2xl">{category.icon}</span>
                 </div>
-                <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors duration-300">{category}</h3>
+                
+                {/* Category name */}
+                <h3 className="font-bold text-lg mb-2 group-hover:text-gray-800 transition-colors duration-300 text-gray-700 leading-tight">
+                  {category.name}
+                </h3>
+                
+                {/* Hover effect line */}
+                <div className={`w-0 group-hover:w-full h-1 bg-gradient-to-r ${category.color} transition-all duration-500 rounded-full`}></div>
               </div>
             ))}
           </div>

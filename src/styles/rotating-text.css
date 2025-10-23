@@ -1,0 +1,159 @@
+@import url('https://fonts.googleapis.com/css?family=Roboto:700');
+
+.rotating-text-container {
+  font-family: 'Roboto';
+  background-color: #131417;
+  color: #e5e5e5;
+  font-size: 1.8rem;
+  text-transform: uppercase;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 2rem 0;
+  border-radius: 12px;
+  padding: 1rem;
+  overflow: hidden;
+}
+
+.rotating-text-container p {
+  text-shadow: 0 0 7px rgba(255,255,255,.3), 0 0 3px rgba(255,255,255,.3);
+  margin: 0;
+  font-weight: 700;
+}
+
+.animation {
+  height: 50px;
+  overflow: hidden;
+  margin-left: 1rem;
+  display: flex;
+  align-items: center;
+}
+
+.animation > div {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 1rem;
+  animation: text-animation 24s infinite;
+}
+
+.animation > div > div {
+  padding: 0.5rem 1rem;
+  height: 2.5rem;
+  display: inline-block;
+  border-radius: 8px;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+
+.first div {
+  background-color: #20a7d8;
+}
+
+.second div {
+  background-color: #CD921E;
+}
+
+.third div {
+  background-color: #c10528;
+}
+
+.fourth div {
+  background-color: #28a745;
+}
+
+.fifth div {
+  background-color: #6f42c1;
+}
+
+.sixth div {
+  background-color: #fd7e14;
+}
+
+.seventh div {
+  background-color: #e83e8c;
+}
+
+.eighth div {
+  background-color: #20c997;
+}
+
+.ninth div {
+  background-color: #dc3545;
+}
+
+.tenth div {
+  background-color: #ffc107;
+}
+
+.eleventh div {
+  background-color: #17a2b8;
+}
+
+.twelfth div {
+  background-color: #6c757d;
+}
+
+@keyframes text-animation {
+  0% { transform: translateX(0); }
+  7.5% { transform: translateX(0); }
+  8.33% { transform: translateX(-200px); }
+  15.83% { transform: translateX(-200px); }
+  16.66% { transform: translateX(-400px); }
+  24.16% { transform: translateX(-400px); }
+  25% { transform: translateX(-600px); }
+  32.5% { transform: translateX(-600px); }
+  33.33% { transform: translateX(-800px); }
+  40.83% { transform: translateX(-800px); }
+  41.66% { transform: translateX(-1000px); }
+  49.16% { transform: translateX(-1000px); }
+  50% { transform: translateX(-1200px); }
+  57.5% { transform: translateX(-1200px); }
+  58.33% { transform: translateX(-1400px); }
+  65.83% { transform: translateX(-1400px); }
+  66.66% { transform: translateX(-1600px); }
+  74.16% { transform: translateX(-1600px); }
+  75% { transform: translateX(-1800px); }
+  82.5% { transform: translateX(-1800px); }
+  83.33% { transform: translateX(-2000px); }
+  90.83% { transform: translateX(-2000px); }
+  91.66% { transform: translateX(-2200px); }
+  99.16% { transform: translateX(-2200px); }
+  100% { transform: translateX(0); }
+}
+
+/* Responsive tasarım */
+@media (max-width: 768px) {
+  .rotating-text-container {
+    font-size: 1.5rem;
+    height: 80px;
+  }
+  
+  .animation {
+    height: 40px;
+  }
+  
+  .animation > div > div {
+    height: 2.2rem;
+    margin-bottom: 2.2rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .rotating-text-container {
+    font-size: 1.2rem;
+    height: 70px;
+  }
+  
+  .animation {
+    height: 35px;
+  }
+  
+  .animation > div > div {
+    height: 1.8rem;
+    margin-bottom: 1.8rem;
+  }
+}
