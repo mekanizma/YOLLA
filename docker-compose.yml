@@ -1,5 +1,4 @@
 version: '3.8'
-
 services:
   yollabi:
     build: .
@@ -14,6 +13,18 @@ services:
     networks:
       - yollabi-network
       - f4ggowkkswk4g4k8884cwsgc
+labels:
+  - traefik.enable=true
+  - traefik.docker.network=f4ggowkkswk4g4k8884cwsgc        # <-- kritik
+  - traefik.http.routers.yollabi.entrypoints=https
+  - traefik.http.routers.yollabi.rule=Host(`dev.yollabi.net`)
+  - traefik.http.routers.yollabi.tls=true
+  - traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https
+  - traefik.http.routers.yollabi-http.entrypoints=http
+  - traefik.http.routers.yollabi-http.rule=Host(`dev.yollabi.net`)
+  - traefik.http.routers.yollabi-http.middlewares=redirect-to-https
+  - traefik.http.services.yollabi.loadbalancer.server.port=80 # <-- kritik
+  - traefik.http.middlewares.gzip.compress=true
 networks:
   yollabi-network:
     driver: bridge
