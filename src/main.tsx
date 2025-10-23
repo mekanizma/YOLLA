@@ -3,7 +3,6 @@ import ReactDOM from 'react-dom/client'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import App from './App.tsx'
 import './index.css'
-import './styles/masked-text.css'
 import './i18n/i18n'
 
 const router = createBrowserRouter([
