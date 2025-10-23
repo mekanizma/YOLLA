@@ -3,13 +3,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Header from '../../components/layout/Header';
 import Footer from '../../components/layout/Footer';
-// Kullanılmayan bileşen importlarını kaldırdım
 import RegisterForm from '../../components/RegisterForm';
 import { signUp } from '../../lib/authService';
+import { useToast } from '../../components/ui/ToastProvider';
 
 const Register = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { showToast } = useToast();
   const [userType] = useState<'individual' | 'corporate' | null>(null);
   const [formData] = useState({
     name: '',
@@ -19,7 +20,6 @@ const Register = () => {
     companyName: '',
     phone: '',
   });
-  // isLoading kullanılmadığı için kaldırıldı
   const [error, setError] = useState('');
   
 
@@ -43,13 +43,31 @@ const Register = () => {
         companyName: formData.companyName
       });
       if ((res as any)?.session) {
+        showToast({
+          type: 'success',
+          title: t('auth:welcomeMessage'),
+          message: t('auth:welcomeSubMessage'),
+          duration: 5000
+        });
         navigate('/individual/dashboard');
       } else {
-        alert(t('auth:registerSuccess'));
+        showToast({
+          type: 'success',
+          title: t('auth:registerSuccessMessage'),
+          message: t('auth:registerSuccessSubMessage'),
+          duration: 5000
+        });
         navigate('/login/individual');
       }
     } catch (err: any) {
-      setError(err.message || t('auth:registerError'));
+      const errorMessage = err.message || t('auth:registerError');
+      setError(errorMessage);
+      showToast({
+        type: 'error',
+        title: t('auth:registerErrorMessage'),
+        message: t('auth:registerErrorSubMessage'),
+        duration: 5000
+      });
     }
   };
 

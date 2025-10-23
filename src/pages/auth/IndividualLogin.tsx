@@ -7,10 +7,12 @@ import Footer from '../../components/layout/Footer';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import { signInWithRole } from '../../lib/authService';
+import { useToast } from '../../components/ui/ToastProvider';
 
 const IndividualLogin = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { showToast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -25,9 +27,40 @@ const IndividualLogin = () => {
     
     try {
       await signInWithRole(email, password, 'individual');
+      showToast({
+        type: 'success',
+        title: t('auth:loginSuccessMessage'),
+        message: '',
+        duration: 3000
+      });
       navigate('/individual/dashboard');
     } catch (err: any) {
-      setError(err.message || t('auth:loginError'));
+      const errorMessage = err.message || t('auth:loginError');
+      setError(errorMessage);
+      
+      // Hata tipine göre farklı mesajlar göster
+      if (errorMessage.includes('Invalid login credentials') || errorMessage.includes('Geçersiz kimlik bilgileri')) {
+        showToast({
+          type: 'error',
+          title: t('auth:invalidCredentials'),
+          message: t('auth:invalidCredentialsSubMessage'),
+          duration: 5000
+        });
+      } else if (errorMessage.includes('Email not confirmed') || errorMessage.includes('E-posta doğrulanmamış')) {
+        showToast({
+          type: 'error',
+          title: t('auth:emailNotVerified'),
+          message: t('auth:emailNotVerifiedSubMessage'),
+          duration: 5000
+        });
+      } else {
+        showToast({
+          type: 'error',
+          title: t('auth:loginErrorMessage'),
+          message: t('auth:loginErrorSubMessage'),
+          duration: 5000
+        });
+      }
     } finally {
       setIsLoading(false);
     }
