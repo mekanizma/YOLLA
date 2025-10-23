@@ -69,6 +69,11 @@ async function ensureUserRowByUserId(payload: { user_id: string; email: string; 
 
 export async function signUp(email: string, password: string, metadata?: Record<string, any>) {
   const redirectTo = import.meta.env.VITE_APP_URL || 'https://dev.yollabi.net';
+  console.log('Environment variables:', {
+    VITE_APP_URL: import.meta.env.VITE_APP_URL,
+    VITE_APP_DOMAIN: import.meta.env.VITE_APP_DOMAIN,
+    redirectTo
+  });
   const { data, error } = await supabase.auth.signUp({
     email,
     password,

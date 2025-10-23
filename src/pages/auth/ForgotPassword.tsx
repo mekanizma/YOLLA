@@ -21,6 +21,12 @@ const ForgotPassword = () => {
     
     try {
       const redirectTo = import.meta.env.VITE_APP_URL || 'https://dev.yollabi.net';
+      console.log('ForgotPassword Environment variables:', {
+        VITE_APP_URL: import.meta.env.VITE_APP_URL,
+        VITE_APP_DOMAIN: import.meta.env.VITE_APP_DOMAIN,
+        redirectTo,
+        fullRedirectTo: `${redirectTo}/reset-password`
+      });
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${redirectTo}/reset-password`
       });

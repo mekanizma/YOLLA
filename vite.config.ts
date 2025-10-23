@@ -6,6 +6,10 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   return {
   plugins: [react()],
+  define: {
+    'import.meta.env.VITE_APP_URL': JSON.stringify(env.VITE_APP_URL || 'https://dev.yollabi.net'),
+    'import.meta.env.VITE_APP_DOMAIN': JSON.stringify(env.VITE_APP_DOMAIN || 'dev.yollabi.net'),
+  },
   optimizeDeps: {
     include: ['antd', '@ant-design/icons', '@ant-design/charts'],
     exclude: ['lucide-react']
