@@ -7,8 +7,8 @@ export default defineConfig(({ mode }) => {
   return {
   plugins: [react()],
   define: {
-    'import.meta.env.VITE_APP_URL': JSON.stringify(env.VITE_APP_URL || 'https://dev.yollabi.net'),
-    'import.meta.env.VITE_APP_DOMAIN': JSON.stringify(env.VITE_APP_DOMAIN || 'dev.yollabi.net'),
+    'import.meta.env.VITE_APP_URL': JSON.stringify(env.VITE_APP_URL || 'https://yollabi.net'),
+    'import.meta.env.VITE_APP_DOMAIN': JSON.stringify(env.VITE_APP_DOMAIN || 'yollabi.net'),
   },
   optimizeDeps: {
     include: ['antd', '@ant-design/icons', '@ant-design/charts'],

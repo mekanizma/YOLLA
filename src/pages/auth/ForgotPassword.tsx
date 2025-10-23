@@ -20,7 +20,7 @@ const ForgotPassword = () => {
     setIsLoading(true);
     
     try {
-      const redirectTo = import.meta.env.VITE_APP_URL || 'https://dev.yollabi.net';
+      const redirectTo = import.meta.env.VITE_APP_URL || 'https://yollabi.net';
       console.log('ForgotPassword Environment variables:', {
         VITE_APP_URL: import.meta.env.VITE_APP_URL,
         VITE_APP_DOMAIN: import.meta.env.VITE_APP_DOMAIN,
