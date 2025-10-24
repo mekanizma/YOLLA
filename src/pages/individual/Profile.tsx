@@ -18,7 +18,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  useMediaQuery
+  useMediaQuery,
+  Autocomplete
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import EditIcon from '@mui/icons-material/Edit';
@@ -28,6 +29,8 @@ import PhoneIcon from '@mui/icons-material/Phone';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import PhotoCamera from '@mui/icons-material/PhotoCamera';
 import DeleteIcon from '@mui/icons-material/Delete';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
+import DownloadIcon from '@mui/icons-material/Download';
 import Header from '../../components/layout/Header';
 import Footer from '../../components/layout/Footer';
 import { getCurrentUserProfile, updateCurrentUserProfile } from '../../lib/profileService';
@@ -54,6 +57,18 @@ const cvTemplates = [
   { key: 'elegant', label: 'Elegant', component: ElegantCV },
   { key: 'professional', label: 'Professional', component: ProfessionalCV },
   { key: 'creative', label: 'Creative', component: CreativeCV },
+];
+
+// Dil listesi
+const languages = [
+  'Türkçe', 'İngilizce', 'Almanca', 'Fransızca', 'İspanyolca', 'İtalyanca', 
+  'Portekizce', 'Rusça', 'Arapça', 'Japonca', 'Korece', 'Çince', 
+  'Hollandaca', 'İsveççe', 'Norveççe', 'Danca', 'Fince', 'Yunanca',
+  'İbranice', 'Hintçe', 'Urduca', 'Bengalce', 'Tayca', 'Vietnamca',
+  'Endonezyaca', 'Malayca', 'Filipince', 'Polonyaca', 'Çekçe', 'Macarca',
+  'Rumence', 'Bulgarca', 'Hırvatça', 'Sırpça', 'Slovakça', 'Slovence',
+  'Ukraynaca', 'Ermenice', 'Gürcüce', 'Azerbaycan Türkçesi', 'Kazakça',
+  'Özbekçe', 'Kırgızca', 'Türkmence', 'Tatarca', 'Başkurtça'
 ];
 
 // Rozetler artık Dashboard'da gerçek verilerle gösteriliyor
@@ -90,7 +105,7 @@ const Profile = () => {
   const [educationDialogOpen, setEducationDialogOpen] = useState(false);
   // Temp form states
   const [newSkill, setNewSkill] = useState('');
-  const [newLangName, setNewLangName] = useState('');
+  const [newLangNames, setNewLangNames] = useState<string[]>([]);
   const [newLangPercent, setNewLangPercent] = useState<number | ''>('');
   const [newExpTitle, setNewExpTitle] = useState('');
   const [newExpCompany, setNewExpCompany] = useState('');
@@ -100,6 +115,16 @@ const Profile = () => {
   const [newEduSchool, setNewEduSchool] = useState('');
   const [newEduDate, setNewEduDate] = useState('');
   const [newEduDesc, setNewEduDesc] = useState('');
+  // Certificate states
+  const [certificatesState, setCertificatesState] = useState<{ name: string; url: string; uploadedAt: string }[]>([]);
+  const [certificateDialogOpen, setCertificateDialogOpen] = useState(false);
+  const [newCertName, setNewCertName] = useState('');
+  const [selectedCertFile, setSelectedCertFile] = useState<File | null>(null);
+  // Password change states
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   const Transition = React.useMemo(
     () => React.forwardRef(function Transition(
@@ -173,10 +198,93 @@ const Profile = () => {
       skills: skillsState,
       languages: languagesState,
       experiences: experiencesState,
-      educations: educationsState
+      educations: educationsState,
+      certificates: certificatesState
     });
     setEditMode(false);
     recomputeCompletion();
+  };
+
+  // Certificate functions
+  const handleCertificateFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedCertFile(e.target.files[0]);
+    }
+  };
+
+  const handleUploadCertificate = async () => {
+    try {
+      if (selectedCertFile && newCertName.trim()) {
+        const { data: auth } = await supabase.auth.getUser();
+        const user = auth.user;
+        if (!user?.id) throw new Error('Giriş yapılmamış.');
+        
+        const path = `certificates/user-${user.id}/${Date.now()}-${selectedCertFile.name}`;
+        const { error: upErr } = await supabase
+          .storage
+          .from('avatars')
+          .upload(path, selectedCertFile, { contentType: selectedCertFile.type, upsert: true });
+        
+        if (upErr) throw upErr;
+        
+        const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path);
+        const publicUrl = pub.publicUrl;
+        
+        const newCert = {
+          name: newCertName.trim(),
+          url: publicUrl,
+          uploadedAt: new Date().toISOString()
+        };
+        
+        setCertificatesState(prev => [...prev, newCert]);
+        await updateCurrentUserProfile({ certificates: [...certificatesState, newCert] });
+        
+        setNewCertName('');
+        setSelectedCertFile(null);
+        setCertificateDialogOpen(false);
+      }
+    } catch (error) {
+      console.error('Sertifika yükleme hatası:', error);
+    }
+  };
+
+  const handleDeleteCertificate = async (index: number) => {
+    const certToDelete = certificatesState[index];
+    const newCerts = certificatesState.filter((_, i) => i !== index);
+    setCertificatesState(newCerts);
+    await updateCurrentUserProfile({ certificates: newCerts });
+  };
+
+  // Password change functions
+  const handleChangePassword = async () => {
+    try {
+      if (newPassword !== confirmPassword) {
+        alert('Yeni şifreler eşleşmiyor!');
+        return;
+      }
+      
+      if (newPassword.length < 6) {
+        alert('Yeni şifre en az 6 karakter olmalıdır!');
+        return;
+      }
+
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (error) {
+        alert('Şifre değiştirme hatası: ' + error.message);
+        return;
+      }
+
+      alert('Şifreniz başarıyla değiştirildi!');
+      setPasswordDialogOpen(false);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error: any) {
+      alert('Şifre değiştirme hatası: ' + error.message);
+    }
   };
   const handleOpenCvDialog = () => setCvDialogOpen(true);
   const handleCloseCvDialog = () => setCvDialogOpen(false);
@@ -188,10 +296,10 @@ const Profile = () => {
     phone: form.phone,
     location: form.location,
     about: form.about,
-    skills: [],
-    languages: [],
-    experiences: [],
-    educations: [],
+    skills: skillsState,
+    languages: languagesState,
+    experiences: experiencesState,
+    educations: educationsState,
     photo: profileImage,
   };
   const SelectedCV = cvTemplates.find(t => t.key === cvType)?.component;
@@ -207,6 +315,7 @@ const Profile = () => {
       languagesState.length > 0,
       experiencesState.length > 0,
       educationsState.length > 0,
+      certificatesState.length > 0,
     ];
     const pct = Math.round((checks.filter(Boolean).length / checks.length) * 100);
     setCompletion(pct);
@@ -215,14 +324,14 @@ const Profile = () => {
   useEffect(() => {
     recomputeCompletion();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.name, form.title, form.phone, form.location, form.about, skillsState, languagesState, experiencesState, educationsState]);
+  }, [form.name, form.title, form.phone, form.location, form.about, skillsState, languagesState, experiencesState, educationsState, certificatesState]);
 
   return (
     <>
       <Header userType="individual" />
       <Container maxWidth="lg" sx={{ py: 4, pt: { xs: 8, md: 10 } }}>
         {/* Supabase profilini yükle */}
-        <LoadProfile setForm={setForm} setProfileImage={setProfileImage} setSkills={setSkillsState} setLanguages={setLanguagesState} setExperiences={setExperiencesState} setEducations={setEducationsState} />
+        <LoadProfile setForm={setForm} setProfileImage={setProfileImage} setSkills={setSkillsState} setLanguages={setLanguagesState} setExperiences={setExperiencesState} setEducations={setEducationsState} setCertificates={setCertificatesState} />
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={3}>
           {/* Left Column */}
           <Box sx={{ width: { xs: '100%', md: '33%' } }}>
@@ -275,6 +384,7 @@ const Profile = () => {
                 <>
                   <Button variant="contained" fullWidth sx={{ mt: 1 }} onClick={handleEditClick}>{t('profile:editProfile')}</Button>
                   <Button variant="outlined" fullWidth sx={{ mt: 1 }} onClick={handleOpenCvDialog}>{t('profile:createAutoCV')}</Button>
+                  <Button variant="outlined" fullWidth sx={{ mt: 1 }} onClick={() => setPasswordDialogOpen(true)}>{t('profile:changePassword')}</Button>
                   <Dialog open={cvDialogOpen} onClose={handleCloseCvDialog} fullScreen={fullScreen} maxWidth="md">
                     <DialogTitle>{t('profile:selectCVDesign')}</DialogTitle>
                     <DialogContent>
@@ -328,7 +438,7 @@ const Profile = () => {
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                   <Typography fontWeight={600}>{t('common:aboutMe')}</Typography>
                   <Tooltip title={t('common:edit')}>
-                    <IconButton size="small"><EditIcon /></IconButton>
+                    <IconButton size="small" onClick={handleEditClick}><EditIcon /></IconButton>
                   </Tooltip>
                 </Box>
                 {editMode ? (
@@ -427,6 +537,61 @@ const Profile = () => {
                   ))}
                 </Stack>
               </Paper>
+
+              {/* Certificates Section */}
+              <Paper elevation={2} sx={{ p: 3, position: 'relative' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                  <Typography fontWeight={600}>{t('profile:certificates')}</Typography>
+                  <Button size="small" startIcon={<AddIcon />} sx={{ textTransform: 'none' }} onClick={() => { if (!editMode) setEditMode(true); setCertificateDialogOpen(true); }}>{t('profile:uploadCertificate')}</Button>
+                </Box>
+                <Stack spacing={2}>
+                  {certificatesState.map((cert, i) => (
+                    <Box key={i} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2, border: '1px solid #e0e0e0', borderRadius: 2 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <AttachFileIcon color="action" />
+                        <Box>
+                          <Typography fontWeight={500}>{cert.name}</Typography>
+                          <Typography color="text.secondary" fontSize={12}>
+                            {new Date(cert.uploadedAt).toLocaleDateString('tr-TR')}
+                          </Typography>
+                        </Box>
+                      </Box>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Button
+                          size="small"
+                          startIcon={<DownloadIcon />}
+                          onClick={() => window.open(cert.url, '_blank')}
+                        >
+                          {t('profile:download')}
+                        </Button>
+                        {editMode && (
+                          <Button
+                            size="small"
+                            color="error"
+                            startIcon={<DeleteIcon />}
+                            onClick={() => handleDeleteCertificate(i)}
+                          >
+                            {t('profile:delete')}
+                          </Button>
+                        )}
+                      </Box>
+                    </Box>
+                  ))}
+                  {certificatesState.length === 0 && (
+                    <Box sx={{ textAlign: 'center', py: 4 }}>
+                      <AttachFileIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
+                      <Typography color="text.secondary" mb={2}>{t('profile:noCertificatesYet')}</Typography>
+                      <Button
+                        variant="outlined"
+                        startIcon={<AddIcon />}
+                        onClick={() => { if (!editMode) setEditMode(true); setCertificateDialogOpen(true); }}
+                      >
+                        {t('profile:uploadFirstCertificate')}
+                      </Button>
+                    </Box>
+                  )}
+                </Stack>
+              </Paper>
             </Stack>
           </Box>
         </Stack>
@@ -486,13 +651,44 @@ const Profile = () => {
         <DialogTitle sx={{ fontWeight: 700 }}>{t('common:addNewLanguage')}</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2} sx={{ mt: 1 }}>
-            <TextField label={t('common:languageName')} placeholder={t('common:languagePlaceholder')} fullWidth value={newLangName} onChange={e => setNewLangName(e.target.value)} autoFocus />
+            <Autocomplete
+              multiple
+              options={languages}
+              value={newLangNames}
+              onChange={(event, newValue) => {
+                setNewLangNames(newValue);
+              }}
+              freeSolo
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label={t('common:languageName')}
+                  placeholder={t('common:languagePlaceholder')}
+                  autoFocus
+                />
+              )}
+            />
             <TextField label={t('common:percentage')} type="number" fullWidth value={newLangPercent} onChange={e => setNewLangPercent(e.target.value === '' ? '' : Number(e.target.value))} inputProps={{ min: 0, max: 100 }} helperText={t('common:proficiencyHelper')} />
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setLanguageDialogOpen(false)} variant="text">{t('common:cancel')}</Button>
-          <Button disabled={!newLangName.trim()} onClick={() => { if (newLangName.trim()) setLanguagesState(prev => [...prev, { name: newLangName.trim(), percent: typeof newLangPercent === 'number' ? Math.max(0, Math.min(100, newLangPercent)) : 0 }]); setNewLangName(''); setNewLangPercent(''); setLanguageDialogOpen(false); }} variant="contained">{t('common:create')}</Button>
+          <Button onClick={() => { setLanguageDialogOpen(false); setNewLangNames([]); setNewLangPercent(''); }} variant="text">{t('common:cancel')}</Button>
+          <Button 
+            disabled={newLangNames.length === 0} 
+            onClick={() => { 
+              if (newLangNames.length > 0) {
+                const percent = typeof newLangPercent === 'number' ? Math.max(0, Math.min(100, newLangPercent)) : 0;
+                const newLanguages = newLangNames.map(name => ({ name: name.trim(), percent }));
+                setLanguagesState(prev => [...prev, ...newLanguages]);
+                setNewLangNames([]);
+                setNewLangPercent('');
+                setLanguageDialogOpen(false);
+              }
+            }} 
+            variant="contained"
+          >
+            {t('common:create')}
+          </Button>
         </DialogActions>
       </Dialog>
 
@@ -529,6 +725,90 @@ const Profile = () => {
           <Button disabled={!newEduDegree.trim()} onClick={() => { if (newEduDegree.trim()) setEducationsState(prev => [...prev, { degree: newEduDegree.trim(), school: newEduSchool.trim(), date: newEduDate.trim(), desc: newEduDesc.trim() }]); setNewEduDegree(''); setNewEduSchool(''); setNewEduDate(''); setNewEduDesc(''); setEducationDialogOpen(false); }} variant="contained">{t('profile:add')}</Button>
         </DialogActions>
       </Dialog>
+
+      {/* Add Certificate Dialog */}
+      <Dialog open={certificateDialogOpen} onClose={() => setCertificateDialogOpen(false)} maxWidth="sm" fullWidth TransitionComponent={Transition} PaperProps={{ sx: { borderRadius: 3, backdropFilter: 'saturate(180%) blur(6px)' } }}>
+        <DialogTitle sx={{ fontWeight: 700 }}>{t('profile:uploadCertificateTitle')}</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField 
+              label={t('profile:certificateName')} 
+              placeholder={t('profile:certificateNamePlaceholder')} 
+              fullWidth 
+              value={newCertName} 
+              onChange={e => setNewCertName(e.target.value)} 
+              autoFocus 
+            />
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+              <Button
+                variant="contained"
+                component="label"
+                startIcon={<AttachFileIcon />}
+                sx={{ width: '100%' }}
+              >
+                {selectedCertFile ? selectedCertFile.name : t('profile:selectCertificateFile')}
+                <input 
+                  type="file" 
+                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" 
+                  hidden 
+                  onChange={handleCertificateFileChange} 
+                />
+              </Button>
+              {selectedCertFile && (
+                <Typography color="text.secondary" fontSize={12}>
+                  {t('profile:selectedFile')}: {selectedCertFile.name} ({(selectedCertFile.size / 1024 / 1024).toFixed(2)} MB)
+                </Typography>
+              )}
+            </Box>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCertificateDialogOpen(false)} variant="text">{t('profile:cancel')}</Button>
+          <Button 
+            disabled={!newCertName.trim() || !selectedCertFile} 
+            onClick={handleUploadCertificate} 
+            variant="contained"
+          >
+            {t('profile:upload')}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Change Password Dialog */}
+      <Dialog open={passwordDialogOpen} onClose={() => setPasswordDialogOpen(false)} maxWidth="sm" fullWidth TransitionComponent={Transition} PaperProps={{ sx: { borderRadius: 3, backdropFilter: 'saturate(180%) blur(6px)' } }}>
+        <DialogTitle sx={{ fontWeight: 700 }}>{t('profile:changePasswordTitle')}</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField 
+              label={t('profile:newPassword')} 
+              type="password"
+              fullWidth 
+              value={newPassword} 
+              onChange={e => setNewPassword(e.target.value)} 
+              autoFocus 
+              helperText={t('profile:passwordHelper')}
+            />
+            <TextField 
+              label={t('profile:confirmPassword')} 
+              type="password"
+              fullWidth 
+              value={confirmPassword} 
+              onChange={e => setConfirmPassword(e.target.value)} 
+              helperText={t('profile:confirmPasswordHelper')}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => { setPasswordDialogOpen(false); setNewPassword(''); setConfirmPassword(''); }} variant="text">{t('profile:cancel')}</Button>
+          <Button 
+            disabled={!newPassword.trim() || !confirmPassword.trim() || newPassword !== confirmPassword} 
+            onClick={handleChangePassword} 
+            variant="contained"
+          >
+            {t('profile:changePasswordButton')}
+          </Button>
+        </DialogActions>
+      </Dialog>
       <Footer />
     </>
   );
@@ -537,7 +817,7 @@ const Profile = () => {
 export default Profile; 
 
 // Yardımcı alt bileşen: yükleme sırasında profil bilgisini getirir
-function LoadProfile({ setForm, setProfileImage, setSkills, setLanguages, setExperiences, setEducations }: { setForm: (v: any) => void; setProfileImage: (v: string) => void; setSkills: (v: string[]) => void; setLanguages: (v: any[]) => void; setExperiences: (v: any[]) => void; setEducations: (v: any[]) => void; }) {
+function LoadProfile({ setForm, setProfileImage, setSkills, setLanguages, setExperiences, setEducations, setCertificates }: { setForm: (v: any) => void; setProfileImage: (v: string) => void; setSkills: (v: string[]) => void; setLanguages: (v: any[]) => void; setExperiences: (v: any[]) => void; setEducations: (v: any[]) => void; setCertificates: (v: any[]) => void; }) {
   useEffect(() => {
     (async () => {
       const p = await getCurrentUserProfile();
@@ -556,8 +836,9 @@ function LoadProfile({ setForm, setProfileImage, setSkills, setLanguages, setExp
         if (p.languages) setLanguages(p.languages as any[]);
         if (p.experiences) setExperiences(p.experiences as any[]);
         if (p.educations) setEducations(p.educations as any[]);
+        if ((p as any).certificates) setCertificates((p as any).certificates as any[]);
       }
     })();
-  }, [setForm, setProfileImage, setSkills, setLanguages, setExperiences, setEducations]);
+  }, [setForm, setProfileImage, setSkills, setLanguages, setExperiences, setEducations, setCertificates]);
   return null;
 }

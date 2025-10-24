@@ -1,15 +1,12 @@
-import { Page, Text, View, Document, StyleSheet, Font, Image } from '@react-pdf/renderer';
-import roboto from '../../assets/Roboto-Regular.ttf';
-
-Font.register({ family: 'Roboto', src: roboto });
+import { Page, Text, View, Document, StyleSheet, Image } from '@react-pdf/renderer';
 
 const styles = StyleSheet.create({
   page: {
     backgroundColor: '#ffffff',
     padding: 20,
     fontSize: 10,
-    fontFamily: 'Roboto',
     color: '#1f2937',
+    fontFamily: 'Helvetica',
   },
   header: {
     backgroundColor: '#1f2937',
@@ -34,20 +31,20 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 20,
     fontWeight: 'bold',
-    fontFamily: 'Roboto',
     marginBottom: 5,
+    fontFamily: 'Helvetica-Bold',
   },
   title: {
     fontSize: 12,
     color: '#d1d5db',
-    fontFamily: 'Roboto',
     marginBottom: 8,
+    fontFamily: 'Helvetica',
   },
   contact: {
     fontSize: 9,
     color: '#d1d5db',
-    fontFamily: 'Roboto',
     lineHeight: 1.3,
+    fontFamily: 'Helvetica',
   },
   section: {
     marginBottom: 16,
@@ -58,23 +55,23 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     color: '#1f2937',
     textTransform: 'uppercase',
-    fontFamily: 'Roboto',
     letterSpacing: 0.5,
     borderBottom: '2 solid #1f2937',
     paddingBottom: 2,
+    fontFamily: 'Helvetica-Bold',
   },
   text: {
     marginBottom: 4,
     color: '#374151',
-    fontFamily: 'Roboto',
     lineHeight: 1.4,
+    fontFamily: 'Helvetica',
   },
   listItem: {
     marginLeft: 10,
     marginBottom: 2,
-    fontFamily: 'Roboto',
     color: '#374151',
     lineHeight: 1.3,
+    fontFamily: 'Helvetica',
   },
   experienceItem: {
     marginBottom: 10,
@@ -83,22 +80,22 @@ const styles = StyleSheet.create({
   },
   experienceTitle: {
     fontWeight: 'bold',
-    fontFamily: 'Roboto',
     fontSize: 11,
     color: '#1f2937',
     marginBottom: 2,
+    fontFamily: 'Helvetica-Bold',
   },
   experienceCompany: {
     fontSize: 10,
     color: '#6b7280',
-    fontFamily: 'Roboto',
     marginBottom: 2,
+    fontFamily: 'Helvetica-Bold',
   },
   experienceDate: {
     fontSize: 9,
     color: '#9ca3af',
-    fontFamily: 'Roboto',
     marginBottom: 3,
+    fontFamily: 'Helvetica-Oblique',
   },
 });
 

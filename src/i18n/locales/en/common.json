@@ -245,6 +245,7 @@
   "saveChanges": "Save Changes",
   "savingChanges": "Saving...",
   "settingsSaved": "Settings have been saved successfully!",
+  "passwordChangedSuccess": "Your password has been changed successfully!",
   "personalInfo": "Personal Information",
   "experienceTitle": "Experience",
   "educationTitle": "Education",

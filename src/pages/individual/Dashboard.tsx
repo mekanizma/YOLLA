@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Clock, MapPin, ChevronRight, User, MessageCircle } from 'lucide-react';
+import { Clock, MapPin, ChevronRight, User } from 'lucide-react';
 import Header from '../../components/layout/Header';
 import Footer from '../../components/layout/Footer';
 import Button from '../../components/ui/Button';
@@ -66,11 +66,16 @@ const Dashboard = () => {
         return;
       }
 
-      // Başvuru işlemi başlatıldığını göster
-      setApplyingJobs(prev => new Set(prev).add(jobId));
-
-      // İş bilgilerini al
+      // Son başvuru tarihi kontrolü
       const job = recommendedJobs.find(j => j.id === jobId);
+      if (job?.applicationDeadline && new Date(job.applicationDeadline) < new Date()) {
+        showToast({
+          type: 'error',
+          title: t('jobs:applicationClosed'),
+          message: t('jobs:applicationDeadlinePassed')
+        });
+        return;
+      }
       if (!job) {
         showToast({
           type: 'error',
@@ -110,8 +115,8 @@ const Dashboard = () => {
           
           await createNotification({
             company_id: jobData.company_id,
-            title: t('notifications:newApplication'),
-            message: t('notifications:newApplicationMessage', { applicantName, jobTitle: jobData.title }),
+            title: '📝 Yeni Başvuru / New Application',
+            message: `👤 ${applicantName} adlı kullanıcı "${jobData.title}" pozisyonu için başvuru yaptı.\n\n📅 Tarih: ${new Date().toLocaleDateString('tr-TR')}\n\n👤 ${applicantName} applied for "${jobData.title}" position.\n\n📅 Date: ${new Date().toLocaleDateString('en-US')}`,
             type: 'application'
           });
         }
@@ -291,7 +296,7 @@ const Dashboard = () => {
         {/* Welcome Banner */}
         <section className="bg-gradient-to-r from-primary to-primary/80 text-white py-10 rounded-b-3xl shadow-lg mb-6">
           <div className="container mx-auto px-4 text-center">
-            <h1 className="text-3xl md:text-4xl font-bold mb-2 animate-fadeIn">{t('common:welcomeMessage')}{displayName ? `, ${displayName}` : ''}! 👋</h1>
+            <h1 className="text-3xl md:text-4xl font-bold mb-2 animate-fadeIn">{t('common:welcomeMessage')}{displayName ? `, ${displayName}` : ''}!</h1>
             <p className="text-white/90 text-lg max-w-xl mx-auto animate-fadeIn delay-100">{t('common:welcomeSubtitle')}</p>
           </div>
         </section>
@@ -383,36 +388,59 @@ const Dashboard = () => {
                           </div>
                         </div>
                         <div className="mt-4 flex justify-end gap-2">
-                          {appliedJobs.has(job.id) ? (
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              disabled
-                              className="flex items-center gap-1 bg-green-50 text-green-700 border-green-200"
-                            >
-                              <span>{t('dashboard:applicationSubmitted')}</span>
-                            </Button>
-                          ) : (
-                            <Button 
-                              variant="primary" 
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleApply(job.id);
-                              }}
-                              disabled={applyingJobs.has(job.id)}
-                              className="flex items-center gap-1 hover:bg-blue-600 transition-colors duration-200"
-                            >
-                              {applyingJobs.has(job.id) ? (
-                                <>
-                                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                  <span>{t('dashboard:applying')}</span>
-                                </>
-                              ) : (
-                                <span>{t('dashboard:apply')}</span>
-                              )}
-                            </Button>
-                          )}
+                          {(() => {
+                            // Son başvuru tarihi kontrolü
+                            const isDeadlinePassed = job.applicationDeadline && 
+                              new Date(job.applicationDeadline) < new Date();
+                            
+                            if (isDeadlinePassed) {
+                              return (
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  disabled
+                                  className="flex items-center gap-1 bg-red-50 text-red-700 border-red-200"
+                                >
+                                  <span>🚫 {t('jobs:applicationClosed')}</span>
+                                </Button>
+                              );
+                            }
+                            
+                            if (appliedJobs.has(job.id)) {
+                              return (
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  disabled
+                                  className="flex items-center gap-1 bg-green-50 text-green-700 border-green-200"
+                                >
+                                  <span>{t('dashboard:applicationSubmitted')}</span>
+                                </Button>
+                              );
+                            }
+                            
+                            return (
+                              <Button 
+                                variant="primary" 
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleApply(job.id);
+                                }}
+                                disabled={applyingJobs.has(job.id)}
+                                className="flex items-center gap-1 hover:bg-blue-600 transition-colors duration-200"
+                              >
+                                {applyingJobs.has(job.id) ? (
+                                  <>
+                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                    <span>{t('dashboard:applying')}</span>
+                                  </>
+                                ) : (
+                                  <span>{t('dashboard:apply')}</span>
+                                )}
+                              </Button>
+                            );
+                          })()}
                           <Button 
                             variant="outline" 
                             size="sm"
@@ -438,20 +466,13 @@ const Dashboard = () => {
               {/* Quick Actions */}
               <div className="bg-white rounded-2xl shadow-lg p-6 animate-fadeInUp">
                 <h2 className="text-xl font-bold mb-4">{t('dashboard:quickAccess')}</h2>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3">
                   <Link
                     to="/individual/profile"
                     className="flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
                   >
                     <User className="h-5 w-5" />
                     {t('dashboard:profile')}
-                  </Link>
-                  <Link
-                    to="/individual/chats"
-                    className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-                  >
-                    <MessageCircle className="h-5 w-5" />
-                    {t('dashboard:messages')}
                   </Link>
                 </div>
               </div>

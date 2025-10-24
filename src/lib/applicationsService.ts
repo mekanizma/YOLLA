@@ -373,13 +373,71 @@ export async function updateApplicationStatus(applicationId: number, status: 'pe
     payload.accept_date = new Date().toISOString();
   }
   
+  if (status === 'approved') {
+    payload.approve_date = new Date().toISOString();
+  }
+  
   const { data, error } = await supabase
     .from('applications')
     .update(payload)
     .eq('id', applicationId)
-    .select('id,status,reject_reason,reject_date,accept_date')
+    .select('id,status,reject_reason,reject_date,accept_date,approve_date')
     .single();
   if (error) throw error;
   return data;
+}
+
+// Bireysel kullanıcı tarafından başvuruyu onaylama
+export async function approveApplicationByUser(applicationId: number) {
+  try {
+    // Önce mevcut başvuruyu kontrol et
+    const { data: existingApp, error: fetchError } = await supabase
+      .from('applications')
+      .select('id, status, user_id')
+      .eq('id', applicationId)
+      .single();
+    
+    if (fetchError) {
+      console.error('Başvuru bulunamadı:', fetchError);
+      throw new Error('Başvuru bulunamadı veya yetkiniz yok - Application not found or no permission');
+    }
+    
+    if (!existingApp) {
+      throw new Error('Başvuru bulunamadı veya yetkiniz yok - Application not found or no permission');
+    }
+    
+    if (existingApp.status !== 'accepted') {
+      throw new Error('Sadece kabul edilmiş başvurular onaylanabilir - Only accepted applications can be approved');
+    }
+    
+    // Başvuruyu onayla
+    const { data, error } = await supabase
+      .from('applications')
+      .update({ 
+        status: 'approved',
+        approve_date: new Date().toISOString(),
+        user_approved: true
+      })
+      .eq('id', applicationId)
+      .select('id,status,approve_date,user_approved')
+      .single();
+    
+    if (error) {
+      console.error('Onaylama hatası:', error);
+      // Daha açıklayıcı hata mesajı
+      const errorMessage = error.message?.includes('permission') || error.message?.includes('yetki') 
+        ? 'Yetkiniz yok - No permission'
+        : error.message?.includes('network') || error.message?.includes('internet')
+        ? 'Bağlantı hatası - Connection error'
+        : 'Onaylama işlemi başarısız - Approval process failed';
+      
+      throw new Error(`${errorMessage}: ${error.message || 'Bilinmeyen hata - Unknown error'}`);
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('approveApplicationByUser hatası:', error);
+    throw error;
+  }
 }
 

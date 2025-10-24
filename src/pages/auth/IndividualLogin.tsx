@@ -70,7 +70,7 @@ const IndividualLogin = () => {
     <div className="min-h-screen flex flex-col">
       <Header userType={null} />
       
-      <main className="flex-1 flex items-center justify-center bg-gray-50 py-12 px-4 mt-16">
+      <main className="flex-1 flex items-center justify-center bg-gray-50 py-12 px-4 mt-16 overflow-x-hidden">
         <div className="w-full max-w-md">
           <div className="bg-white shadow-md rounded-lg p-8 animate-fadeIn">
             <div className="flex justify-center mb-6">
@@ -149,13 +149,6 @@ const IndividualLogin = () => {
                 </Link>
               </p>
             </div>
-          </div>
-          
-          <div className="text-center mt-6">
-            <Link to="/login/corporate" className="text-sm text-gray-600 hover:text-primary flex items-center justify-center">
-              <Briefcase className="mr-1" size={16} />
-              <span>{t('auth:corporateUserLink')}</span>
-            </Link>
           </div>
         </div>
       </main>

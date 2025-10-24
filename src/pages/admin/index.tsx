@@ -5,6 +5,7 @@ import UsersPage from './UsersPage';
 import CorporatesPage from './CorporatesPage';
 import JobsPage from './JobsPage';
 import ApplicationsPage from './ApplicationsPage';
+import CorporateApplicationsPage from './CorporateApplicationsPage';
 import StatsPage from './StatsPage';
 import SettingsPage from './SettingsPage';
 import AdminLogin from './AdminLogin';
@@ -44,6 +45,7 @@ const AdminRoutes: React.FC = () => {
         <Route path="corporates" element={<CorporatesPage />} />
         <Route path="jobs" element={<JobsPage />} />
         <Route path="applications" element={<ApplicationsPage />} />
+        <Route path="corporate-applications" element={<CorporateApplicationsPage />} />
         <Route path="stats" element={<StatsPage />} />
         <Route path="reports" element={<ReportsPage />} />
         <Route path="settings" element={<SettingsPage />} />

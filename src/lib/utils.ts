@@ -64,12 +64,21 @@ export const experienceLevels = [
 ];
 
 export const workTypes = [
-  'Tam Zamanlı',
-  'Yarı Zamanlı',
-  'Uzaktan',
-  'Hibrit',
-  'Sözleşmeli',
-  'Staj',
+  'full-time',
+  'part-time',
+  'remote',
+  'hybrid',
+  'contract',
+  'internship',
+];
+
+export const getWorkTypes = (t: (key: string) => string) => [
+  t('jobs:fullTime'),
+  t('jobs:partTime'),
+  t('jobs:remote'),
+  t('jobs:hybrid'),
+  t('jobs:contract'),
+  t('jobs:internship'),
 ];
 
 // SEO Helper Fonksiyonları

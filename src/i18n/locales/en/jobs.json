@@ -103,5 +103,9 @@
   "emptyStar": "☆",
   "showingRange": "Showing",
   "start": "Start",
-  "end": "End"
+  "end": "End",
+  "new": "NEW",
+  "postedDaysAgo": "Posted {{days}} days ago",
+  "applicationClosed": "Application Closed",
+  "applicationDeadlinePassed": "Application deadline has passed"
 }

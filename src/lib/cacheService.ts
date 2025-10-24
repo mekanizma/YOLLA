@@ -23,8 +23,13 @@ function setCachedData(key: string, data: any) {
 }
 
 // Optimized fetchPublishedJobs with cache
-export async function fetchPublishedJobsOptimized(params?: { search?: string; city?: string }) {
-  const cacheKey = `jobs_${params?.search || ''}_${params?.city || ''}`;
+export async function fetchPublishedJobsOptimized(params?: { 
+  search?: string; 
+  city?: string; 
+  category?: string; 
+  workType?: string; 
+}) {
+  const cacheKey = `jobs_${params?.search || ''}_${params?.city || ''}_${params?.category || ''}_${params?.workType || ''}`;
   
   // Cache'den kontrol et
   const cached = getCachedData(cacheKey);
@@ -54,6 +59,8 @@ export async function fetchPublishedJobsOptimized(params?: { search?: string; ci
   if (params?.search) {
     query.or(`title.ilike.%${params.search}%,description.ilike.%${params.search}%`);
   }
+  if (params?.category) query.eq('department', params.category);
+  if (params?.workType) query.eq('type', params.workType);
 
   const { data, error } = await query;
   if (error) throw error;

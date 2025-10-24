@@ -7,7 +7,8 @@ import {
   SolutionOutlined,
   BarChartOutlined,
   SettingOutlined,
-  LogoutOutlined
+  LogoutOutlined,
+  BankOutlined
 } from '@ant-design/icons';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { signOut } from '../../lib/authService';
@@ -35,6 +36,11 @@ const menuItems = [
     key: '/admin/applications', 
     icon: <SolutionOutlined />, 
     label: <Link to="/admin/applications">Başvurular</Link> 
+  },
+  { 
+    key: '/admin/corporate-applications', 
+    icon: <BankOutlined />, 
+    label: <Link to="/admin/corporate-applications">Kurumsal Başvurular</Link> 
   },
   { 
     key: '/admin/stats', 

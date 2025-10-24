@@ -13,6 +13,7 @@ export type Profile = {
   languages?: any[];
   experiences?: any[];
   educations?: any[];
+  certificates?: any[];
 };
 
 export async function getCurrentUserProfile(): Promise<Profile | null> {
@@ -46,6 +47,7 @@ export async function getCurrentUserProfile(): Promise<Profile | null> {
     languages: (row as any)?.languages || meta.languages || [],
     experiences: (row as any)?.experiences || meta.experiences || [],
     educations: (row as any)?.educations || meta.educations || [],
+    certificates: (row as any)?.certificates || meta.certificates || [],
   };
 }
 
@@ -75,6 +77,7 @@ export async function updateCurrentUserProfile(updates: Partial<Profile>) {
     languages: updates.languages ?? (session.user.user_metadata as any)?.languages ?? null,
     experiences: updates.experiences ?? (session.user.user_metadata as any)?.experiences ?? null,
     educations: updates.educations ?? (session.user.user_metadata as any)?.educations ?? null,
+    certificates: updates.certificates ?? (session.user.user_metadata as any)?.certificates ?? null,
   };
   let upsertErr = null as any;
   try {
@@ -99,6 +102,7 @@ export async function updateCurrentUserProfile(updates: Partial<Profile>) {
       ['languages', extendedPayload.languages],
       ['experiences', extendedPayload.experiences],
       ['educations', extendedPayload.educations],
+      ['certificates', extendedPayload.certificates],
     ];
     for (const [key, value] of singleFieldUpdates) {
       if (typeof value === 'undefined') continue;

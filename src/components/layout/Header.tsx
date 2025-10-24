@@ -21,9 +21,6 @@ const Header: React.FC<HeaderProps> = ({ userType, scrolled }) => {
   // Check if we're on the landing page
   const isLandingPage = location.pathname === '/';
   
-  // Check if we're on login pages
-  const isLoginPage = location.pathname.startsWith('/login/');
-  
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen);
   };
@@ -68,7 +65,7 @@ const Header: React.FC<HeaderProps> = ({ userType, scrolled }) => {
   
   return (
     <header className={cn(
-      "fixed top-0 left-0 right-0 z-50 transition-all duration-500",
+      "fixed top-0 left-0 right-0 z-50 transition-all duration-500 overflow-x-hidden",
       isLandingPage && !scrolled
         ? "bg-transparent text-white backdrop-blur-none"
         : "bg-white/95 backdrop-blur-md shadow-lg text-foreground border-b border-gray-100"
@@ -113,7 +110,7 @@ const Header: React.FC<HeaderProps> = ({ userType, scrolled }) => {
               </nav>
               {/* Language switcher hidden after login as requested */}
             </div>
-          ) : !isLoginPage ? (
+          ) : (
             <div className="hidden md:flex items-center space-x-4">
               <div className="flex items-center gap-4">
                 <BlobButton
@@ -138,7 +135,7 @@ const Header: React.FC<HeaderProps> = ({ userType, scrolled }) => {
                 className={isLandingPage && !scrolled ? "text-white" : ""}
               />
             </div>
-          ) : null}
+          )}
           
           {/* Mobile menu button */}
           <button
@@ -178,18 +175,6 @@ const Header: React.FC<HeaderProps> = ({ userType, scrolled }) => {
                     {link.name}
                   </LiquidButton>
                 ))}
-                {userType === 'corporate' && (
-                  <LiquidButton
-                    onClick={() => {
-                      navigate('/corporate/jobs');
-                      setMobileMenuOpen(false);
-                    }}
-                    icon={<Briefcase size={16} />}
-                    className="justify-start"
-                  >
-                    İlanlarım
-                  </LiquidButton>
-                )}
                 <LiquidButton
                   onClick={handleLogout}
                   icon={<LogOut size={16} />}
@@ -198,7 +183,7 @@ const Header: React.FC<HeaderProps> = ({ userType, scrolled }) => {
                   {t('common:logout')}
                 </LiquidButton>
               </div>
-            ) : !isLoginPage ? (
+            ) : (
               <div className="py-4">
                 {/* Login Buttons */}
                 <div className="space-y-3 mb-6">
@@ -236,7 +221,7 @@ const Header: React.FC<HeaderProps> = ({ userType, scrolled }) => {
                   </div>
                 </div>
               </div>
-            ) : null}
+            )}
           </div>
         </div>
       )}

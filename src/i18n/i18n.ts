@@ -11,6 +11,7 @@ import enLanding from './locales/en/landing.json';
 import enNotifications from './locales/en/notifications.json';
 import enProfile from './locales/en/profile.json';
 import enApplications from './locales/en/applications.json';
+import enCorporateApplication from './locales/en/corporateApplication.json';
 
 import trCommon from './locales/tr/common.json';
 import trAuth from './locales/tr/auth.json';
@@ -20,6 +21,7 @@ import trLanding from './locales/tr/landing.json';
 import trNotifications from './locales/tr/notifications.json';
 import trProfile from './locales/tr/profile.json';
 import trApplications from './locales/tr/applications.json';
+import trCorporateApplication from './locales/tr/corporateApplication.json';
 
 const resources = {
   en: {
@@ -31,6 +33,7 @@ const resources = {
     notifications: enNotifications,
     profile: enProfile,
     applications: enApplications,
+    corporateApplication: enCorporateApplication,
   },
   tr: {
     common: trCommon,
@@ -41,6 +44,7 @@ const resources = {
     notifications: trNotifications,
     profile: trProfile,
     applications: trApplications,
+    corporateApplication: trCorporateApplication,
   },
 };
 
@@ -64,7 +68,7 @@ i18n
 
     // Namespace ayarları
     defaultNS: 'common',
-    ns: ['common', 'auth', 'dashboard', 'jobs', 'landing', 'notifications', 'profile', 'applications'],
+    ns: ['common', 'auth', 'dashboard', 'jobs', 'landing', 'notifications', 'profile', 'applications', 'corporateApplication'],
     
     // Performans optimizasyonları
     load: 'languageOnly',

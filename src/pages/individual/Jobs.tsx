@@ -4,7 +4,7 @@ import { Search, MapPin, Star, Clock, ChevronLeft, ChevronRight } from 'lucide-r
 import Header from '../../components/layout/Header';
 import Footer from '../../components/layout/Footer';
 import Button from '../../components/ui/Button';
-import { jobCategories, workTypes, updateMetaTags, pageSEOContent, getJobCategories } from '../../lib/utils';
+import { jobCategories, workTypes, updateMetaTags, pageSEOContent, getJobCategories, getWorkTypes } from '../../lib/utils';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { fetchPublishedJobsOptimized } from '../../lib/cacheService';
 import { applyToJob } from '../../lib/applicationsService';
@@ -23,6 +23,7 @@ const Jobs = () => {
   
   const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [applyingJobs, setApplyingJobs] = useState<Set<string>>(new Set());
   const [appliedJobs, setAppliedJobs] = useState<Set<string>>(new Set());
@@ -33,8 +34,41 @@ const Jobs = () => {
   const queryParams = new URLSearchParams(location.search);
   const initialSearchTerm = queryParams.get('search') || '';
   const initialCity = queryParams.get('city') || '';
+  const initialCategory = queryParams.get('category') || '';
+  const initialWorkType = queryParams.get('workType') || '';
   const initialPage = parseInt(queryParams.get('page') || '1');
   const initialJobId = queryParams.get('jobId') || '';
+
+  // URL parametrelerini state'e yükle
+  useEffect(() => {
+    setSearchTerm(initialSearchTerm);
+    setSelectedCategory(initialCategory);
+    setWorkType(initialWorkType);
+    setCurrentPage(initialPage);
+  }, [initialSearchTerm, initialCategory, initialWorkType, initialPage]);
+
+  // Arama terimi değiştiğinde otomatik arama yap
+  useEffect(() => {
+    if (searchTerm !== initialSearchTerm) {
+      setSearching(true);
+    }
+    
+    const timeoutId = setTimeout(() => {
+      if (searchTerm !== initialSearchTerm) {
+        // URL'yi güncelle
+        const newParams = new URLSearchParams(location.search);
+        if (searchTerm.trim()) {
+          newParams.set('search', searchTerm.trim());
+        } else {
+          newParams.delete('search');
+        }
+        newParams.set('page', '1');
+        navigate(`${location.pathname}?${newParams.toString()}`, { replace: true });
+      }
+    }, 500); // 500ms gecikme ile debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm, initialSearchTerm, location, navigate]);
 
   useEffect(() => {
     // URL'den sayfa numarasını al
@@ -77,7 +111,12 @@ const Jobs = () => {
         
         // Paralel veri yükleme (cache ile optimize edildi)
         const [jobsData, authData] = await Promise.all([
-          fetchPublishedJobsOptimized({ search: initialSearchTerm, city: initialCity }),
+          fetchPublishedJobsOptimized({ 
+            search: initialSearchTerm, 
+            city: initialCity,
+            category: initialCategory,
+            workType: initialWorkType
+          }),
           supabase.auth.getUser()
         ]);
 
@@ -132,19 +171,33 @@ const Jobs = () => {
         setError(e.message || 'Veri alınamadı');
       } finally {
         setLoading(false);
+        setSearching(false);
       }
     };
     
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialSearchTerm, initialCity]);
+  }, [initialSearchTerm, initialCity, initialCategory, initialWorkType]);
 
   // Filtrelenmiş iş ilanları - useMemo ile optimize edildi
   const filteredJobs = useMemo(() => {
     return jobs.filter(job => {
-      const matchesSearch = searchTerm === '' || job.title.toLowerCase().includes(searchTerm.toLowerCase()) || job.company.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesCategory = selectedCategory === '' || (job.category && job.category === selectedCategory);
-      const matchesWorkType = workType === '' || job.type === workType;
+      // Arama terimi kontrolü - başlık, şirket ve açıklamada ara
+      const searchLower = searchTerm.toLowerCase();
+      const matchesSearch = searchTerm === '' || 
+        job.title.toLowerCase().includes(searchLower) || 
+        job.company.toLowerCase().includes(searchLower) ||
+        (job.description && job.description.toLowerCase().includes(searchLower)) ||
+        (job.requirements && job.requirements.some((req: string) => req.toLowerCase().includes(searchLower)));
+      
+      // Kategori kontrolü
+      const matchesCategory = selectedCategory === '' || 
+        (job.category && job.category.toLowerCase() === selectedCategory.toLowerCase());
+      
+      // Çalışma şekli kontrolü
+      const matchesWorkType = workType === '' || 
+        (job.type && job.type === workType);
+      
       return matchesSearch && matchesCategory && matchesWorkType;
     });
   }, [jobs, searchTerm, selectedCategory, workType]);
@@ -179,14 +232,6 @@ const Jobs = () => {
     }
   };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Arama yapıldığında ilk sayfaya dön
-    setCurrentPage(1);
-    const newParams = new URLSearchParams(location.search);
-    newParams.set('page', '1');
-    navigate(`${location.pathname}?${newParams.toString()}`, { replace: true });
-  };
 
   const handleApply = async (jobId: string) => {
     try {
@@ -216,11 +261,20 @@ const Jobs = () => {
         return;
       }
 
+      // Son başvuru tarihi kontrolü
+      const job = jobs.find(j => j.id === jobId);
+      if (job?.applicationDeadline && new Date(job.applicationDeadline) < new Date()) {
+        showToast({
+          type: 'error',
+          title: t('jobs:applicationClosed'),
+          message: t('jobs:applicationDeadlinePassed')
+        });
+        return;
+      }
+
       // Başvuru işlemi başlatıldığını göster
       setApplyingJobs(prev => new Set(prev).add(jobId));
 
-      // İş bilgilerini al
-      const job = jobs.find(j => j.id === jobId);
       console.log('Bulunan iş:', job);
       
       if (!job) {
@@ -281,8 +335,8 @@ const Jobs = () => {
           
           const notificationResult = await createNotification({
             company_id: jobData.company_id,
-            title: 'Yeni Başvuru',
-            message: `${applicantName} ${t('common:applicationMessage').replace('""', `"${jobData.title}"`)}`,
+            title: '📝 Yeni Başvuru / New Application',
+            message: `👤 ${applicantName} adlı kullanıcı "${jobData.title}" pozisyonu için başvuru yaptı.\n\n📅 Tarih: ${new Date().toLocaleDateString('tr-TR')}\n\n👤 ${applicantName} applied for "${jobData.title}" position.\n\n📅 Date: ${new Date().toLocaleDateString('en-US')}`,
             type: 'application',
             data: { job_id: jobId, application_id: jobId }
           });
@@ -335,25 +389,22 @@ const Jobs = () => {
         {/* Search & Filters Section */}
         <section className="bg-white shadow-sm">
           <div className="container mx-auto px-4 py-6">
-            <form onSubmit={handleSearch} className="space-y-4 mb-4">
-              {/* Arama çubuğu ve butonu */}
-              <div className="flex gap-3">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                  <input
-                    type="text"
-                    placeholder={t('jobs:searchPlaceholder')}
-                    className="pl-10 pr-3 py-3 w-full rounded-lg border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none bg-white shadow-sm"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
-                <Button 
-                  type="submit" 
-                  className="px-8 py-3 text-base font-semibold bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center gap-2"
-                >
-                  <Search size={20} /> {t('jobs:search')}
-                </Button>
+            <div className="space-y-4 mb-4">
+              {/* Arama çubuğu */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                <input
+                  type="text"
+                  placeholder="Pozisyon, şirket veya anahtar kelime yazın..."
+                  className="pl-10 pr-10 py-3 w-full rounded-lg border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none bg-white shadow-sm"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                {searching && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+                )}
               </div>
               
               {/* Filtreler */}
@@ -362,7 +413,19 @@ const Jobs = () => {
                   <select
                     className="w-full px-3 py-3 rounded-lg border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none bg-white shadow-sm"
                     value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    onChange={(e) => {
+                      setSelectedCategory(e.target.value);
+                      setCurrentPage(1);
+                      // URL'yi güncelle
+                      const newParams = new URLSearchParams(location.search);
+                      if (e.target.value) {
+                        newParams.set('category', e.target.value);
+                      } else {
+                        newParams.delete('category');
+                      }
+                      newParams.set('page', '1');
+                      navigate(`${location.pathname}?${newParams.toString()}`, { replace: true });
+                    }}
                   >
                     <option value="">{t('jobs:jobCategory')}</option>
                     {getJobCategories(t).map((cat, i) => (
@@ -374,16 +437,28 @@ const Jobs = () => {
                   <select
                     className="w-full px-3 py-3 rounded-lg border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none bg-white shadow-sm"
                     value={workType}
-                    onChange={(e) => setWorkType(e.target.value)}
+                    onChange={(e) => {
+                      setWorkType(e.target.value);
+                      setCurrentPage(1);
+                      // URL'yi güncelle
+                      const newParams = new URLSearchParams(location.search);
+                      if (e.target.value) {
+                        newParams.set('workType', e.target.value);
+                      } else {
+                        newParams.delete('workType');
+                      }
+                      newParams.set('page', '1');
+                      navigate(`${location.pathname}?${newParams.toString()}`, { replace: true });
+                    }}
                   >
                     <option value="">{t('jobs:workType')}</option>
-                    {workTypes.map((type) => (
-                      <option key={type} value={type}>{type}</option>
+                    {getWorkTypes(t).map((type, index) => (
+                      <option key={type} value={workTypes[index]}>{type}</option>
                     ))}
                   </select>
                 </div>
               </div>
-            </form>
+            </div>
           </div>
         </section>
         
@@ -391,8 +466,15 @@ const Jobs = () => {
         <section className="container mx-auto px-4 py-8">
           <div className="mb-6 flex justify-between items-center">
             <div className="text-gray-600 text-sm">
-              {loading ? t('jobs:loading') : `${filteredJobs.length} ${t('jobs:jobsFound')}`}
-              {totalPages > 1 && (
+              {loading || searching ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                  {searching ? 'Aranıyor...' : t('jobs:loading')}
+                </div>
+              ) : (
+                `${filteredJobs.length} ${t('jobs:jobsFound')}`
+              )}
+              {totalPages > 1 && !loading && !searching && (
                 <span className="ml-2 text-gray-500">
                   ({t('jobs:page')} {currentPage} {t('jobs:of')} {totalPages})
                 </span>
@@ -405,7 +487,7 @@ const Jobs = () => {
             )}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-            {loading ? (
+            {loading || searching ? (
               // Skeleton Loading
               [...Array(6)].map((_, index) => (
                 <div key={index} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 animate-pulse">
@@ -516,14 +598,41 @@ const Jobs = () => {
                         </div>
                       </div>
                       
-                      {/* İş Türü ve Deneyim Etiketleri */}
+                      {/* İş Türü ve Durum Etiketleri */}
                       <div className="flex flex-wrap gap-2 mb-3">
                         <span className="inline-block bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-medium hover:bg-blue-200 transition-colors duration-200">
-                          📋 {job.type}
+                          📋 {(() => {
+                            const typeMap: { [key: string]: string } = {
+                              'full-time': t('jobs:fullTime'),
+                              'part-time': t('jobs:partTime'),
+                              'remote': t('jobs:remote'),
+                              'hybrid': t('jobs:hybrid'),
+                              'contract': t('jobs:contract'),
+                              'internship': t('jobs:internship')
+                            };
+                            return typeMap[job.type] || job.type;
+                          })()}
                         </span>
-                        <span className="inline-block bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-medium hover:bg-purple-200 transition-colors duration-200">
-                          👤 {job.experience}
-                        </span>
+                        {(() => {
+                          const jobDate = new Date(job.postedDate);
+                          const now = new Date();
+                          const diffInDays = Math.floor((now.getTime() - jobDate.getTime()) / (1000 * 60 * 60 * 24));
+                          
+                          if (diffInDays <= 2) {
+                            return (
+                              <span className="inline-block bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-medium hover:bg-green-200 transition-colors duration-200">
+                                ✨ {t('jobs:new')}
+                              </span>
+                            );
+                          } else if (diffInDays > 7) {
+                            return (
+                              <span className="inline-block bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-medium hover:bg-orange-200 transition-colors duration-200">
+                                ⏰ {t('jobs:postedDaysAgo', { days: diffInDays })}
+                              </span>
+                            );
+                          }
+                          return null;
+                        })()}
                         {job.location.includes('Uzaktan') && (
                           <span className="inline-block bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-medium hover:bg-green-200 transition-colors duration-200">
                             🏠 Uzaktan
@@ -603,36 +712,59 @@ const Jobs = () => {
                       </span>
                     </div>
                     <div className="flex gap-2 justify-end">
-                      {appliedJobs.has(job.id) ? (
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          disabled
-                          className="flex items-center gap-1 bg-green-50 text-green-700 border-green-200"
-                        >
-                          <span>✓ {t('jobs:applicationSubmitted')}</span>
-                        </Button>
-                      ) : (
-                        <Button 
-                          variant="primary" 
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleApply(job.id);
-                          }}
-                          disabled={applyingJobs.has(job.id)}
-                          className="flex items-center gap-1 hover:bg-blue-600 transition-colors duration-200"
-                        >
-                          {applyingJobs.has(job.id) ? (
-                            <>
-                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                              <span>{t('jobs:applying')}</span>
-                            </>
-                          ) : (
-                            <span>{t('jobs:apply')}</span>
-                          )}
-                        </Button>
-                      )}
+                      {(() => {
+                        // Son başvuru tarihi kontrolü
+                        const isDeadlinePassed = job.applicationDeadline && 
+                          new Date(job.applicationDeadline) < new Date();
+                        
+                        if (isDeadlinePassed) {
+                          return (
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              disabled
+                              className="flex items-center gap-1 bg-red-50 text-red-700 border-red-200"
+                            >
+                              <span>🚫 {t('jobs:applicationClosed')}</span>
+                            </Button>
+                          );
+                        }
+                        
+                        if (appliedJobs.has(job.id)) {
+                          return (
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              disabled
+                              className="flex items-center gap-1 bg-green-50 text-green-700 border-green-200"
+                            >
+                              <span>✓ {t('jobs:applicationSubmitted')}</span>
+                            </Button>
+                          );
+                        }
+                        
+                        return (
+                          <Button 
+                            variant="primary" 
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleApply(job.id);
+                            }}
+                            disabled={applyingJobs.has(job.id)}
+                            className="flex items-center gap-1 hover:bg-blue-600 transition-colors duration-200"
+                          >
+                            {applyingJobs.has(job.id) ? (
+                              <>
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                <span>{t('jobs:applying')}</span>
+                              </>
+                            ) : (
+                              <span>{t('jobs:apply')}</span>
+                            )}
+                          </Button>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>

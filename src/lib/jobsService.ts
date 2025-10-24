@@ -7,7 +7,7 @@ export type JobRecord = {
   requirements: string;
   responsibilities: string;
   location: string;
-  type: 'full-time' | 'part-time' | 'contract' | 'internship' | 'remote';
+  type: 'full-time' | 'part-time' | 'contract' | 'internship' | 'remote' | 'hybrid';
   experience_level: 'entry' | 'mid' | 'senior' | 'lead' | 'executive';
   education_level: string | null;
   salary: { min: number; max: number; currency: string } | null;

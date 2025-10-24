@@ -65,6 +65,16 @@ const JobDetail = () => {
         return;
       }
 
+      // Son başvuru tarihi kontrolü
+      if (job?.applicationDeadline && new Date(job.applicationDeadline) < new Date()) {
+        showToast({
+          type: 'error',
+          title: 'Başvuru Kapanmıştır',
+          message: 'Son başvuru tarihi geçmiştir.'
+        });
+        return;
+      }
+
       // Başvuru yap
       await applyToJob(jobId.toString(), auth.user.id, {
         cover_letter: '',
@@ -96,9 +106,9 @@ const JobDetail = () => {
           
           await createNotification({
             company_id: jobData.company_id,
-            title: 'Yeni Başvuru',
-            message: `${applicantName} ${t('common:applicationMessage').replace('""', `"${jobData.title}"`)}`,
-            type: 'info'
+            title: '📝 Yeni Başvuru / New Application',
+            message: `👤 ${applicantName} adlı kullanıcı "${jobData.title}" pozisyonu için başvuru yaptı.\n\n📅 Tarih: ${new Date().toLocaleDateString('tr-TR')}\n\n👤 ${applicantName} applied for "${jobData.title}" position.\n\n📅 Date: ${new Date().toLocaleDateString('en-US')}`,
+            type: 'application'
           });
           
         } else {
@@ -320,28 +330,50 @@ const JobDetail = () => {
             </div>
 
             <div className="mt-6 flex gap-3">
-              {applicationStatus ? (
-                <div className="flex items-center gap-2">
-                  {(() => {
-                    const statusUI = getApplicationStatusUI();
-                    if (!statusUI) return null;
-                    return (
-                      <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border ${statusUI.color}`}>
-                        {statusUI.icon}
-                        <span className="font-medium">{statusUI.text}</span>
-                      </div>
-                    );
-                  })()}
-                </div>
-              ) : (
-                <Button 
-                  variant="primary" 
-                  onClick={handleApply}
-                  disabled={isApplying}
-                >
-                  {isApplying ? 'Başvuru Yapılıyor...' : 'Başvur'}
-                </Button>
-              )}
+              {(() => {
+                // Son başvuru tarihi kontrolü
+                const isDeadlinePassed = job?.applicationDeadline && 
+                  new Date(job.applicationDeadline) < new Date();
+                
+                if (isDeadlinePassed) {
+                  return (
+                    <Button 
+                      variant="outline" 
+                      disabled
+                      className="flex items-center gap-2 bg-red-50 text-red-700 border-red-200"
+                    >
+                      <span>🚫 Başvuru Kapanmıştır</span>
+                    </Button>
+                  );
+                }
+                
+                if (applicationStatus) {
+                  return (
+                    <div className="flex items-center gap-2">
+                      {(() => {
+                        const statusUI = getApplicationStatusUI();
+                        if (!statusUI) return null;
+                        return (
+                          <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border ${statusUI.color}`}>
+                            {statusUI.icon}
+                            <span className="font-medium">{statusUI.text}</span>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  );
+                }
+                
+                return (
+                  <Button 
+                    variant="primary" 
+                    onClick={handleApply}
+                    disabled={isApplying}
+                  >
+                    {isApplying ? 'Başvuru Yapılıyor...' : 'Başvur'}
+                  </Button>
+                );
+              })()}
               <Button variant="outline" onClick={() => navigate('/individual/jobs')}>Diğer İlanlar</Button>
             </div>
           </div>

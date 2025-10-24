@@ -12,16 +12,12 @@ import {
   Avatar,
   Button,
   Chip,
-  IconButton,
-  Menu,
-  MenuItem,
   useTheme,
   useMediaQuery,
   Fade,
   Skeleton,
   Divider,
 } from '@mui/material';
-import MoreVertIcon from '@mui/icons-material/MoreVert';
 import { styled } from '@mui/material/styles';
 import Header from '../../components/layout/Header';
 import Dialog from '@mui/material/Dialog';
@@ -197,7 +193,6 @@ const CorporateApplications: React.FC = () => {
   const { t } = useTranslation();
   const isMobile = useMediaQuery(useTheme().breakpoints.down('sm'));
   const [currentTab, setCurrentTab] = useState(0);
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(false);
@@ -251,81 +246,139 @@ const CorporateApplications: React.FC = () => {
   const [rejectReason, setRejectReason] = useState('');
   const [acceptDialogOpen, setAcceptDialogOpen] = useState(false);
   const [acceptDetails, setAcceptDetails] = useState({ date: '', time: '', details: '' });
+  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
+  const [approveDetails, setApproveDetails] = useState({ startDate: '', contractDetails: '', salary: '' });
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string }>({ open: false, message: '' });
 
   const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
     setCurrentTab(newValue);
   };
 
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, application: Application) => {
-    setAnchorEl(event.currentTarget);
+
+  const handleStatusChange = async (application: Application, newStatus: 'pending' | 'in_review' | 'accepted' | 'rejected' | 'approved') => {
     setSelectedApplication(application);
-  };
-
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-    setSelectedApplication(null);
-  };
-
-  const handleStatusChange = async (newStatus: 'pending' | 'in_review' | 'accepted' | 'rejected' | 'approved') => {
-    if (selectedApplication) {
+    try {
+      await updateApplicationStatus(application.id, newStatus, rejectReason);
+      
+      // UI'da gösterilecek Türkçe status
+      const turkishStatus = statusConfig[newStatus].label;
+      
+      setApplications(prev => prev.map(app =>
+        app.id === application.id ? { ...app, status: turkishStatus } : app
+      ));
+      setSnackbar({ open: true, message: 'Başvuru durumu güncellendi.' });
+      
+      // Çift taraflı bildirim sistemi - Hem bireysel hem kurumsal tarafa
       try {
-        await updateApplicationStatus(selectedApplication.id, newStatus, rejectReason);
-        
-        // UI'da gösterilecek Türkçe status
-        const turkishStatus = statusConfig[newStatus].label;
-        
-        setApplications(prev => prev.map(app =>
-          app.id === selectedApplication.id ? { ...app, status: turkishStatus } : app
-        ));
-        setSnackbar({ open: true, message: 'Başvuru durumu güncellendi.' });
-        
-        // Başvuru sahibine bildirim gönder
-        try {
-          const { data: auth } = await supabase.auth.getUser();
-          const user = auth.user;
-          if (user) {
-            const company = await fetchCompanyByEmail(user.email || '');
-            if (company && selectedApplication.user_id) {
-              const statusMessage: Record<string, string> = {
-                'pending': 'Başvurunuz beklemede.',
-                'accepted': 'Başvurunuz kabul edildi!',
-                'rejected': 'Başvurunuz reddedildi.',
-                'in_review': 'Başvurunuz değerlendiriliyor.',
-                'approved': 'Başvurunuz onaylandı!'
-              };
-              
+        const { data: auth } = await supabase.auth.getUser();
+        const user = auth.user;
+        if (user) {
+          const company = await fetchCompanyByEmail(user.email || '');
+          if (company && application.user_id) {
+            
+            // Bireysel kullanıcıya bildirim gönder
+            const individualMessages: Record<string, { title: string; message: string }> = {
+              'pending': {
+                title: '📋 Başvuru Durumu Güncellendi / Application Status Updated',
+                message: `🔄 Başvurunuz beklemede.\n\n🔄 Your application is pending.`
+              },
+              'in_review': {
+                title: '👀 Başvuru İnceleniyor / Application Under Review',
+                message: `🔍 Başvurunuz değerlendiriliyor.\n\n🔍 Your application is being evaluated.`
+              },
+              'accepted': {
+                title: '✅ Başvuru Kabul Edildi! / Application Accepted!',
+                message: `🎉 Başvurunuz kabul edildi!\n\n📅 Pozisyon: ${application.jobTitle}\n🏢 Şirket: ${company.name}\n\n🎉 Your application has been accepted!\n\n📅 Position: ${application.jobTitle}\n🏢 Company: ${company.name}`
+              },
+              'rejected': {
+                title: '❌ Başvuru Reddedildi / Application Rejected',
+                message: `😔 Başvurunuz reddedildi.\n\n📅 Pozisyon: ${application.jobTitle}\n🏢 Şirket: ${company.name}\n\n😔 Your application has been rejected.\n\n📅 Position: ${application.jobTitle}\n🏢 Company: ${company.name}`
+              },
+              'approved': {
+                title: '🎉 Başvuru Onaylandı! / Application Approved!',
+                message: `🚀 Başvurunuz onaylandı!\n\n📅 Pozisyon: ${application.jobTitle}\n🏢 Şirket: ${company.name}\n\n🚀 Your application has been approved!\n\n📅 Position: ${application.jobTitle}\n🏢 Company: ${company.name}`
+              }
+            };
+            
+            const individualMessage = individualMessages[newStatus];
+            if (individualMessage) {
               await createNotification({
-                user_id: selectedApplication.user_id.toString(),
-                title: 'Başvuru Durumu Güncellendi',
-                message: statusMessage[newStatus] || 'Başvuru durumunuz güncellendi.',
-                type: newStatus === 'accepted' || newStatus === 'approved' ? 'success' : 'info',
+                user_id: application.user_id.toString(),
+                title: individualMessage.title,
+                message: individualMessage.message,
+                type: newStatus === 'accepted' || newStatus === 'approved' ? 'success' : 
+                       newStatus === 'rejected' ? 'error' : 'info',
                 data: { 
-                  application_id: selectedApplication.id,
-                  job_title: selectedApplication.jobTitle,
-                  company_name: company.name
+                  application_id: application.id,
+                  job_title: application.jobTitle,
+                  company_name: company.name,
+                  status: newStatus
+                }
+              });
+            }
+            
+            // Kurumsal tarafa da bildirim gönder
+            const corporateMessages: Record<string, { title: string; message: string }> = {
+              'pending': {
+                title: '📋 Başvuru Durumu Güncellendi / Application Status Updated',
+                message: `🔄 ${application.applicantName} adlı adayın başvurusu beklemede.\n\n🔄 Application from ${application.applicantName} is pending.`
+              },
+              'in_review': {
+                title: '👀 Başvuru İnceleniyor / Application Under Review',
+                message: `🔍 ${application.applicantName} adlı adayın başvurusu değerlendiriliyor.\n\n🔍 Application from ${application.applicantName} is being evaluated.`
+              },
+              'accepted': {
+                title: '✅ Başvuru Kabul Edildi / Application Accepted',
+                message: `🎉 ${application.applicantName} adlı adayın başvurusu kabul edildi!\n\n📅 Pozisyon: ${application.jobTitle}\n👤 Aday: ${application.applicantName}\n\n🎉 Application from ${application.applicantName} has been accepted!\n\n📅 Position: ${application.jobTitle}\n👤 Candidate: ${application.applicantName}`
+              },
+              'rejected': {
+                title: '❌ Başvuru Reddedildi / Application Rejected',
+                message: `😔 ${application.applicantName} adlı adayın başvurusu reddedildi.\n\n📅 Pozisyon: ${application.jobTitle}\n👤 Aday: ${application.applicantName}\n\n😔 Application from ${application.applicantName} has been rejected.\n\n📅 Position: ${application.jobTitle}\n👤 Candidate: ${application.applicantName}`
+              },
+              'approved': {
+                title: '🎉 Başvuru Onaylandı / Application Approved',
+                message: `🚀 ${application.applicantName} adlı adayın başvurusu onaylandı!\n\n📅 Pozisyon: ${application.jobTitle}\n👤 Aday: ${application.applicantName}\n\n🚀 Application from ${application.applicantName} has been approved!\n\n📅 Position: ${application.jobTitle}\n👤 Candidate: ${application.applicantName}`
+              }
+            };
+            
+            const corporateMessage = corporateMessages[newStatus];
+            if (corporateMessage) {
+              await createNotification({
+                company_id: company.id,
+                title: corporateMessage.title,
+                message: corporateMessage.message,
+                type: newStatus === 'accepted' || newStatus === 'approved' ? 'success' : 
+                       newStatus === 'rejected' ? 'error' : 'info',
+                data: { 
+                  application_id: application.id,
+                  job_title: application.jobTitle,
+                  applicant_name: application.applicantName,
+                  status: newStatus
                 }
               });
             }
           }
-        } catch (notificationError) {
-          console.warn('Bildirim gönderilemedi:', notificationError);
         }
-        
-      } catch (e: any) {
-        setSnackbar({ open: true, message: e?.message || 'Güncelleme başarısız.' });
+      } catch (notificationError) {
+        console.warn('Bildirim gönderilemedi:', notificationError);
       }
       
-      if (newStatus === 'rejected') {
-        setRejectDialogOpen(true);
-        return;
-      }
-      if (newStatus === 'accepted') {
-        setAcceptDialogOpen(true);
-        return;
-      }
+    } catch (e: any) {
+      setSnackbar({ open: true, message: e?.message || 'Güncelleme başarısız.' });
     }
-    handleMenuClose();
+    
+    if (newStatus === 'rejected') {
+      setRejectDialogOpen(true);
+      return;
+    }
+    if (newStatus === 'accepted') {
+      setAcceptDialogOpen(true);
+      return;
+    }
+    if (newStatus === 'approved') {
+      setApproveDialogOpen(true);
+      return;
+    }
   };
 
   const handleRejectConfirm = async () => {
@@ -393,7 +446,60 @@ const CorporateApplications: React.FC = () => {
     }
     setAcceptDialogOpen(false);
     setAcceptDetails({ date: '', time: '', details: '' });
-    handleMenuClose();
+  };
+
+  const handleApproveConfirm = async () => {
+    if (selectedApplication) {
+      try {
+        await updateApplicationStatus(selectedApplication.id, 'approved');
+        setApplications(prev => prev.map(app =>
+          app.id === selectedApplication.id ? { ...app, status: 'Onaylandı', contractAccepted: true } : app
+        ));
+        
+        // Başvuru sahibine onaylama bildirimi gönder
+        try {
+          const { data: auth } = await supabase.auth.getUser();
+          const user = auth.user;
+          if (user) {
+            const company = await fetchCompanyByEmail(user.email || '');
+            if (company && selectedApplication.user_id) {
+              const contractMessage = approveDetails.contractDetails 
+                ? `\n\nSözleşme Detayları:\n${approveDetails.contractDetails}`
+                : '';
+              
+              const salaryMessage = approveDetails.salary 
+                ? `\n\nMaaş: ${approveDetails.salary}`
+                : '';
+              
+              const fullMessage = `Başvurunuz onaylandı! İşe başlama tarihi: ${approveDetails.startDate}.${contractMessage}${salaryMessage}`;
+              
+              await createNotification({
+                user_id: selectedApplication.user_id.toString(),
+                title: 'Başvuru Onaylandı! 🎉',
+                message: fullMessage,
+                type: 'success',
+                data: { 
+                  application_id: selectedApplication.id,
+                  job_title: selectedApplication.jobTitle,
+                  company_name: company.name,
+                  start_date: approveDetails.startDate,
+                  contract_details: approveDetails.contractDetails,
+                  salary: approveDetails.salary
+                }
+              });
+            }
+          }
+        } catch (notificationError) {
+          console.warn('Bildirim gönderilemedi:', notificationError);
+        }
+        
+        setSnackbar({ open: true, message: 'Başvuru başarıyla onaylandı.' });
+      } catch (e: any) {
+        setSnackbar({ open: true, message: e?.message || 'Onaylama başarısız.' });
+      }
+    }
+    setApproveDialogOpen(false);
+    setApproveDetails({ startDate: '', contractDetails: '', salary: '' });
   };
 
   // Başvuruları filtrele (localStorage kaldırıldı)
@@ -732,24 +838,12 @@ const CorporateApplications: React.FC = () => {
                                 className={statusInfo.color}
                                 size="small"
                               />
-                              <IconButton
-                                onClick={(e) => handleMenuOpen(e, application)}
-                                size="small"
-                                sx={{
-                                  background: 'rgba(59, 130, 246, 0.1)',
-                                  '&:hover': {
-                                    background: 'rgba(59, 130, 246, 0.2)',
-                                  }
-                                }}
-                              >
-                                <MoreVertIcon />
-                              </IconButton>
                             </Box>
                           </Box>
                           
                           <Divider sx={{ my: 2 }} />
                           
-                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                               <Typography variant="body2" sx={{ fontWeight: 500 }}>
                                 {t('common:experience')}: {application.experience}
@@ -801,6 +895,94 @@ const CorporateApplications: React.FC = () => {
                               {t('common:viewDetails')} <ChevronRight size={16} />
                             </Link>
                           </Box>
+                          
+                          {/* Action Buttons */}
+                          <Box sx={{ 
+                            display: 'flex', 
+                            gap: 1, 
+                            justifyContent: 'flex-end',
+                            flexWrap: 'wrap'
+                          }}>
+                            {application.status === 'Beklemede' && (
+                              <Button
+                                variant="outlined"
+                                size="small"
+                                onClick={() => handleStatusChange(application, 'in_review')}
+                                sx={{
+                                  borderRadius: 2,
+                                  textTransform: 'none',
+                                  fontWeight: 600,
+                                  borderColor: '#3b82f6',
+                                  color: '#3b82f6',
+                                  '&:hover': {
+                                    borderColor: '#1d4ed8',
+                                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                  }
+                                }}
+                              >
+                                {t('common:takeUnderReview')}
+                              </Button>
+                            )}
+                            
+                            {(application.status === 'Beklemede' || application.status === 'İnceleniyor') && (
+                              <Button
+                                variant="contained"
+                                size="small"
+                                onClick={() => handleStatusChange(application, 'accepted')}
+                                sx={{
+                                  borderRadius: 2,
+                                  textTransform: 'none',
+                                  fontWeight: 600,
+                                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                  '&:hover': {
+                                    background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                                  }
+                                }}
+                              >
+                                {t('common:accept')}
+                              </Button>
+                            )}
+                            
+                            {application.status === 'Kabul Edildi' && (
+                              <Button
+                                variant="contained"
+                                size="small"
+                                onClick={() => handleStatusChange(application, 'approved')}
+                                sx={{
+                                  borderRadius: 2,
+                                  textTransform: 'none',
+                                  fontWeight: 600,
+                                  background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                                  '&:hover': {
+                                    background: 'linear-gradient(135deg, #047857 0%, #065f46 100%)',
+                                  }
+                                }}
+                              >
+                                Onayla
+                              </Button>
+                            )}
+                            
+                            {application.status !== 'Reddedildi' && (
+                              <Button
+                                variant="outlined"
+                                size="small"
+                                onClick={() => handleStatusChange(application, 'rejected')}
+                                sx={{
+                                  borderRadius: 2,
+                                  textTransform: 'none',
+                                  fontWeight: 600,
+                                  borderColor: '#ef4444',
+                                  color: '#ef4444',
+                                  '&:hover': {
+                                    borderColor: '#dc2626',
+                                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                  }
+                                }}
+                              >
+                                {t('common:reject')}
+                              </Button>
+                            )}
+                          </Box>
                         </CardContent>
                       </ApplicationCard>
                     </Fade>
@@ -811,21 +993,6 @@ const CorporateApplications: React.FC = () => {
 
           </StyledPaper>
 
-          <Menu
-            anchorEl={anchorEl}
-            open={Boolean(anchorEl)}
-            onClose={handleMenuClose}
-          >
-            {selectedApplication?.status === 'Beklemede' && (
-              <MenuItem onClick={() => handleStatusChange('in_review')}>{t('common:takeUnderReview')}</MenuItem>
-            )}
-            {selectedApplication?.status === 'Beklemede' || selectedApplication?.status === 'İnceleniyor' ? (
-              <MenuItem onClick={() => handleStatusChange('accepted')}>{t('common:accept')}</MenuItem>
-            ) : null}
-            {selectedApplication?.status !== 'Reddedildi' && (
-              <MenuItem onClick={() => handleStatusChange('rejected')}>{t('common:reject')}</MenuItem>
-            )}
-          </Menu>
 
           {/* Red Sebebi Dialog */}
           <Dialog open={rejectDialogOpen} onClose={() => setRejectDialogOpen(false)}>
@@ -897,6 +1064,56 @@ const CorporateApplications: React.FC = () => {
             <DialogActions>
               <Button onClick={() => setAcceptDialogOpen(false)}>İptal</Button>
               <Button onClick={handleAcceptConfirm} disabled={!acceptDetails.date || !acceptDetails.time}>Onayla</Button>
+            </DialogActions>
+          </Dialog>
+
+          {/* Onaylama Detayları Dialog */}
+          <Dialog 
+            open={approveDialogOpen} 
+            onClose={() => setApproveDialogOpen(false)}
+            maxWidth="sm"
+            fullWidth
+            PaperProps={{
+              sx: {
+                maxHeight: '90vh',
+                margin: '20px',
+              }
+            }}
+          >
+            <DialogTitle>Onaylama Detayları</DialogTitle>
+            <DialogContent>
+              <TextField
+                margin="dense"
+                label="İşe Başlama Tarihi"
+                type="date"
+                fullWidth
+                InputLabelProps={{ shrink: true }}
+                value={approveDetails.startDate}
+                onChange={e => setApproveDetails({ ...approveDetails, startDate: e.target.value })}
+              />
+              <TextField
+                margin="dense"
+                label="Maaş"
+                type="text"
+                fullWidth
+                placeholder="Örn: 15.000 TL"
+                value={approveDetails.salary}
+                onChange={e => setApproveDetails({ ...approveDetails, salary: e.target.value })}
+              />
+              <TextField
+                margin="dense"
+                label="Sözleşme Detayları"
+                multiline
+                rows={4}
+                fullWidth
+                placeholder="Sözleşme koşulları, çalışma saatleri, yan haklar vb."
+                value={approveDetails.contractDetails}
+                onChange={e => setApproveDetails({ ...approveDetails, contractDetails: e.target.value })}
+              />
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setApproveDialogOpen(false)}>İptal</Button>
+              <Button onClick={handleApproveConfirm} disabled={!approveDetails.startDate}>Onayla</Button>
             </DialogActions>
           </Dialog>
 

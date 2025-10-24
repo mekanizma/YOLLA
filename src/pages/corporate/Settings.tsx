@@ -44,11 +44,6 @@ interface CompanySettings {
     jobExpiry: boolean;
     marketingEmails: boolean;
   };
-  privacy: {
-    showCompanyInfo: boolean;
-    allowDirectMessages: boolean;
-    showActiveJobs: boolean;
-  };
 }
 
 const CorporateSettings: React.FC = () => {
@@ -69,11 +64,6 @@ const CorporateSettings: React.FC = () => {
       jobExpiry: true,
       marketingEmails: false,
     },
-    privacy: {
-      showCompanyInfo: true,
-      allowDirectMessages: true,
-      showActiveJobs: true,
-    },
   });
 
   const [showSuccess, setShowSuccess] = useState(false);
@@ -81,6 +71,14 @@ const CorporateSettings: React.FC = () => {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [logoLoading, setLogoLoading] = useState(false);
+  const [showPasswordChange, setShowPasswordChange] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
 
   useEffect(() => {
     const load = async () => {
@@ -106,12 +104,6 @@ const CorporateSettings: React.FC = () => {
               applicationUpdates: company.notification_application_updates ?? true,
               jobExpiry: company.notification_job_expiry ?? true,
               marketingEmails: company.notification_marketing_emails ?? false,
-            },
-            // Gizlilik ayarları
-            privacy: {
-              showCompanyInfo: company.privacy_show_company_info ?? true,
-              allowDirectMessages: company.privacy_allow_direct_messages ?? true,
-              showActiveJobs: company.privacy_show_active_jobs ?? true,
             },
           }));
           if (company.logo) {
@@ -143,14 +135,65 @@ const CorporateSettings: React.FC = () => {
     }));
   };
 
-  const handlePrivacyChange = (field: keyof CompanySettings['privacy']) => {
-    setSettings(prev => ({
+
+  const handlePasswordChange = (field: string, value: string) => {
+    setPasswordData(prev => ({
       ...prev,
-      privacy: {
-        ...prev.privacy,
-        [field]: !prev.privacy[field],
-      },
+      [field]: value,
     }));
+    setPasswordError('');
+  };
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError('');
+    
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setPasswordError(t('auth:passwordMismatch'));
+      return;
+    }
+    
+    if (passwordData.newPassword.length < 6) {
+      setPasswordError(t('auth:passwordTooShort'));
+      return;
+    }
+    
+    setPasswordLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: passwordData.newPassword
+      });
+      
+      if (error) {
+        // Supabase hata mesajlarını Türkçe'ye çevir
+        let errorMessage = error.message;
+        if (error.message.includes('Password should be at least')) {
+          errorMessage = t('auth:passwordTooShort');
+        } else if (error.message.includes('Invalid password')) {
+          errorMessage = t('auth:passwordChangeError');
+        } else if (error.message.includes('User not found')) {
+          errorMessage = t('auth:passwordChangeError');
+        } else if (error.message.includes('Email not confirmed')) {
+          errorMessage = t('auth:passwordChangeError');
+        }
+        setPasswordError(errorMessage);
+        return;
+      }
+      
+      // Başarılı olduğunda formu temizle ve kapat
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      });
+      setShowPasswordChange(false);
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+    } catch (error: any) {
+      setPasswordError(error.message || t('auth:passwordChangeError'));
+    } finally {
+      setPasswordLoading(false);
+    }
   };
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -250,10 +293,6 @@ const CorporateSettings: React.FC = () => {
             notification_application_updates: settings.notifications.applicationUpdates,
             notification_job_expiry: settings.notifications.jobExpiry,
             notification_marketing_emails: settings.notifications.marketingEmails,
-            // Gizlilik ayarları
-            privacy_show_company_info: settings.privacy.showCompanyInfo,
-            privacy_allow_direct_messages: settings.privacy.allowDirectMessages,
-            privacy_show_active_jobs: settings.privacy.showActiveJobs,
           })
           .eq('id', company.id);
         if (error) throw error;
@@ -445,37 +484,25 @@ const CorporateSettings: React.FC = () => {
             </StyledPaper>
             <StyledPaper elevation={0} sx={{ mb: 3, borderRadius: 4 }}>
               <Typography variant="h6" fontWeight={600} gutterBottom>
-                {t('common:privacySettings')}
+                {t('auth:changePassword')}
               </Typography>
               <Divider sx={{ mb: 2 }} />
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={settings.privacy.showCompanyInfo}
-                      onChange={() => handlePrivacyChange('showCompanyInfo')}
-                    />
-                  }
-                  label={t('common:showCompanyInfo')}
-                />
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={settings.privacy.allowDirectMessages}
-                      onChange={() => handlePrivacyChange('allowDirectMessages')}
-                    />
-                  }
-                  label={t('common:allowDirectMessages')}
-                />
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={settings.privacy.showActiveJobs}
-                      onChange={() => handlePrivacyChange('showActiveJobs')}
-                    />
-                  }
-                  label={t('common:showActiveJobs')}
-                />
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Box>
+                  <Typography variant="body1" fontWeight={500}>
+                    {t('auth:changePasswordTitle')}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {t('auth:changePasswordDescription')}
+                  </Typography>
+                </Box>
+                <Button
+                  variant="outlined"
+                  onClick={() => setShowPasswordChange(true)}
+                  sx={{ borderRadius: 2, fontWeight: 500 }}
+                >
+                  {t('auth:changePassword')}
+                </Button>
               </Box>
             </StyledPaper>
             <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
@@ -492,10 +519,100 @@ const CorporateSettings: React.FC = () => {
             </Box>
             {showSuccess && (
               <Alert severity="success" sx={{ mt: 3 }}>
-                {t('common:settingsSaved')}
+                {t('common:passwordChangedSuccess')}
               </Alert>
             )}
           </form>
+          
+          {/* Şifre Değiştirme Modal */}
+          {showPasswordChange && (
+            <Box
+              sx={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 1300,
+                p: 2
+              }}
+            >
+              <Paper
+                elevation={24}
+                sx={{
+                  width: '100%',
+                  maxWidth: 400,
+                  p: 3,
+                  borderRadius: 3
+                }}
+              >
+                <Typography variant="h6" fontWeight={600} gutterBottom>
+                  {t('auth:changePasswordTitle')}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                  {t('auth:changePasswordDescription')}
+                </Typography>
+                
+                <form onSubmit={handlePasswordSubmit}>
+                  <TextField
+                    label={t('auth:newPassword')}
+                    type="password"
+                    value={passwordData.newPassword}
+                    onChange={(e) => handlePasswordChange('newPassword', e.target.value)}
+                    margin="normal"
+                    fullWidth
+                    required
+                    helperText={t('auth:passwordTooShort')}
+                  />
+                  <TextField
+                    label={t('auth:confirmPassword')}
+                    type="password"
+                    value={passwordData.confirmPassword}
+                    onChange={(e) => handlePasswordChange('confirmPassword', e.target.value)}
+                    margin="normal"
+                    fullWidth
+                    required
+                  />
+                  
+                  {passwordError && (
+                    <Alert severity="error" sx={{ mt: 2 }}>
+                      {passwordError}
+                    </Alert>
+                  )}
+                  
+                  <Box sx={{ display: 'flex', gap: 2, mt: 3, justifyContent: 'flex-end' }}>
+                    <Button
+                      variant="outlined"
+                      onClick={() => {
+                        setShowPasswordChange(false);
+                        setPasswordData({
+                          currentPassword: '',
+                          newPassword: '',
+                          confirmPassword: ''
+                        });
+                        setPasswordError('');
+                      }}
+                      disabled={passwordLoading}
+                    >
+                      {t('auth:cancel')}
+                    </Button>
+                    <Button
+                      type="submit"
+                      variant="contained"
+                      disabled={passwordLoading}
+                      sx={{ minWidth: 100 }}
+                    >
+                      {passwordLoading ? t('auth:passwordChanging') : t('auth:passwordChange')}
+                    </Button>
+                  </Box>
+                </form>
+              </Paper>
+            </Box>
+          )}
         </Container>
       </Box>
     </>

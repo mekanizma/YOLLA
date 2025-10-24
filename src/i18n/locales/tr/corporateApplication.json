@@ -1,0 +1,13 @@
+{
+  "title": "Başvuru Formu",
+  "subtitle": "BU FORMU DOLDURUN YOLLABİ KURUMSAL HESABINIZI OLUŞTURALIM",
+  "companyName": "Firma Adı",
+  "companyNamePlaceholder": "Firma Adı",
+  "fullName": "Ad Soyad",
+  "fullNamePlaceholder": "Ad Soyad",
+  "phone": "Telefon Numaranız",
+  "phonePlaceholder": "Telefon Numaranız",
+  "email": "E-posta",
+  "emailPlaceholder": "E-posta",
+  "footer": "Başvurunuzu gönderdikten sonra en kısa sürede size dönüş yapacağız."
+}

@@ -1,16 +1,13 @@
-import { Page, Text, View, Document, StyleSheet, Font, Image } from '@react-pdf/renderer';
-import roboto from '../../assets/Roboto-Regular.ttf';
-
-Font.register({ family: 'Roboto', src: roboto });
+import { Page, Text, View, Document, StyleSheet, Image } from '@react-pdf/renderer';
 
 const styles = StyleSheet.create({
   page: {
     backgroundColor: '#ffffff',
     padding: 30,
     fontSize: 11,
-    fontFamily: 'Roboto',
     color: '#2d3748',
     lineHeight: 1.5,
+    fontFamily: 'Helvetica',
   },
   header: {
     textAlign: 'center',
@@ -32,22 +29,22 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 5,
-    fontFamily: 'Roboto',
     textAlign: 'center',
     color: '#1a202c',
+    fontFamily: 'Helvetica-Bold',
   },
   title: {
     fontSize: 14,
     marginBottom: 10,
     color: '#4a5568',
-    fontFamily: 'Roboto',
     textAlign: 'center',
+    fontFamily: 'Helvetica',
   },
   contact: {
     fontSize: 10,
     color: '#718096',
-    fontFamily: 'Roboto',
     textAlign: 'center',
+    fontFamily: 'Helvetica',
   },
   section: {
     marginBottom: 20,
@@ -58,21 +55,21 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     color: '#2d3748',
     textTransform: 'uppercase',
-    fontFamily: 'Roboto',
     letterSpacing: 1,
+    fontFamily: 'Helvetica-Bold',
   },
   text: {
     marginBottom: 5,
     color: '#4a5568',
-    fontFamily: 'Roboto',
     lineHeight: 1.6,
+    fontFamily: 'Helvetica',
   },
   listItem: {
     marginLeft: 10,
     marginBottom: 3,
-    fontFamily: 'Roboto',
     color: '#4a5568',
     lineHeight: 1.4,
+    fontFamily: 'Helvetica',
   },
   experienceItem: {
     marginBottom: 15,
@@ -81,22 +78,22 @@ const styles = StyleSheet.create({
   },
   experienceTitle: {
     fontWeight: 'bold',
-    fontFamily: 'Roboto',
     fontSize: 12,
     color: '#2d3748',
     marginBottom: 3,
+    fontFamily: 'Helvetica-Bold',
   },
   experienceCompany: {
     fontSize: 11,
     color: '#4a5568',
-    fontFamily: 'Roboto',
     marginBottom: 3,
+    fontFamily: 'Helvetica-Bold',
   },
   experienceDate: {
     fontSize: 10,
     color: '#718096',
-    fontFamily: 'Roboto',
     marginBottom: 5,
+    fontFamily: 'Helvetica-Oblique',
   },
 });
 

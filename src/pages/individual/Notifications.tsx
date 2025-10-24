@@ -161,22 +161,45 @@ const IndividualNotifications: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <Header userType="individual" />
-      <Container maxWidth="lg" sx={{ py: 4, pt: { xs: 8, md: 10 }, flex: 1 }}>
+      <Container maxWidth="lg" sx={{ py: { xs: 2, md: 4 }, pt: { xs: 8, md: 10 }, flex: 1, px: { xs: 2, md: 3 } }}>
         <Box className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
-          <Typography variant="h5" fontWeight={700}>{t('notifications:notifications')}</Typography>
-          <Box className="flex items-center gap-4">
+          <Typography 
+            variant="h5" 
+            fontWeight={700}
+            sx={{ fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' } }}
+          >
+            {t('notifications:notifications')}
+          </Typography>
+          <Box className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full md:w-auto">
             <Tabs
               value={tab}
               onChange={(_, v) => setTab(v)}
               textColor="primary"
               indicatorColor="primary"
-              className="min-w-[260px]"
+              className="w-full sm:min-w-[260px]"
+              variant="fullWidth"
+              sx={{
+                '& .MuiTab-root': {
+                  fontSize: { xs: '0.8rem', sm: '0.875rem', md: '1rem' },
+                  minHeight: { xs: 36, md: 40 },
+                  py: { xs: 0.5, md: 1 },
+                }
+              }}
             >
               {tabOptions.map(opt => (
                 <Tab key={opt.value} value={opt.value} label={opt.label} className="font-semibold" />
               ))}
             </Tabs>
-            <Button onClick={markAllAsRead} variant="text" className="text-primary text-sm ml-2">
+            <Button 
+              onClick={markAllAsRead} 
+              variant="text" 
+              className="text-primary text-sm w-full sm:w-auto"
+              sx={{ 
+                fontSize: { xs: '0.8rem', md: '0.875rem' },
+                py: { xs: 0.75, md: 1 },
+                minHeight: { xs: 36, md: 40 }
+              }}
+            >
               {t('common:markAllAsRead')}
             </Button>
           </Box>
@@ -188,7 +211,7 @@ const IndividualNotifications: React.FC = () => {
             <Paper
               key={n.id}
               elevation={0}
-              className={`flex items-center gap-4 px-6 py-4 rounded-lg border cursor-pointer transition-all relative ${!n.read ? 'bg-blue-50 hover:bg-blue-100 border-blue-200' : 'bg-white hover:bg-gray-50 border-gray-200'}`}
+              className={`flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 px-4 sm:px-6 py-3 sm:py-4 rounded-lg border cursor-pointer transition-all relative ${!n.read ? 'bg-blue-50 hover:bg-blue-100 border-blue-200' : 'bg-white hover:bg-gray-50 border-gray-200'}`}
               onClick={() => {
                 markAsRead(n.id);
                 handleOpenDetail(n);
@@ -199,38 +222,61 @@ const IndividualNotifications: React.FC = () => {
                 <div className="absolute top-3 right-3 w-2 h-2 bg-blue-500 rounded-full"></div>
               )}
               
-              <div className={`flex items-center justify-center w-10 h-10 rounded-full`} style={{ background: 'bg-primary/5' }}>
-                {iconMap[n.type]}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className={`font-semibold mb-1 text-base ${!n.read ? 'text-blue-700' : 'text-gray-800'}`}>
-                  {translated.title}
+              <div className="flex items-start gap-3 w-full sm:w-auto">
+                <div className={`flex items-center justify-center w-10 h-10 rounded-full flex-shrink-0`} style={{ background: 'rgba(59, 130, 246, 0.1)' }}>
+                  {iconMap[n.type]}
                 </div>
-                <div className="text-gray-600 text-sm truncate">{translated.desc}</div>
-                <div className="flex items-center gap-2 mt-1">
-                  <div className="text-xs text-gray-400">{n.date}</div>
-                  <div className={`text-xs font-medium ${!n.read ? 'text-blue-600' : 'text-gray-500'}`}>
-                    {n.read ? t('notifications:readStatus') : t('notifications:unreadStatus')}
+                <div className="flex-1 min-w-0">
+                  <div className={`font-semibold mb-1 text-sm sm:text-base ${!n.read ? 'text-blue-700' : 'text-gray-800'}`}>
+                    {translated.title}
+                  </div>
+                  <div className="text-gray-600 text-xs sm:text-sm line-clamp-2">{translated.desc}</div>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mt-2">
+                    <div className="text-xs text-gray-400">{n.date}</div>
+                    <div className={`text-xs font-medium ${!n.read ? 'text-blue-600' : 'text-gray-500'}`}>
+                      {n.read ? t('notifications:readStatus') : t('notifications:unreadStatus')}
+                    </div>
                   </div>
                 </div>
+                <button
+                  className="text-gray-400 hover:text-red-500 flex-shrink-0 self-start sm:self-center"
+                  onClick={e => { e.stopPropagation(); handleDeleteNotification(n.id); }}
+                  title={t('common:delete')}
+                >
+                  <Trash2 size={16} />
+                </button>
               </div>
-              <button
-                className="ml-2 text-gray-400 hover:text-red-500"
-                onClick={e => { e.stopPropagation(); handleDeleteNotification(n.id); }}
-                title={t('common:delete')}
-              >
-                <Trash2 size={18} />
-              </button>
             </Paper>
             );
           })}
           {sortedNotifications.length === 0 && (
-            <Paper elevation={0} className="p-8 text-center text-gray-400">{t('notifications:noNotifications')}</Paper>
+            <Paper 
+              elevation={0} 
+              className="p-6 sm:p-8 text-center text-gray-400"
+              sx={{ 
+                borderRadius: 2,
+                background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+                border: '2px dashed #cbd5e1'
+              }}
+            >
+              <Typography variant="h6" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' }, mb: 1 }}>
+                {t('notifications:noNotifications')}
+              </Typography>
+              <Typography variant="body2" sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
+                Yeni bildirimler geldiğinde burada görünecek
+              </Typography>
+            </Paper>
           )}
         </Box>
         {/* Bildirim Detay Modalı */}
-        <Dialog open={!!openDetail} onClose={handleCloseDetail} maxWidth="sm" fullWidth>
-          <DialogTitle>
+        <Dialog 
+          open={!!openDetail} 
+          onClose={handleCloseDetail} 
+          maxWidth="sm" 
+          fullWidth
+          fullScreen={window.innerWidth < 600}
+        >
+          <DialogTitle sx={{ fontSize: { xs: '1rem', sm: '1.25rem' }, py: { xs: 2, sm: 3 } }}>
             {openDetail && (
               <Box className="flex items-center gap-2">
                 <span style={{ color: 'text-primary' }}>{iconMap[openDetail.type]}</span>
@@ -238,29 +284,52 @@ const IndividualNotifications: React.FC = () => {
               </Box>
             )}
           </DialogTitle>
-          <DialogContent dividers>
-            <Typography variant="body1" sx={{ mb: 2, whiteSpace: 'pre-line' }}>
+          <DialogContent dividers sx={{ px: { xs: 2, sm: 3 }, py: { xs: 2, sm: 3 } }}>
+            <Typography variant="body1" sx={{ 
+              mb: 2, 
+              whiteSpace: 'pre-line',
+              fontSize: { xs: '0.9rem', sm: '1rem' },
+              lineHeight: 1.6
+            }}>
               {getTranslatedMessage(openDetail?.title || '', openDetail?.desc || '').desc}
             </Typography>
             
             {/* Kabul detayları varsa göster */}
             {openDetail?.data && (openDetail.data.accept_date || openDetail.data.details) && (
-              <Box sx={{ mt: 3, p: 2, bgcolor: 'success.light', borderRadius: 1 }}>
-                <Typography variant="h6" sx={{ mb: 1, color: 'success.dark' }}>
+              <Box sx={{ 
+                mt: 3, 
+                p: { xs: 1.5, sm: 2 }, 
+                bgcolor: 'success.light', 
+                borderRadius: 1 
+              }}>
+                <Typography variant="h6" sx={{ 
+                  mb: 1, 
+                  color: 'success.dark',
+                  fontSize: { xs: '0.9rem', sm: '1rem' }
+                }}>
                   📋 {t('notifications:acceptanceDetails')}
                 </Typography>
                 {openDetail.data.accept_date && (
-                  <Typography variant="body2" sx={{ mb: 1 }}>
+                  <Typography variant="body2" sx={{ 
+                    mb: 1,
+                    fontSize: { xs: '0.8rem', sm: '0.875rem' }
+                  }}>
                     <strong>{t('notifications:startDate')}:</strong> {new Date(openDetail.data.accept_date).toLocaleDateString('tr-TR')}
                   </Typography>
                 )}
                 {openDetail.data.accept_time && (
-                  <Typography variant="body2" sx={{ mb: 1 }}>
+                  <Typography variant="body2" sx={{ 
+                    mb: 1,
+                    fontSize: { xs: '0.8rem', sm: '0.875rem' }
+                  }}>
                     <strong>{t('notifications:time')}:</strong> {openDetail.data.accept_time}
                   </Typography>
                 )}
                 {openDetail.data.details && (
-                  <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
+                  <Typography variant="body2" sx={{ 
+                    whiteSpace: 'pre-line',
+                    fontSize: { xs: '0.8rem', sm: '0.875rem' }
+                  }}>
                     <strong>{t('notifications:details')}:</strong><br />
                     {openDetail.data.details}
                   </Typography>
@@ -268,38 +337,77 @@ const IndividualNotifications: React.FC = () => {
               </Box>
             )}
             
-            <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
+            <Typography variant="caption" color="text.secondary" sx={{ 
+              mt: 2, 
+              display: 'block',
+              fontSize: { xs: '0.7rem', sm: '0.75rem' }
+            }}>
               {openDetail?.date}
             </Typography>
           </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCloseDetail} variant="contained" color="primary">
+          <DialogActions sx={{ px: { xs: 2, sm: 3 }, py: { xs: 1, sm: 2 } }}>
+            <Button 
+              onClick={handleCloseDetail} 
+              variant="contained" 
+              color="primary"
+              fullWidth={window.innerWidth < 600}
+              sx={{ 
+                fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                py: { xs: 0.75, sm: 1 }
+              }}
+            >
               {t('notifications:close')}
             </Button>
           </DialogActions>
         </Dialog>
 
         {/* Sözleşme Onayı Dialog */}
-        <Dialog open={contractDialogOpen} onClose={() => setContractDialogOpen(false)}>
-          <DialogTitle>{t('common:contractApproval')}</DialogTitle>
-          <DialogContent>
-            <Typography variant="body2" mb={2}>
+        <Dialog 
+          open={contractDialogOpen} 
+          onClose={() => setContractDialogOpen(false)}
+          maxWidth="sm"
+          fullWidth
+          fullScreen={window.innerWidth < 600}
+        >
+          <DialogTitle sx={{ fontSize: { xs: '1rem', sm: '1.25rem' }, py: { xs: 2, sm: 3 } }}>
+            {t('common:contractApproval')}
+          </DialogTitle>
+          <DialogContent sx={{ px: { xs: 2, sm: 3 }, py: { xs: 2, sm: 3 } }}>
+            <Typography variant="body2" mb={2} sx={{ fontSize: { xs: '0.9rem', sm: '1rem' } }}>
               {t('common:contractTermsText')}
             </Typography>
-            <ul className="list-disc pl-6 text-gray-700 mb-4">
-              <li>{t('common:contractItem1')}</li>
-              <li>{t('common:contractItem2')}</li>
-              <li>{t('common:contractItem3')}</li>
-              <li>{t('common:contractItem4')}</li>
+            <ul className="list-disc pl-4 sm:pl-6 text-gray-700 mb-4 space-y-1">
+              <li className="text-sm sm:text-base">{t('common:contractItem1')}</li>
+              <li className="text-sm sm:text-base">{t('common:contractItem2')}</li>
+              <li className="text-sm sm:text-base">{t('common:contractItem3')}</li>
+              <li className="text-sm sm:text-base">{t('common:contractItem4')}</li>
             </ul>
             <FormControlLabel
               control={<Checkbox checked={contractAccepted} onChange={e => setContractAccepted(e.target.checked)} />}
-              label={t('common:contractTerms')}
+              label={
+                <Typography sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
+                  {t('common:contractTerms')}
+                </Typography>
+              }
             />
           </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setContractDialogOpen(false)}>{t('common:cancel')}</Button>
-            <Button onClick={handleContractConfirm} disabled={!contractAccepted}>{t('common:approveContract')}</Button>
+          <DialogActions sx={{ px: { xs: 2, sm: 3 }, py: { xs: 1, sm: 2 }, flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 1, sm: 0 } }}>
+            <Button 
+              onClick={() => setContractDialogOpen(false)}
+              fullWidth={window.innerWidth < 600}
+              sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}
+            >
+              {t('common:cancel')}
+            </Button>
+            <Button 
+              onClick={handleContractConfirm} 
+              disabled={!contractAccepted}
+              variant="contained"
+              fullWidth={window.innerWidth < 600}
+              sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}
+            >
+              {t('common:approveContract')}
+            </Button>
           </DialogActions>
         </Dialog>
 

@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Clock, MapPin, Search, Filter, CheckCircle, Handshake, Flag } from 'lucide-react';
+import { Clock, MapPin, Search, Filter, CheckCircle, Handshake, Flag, Check, X } from 'lucide-react';
 import Header from '../../components/layout/Header';
 import Footer from '../../components/layout/Footer';
 import Button from '../../components/ui/Button';
 import supabase from '../../lib/supabaseClient';
-import { getMyApplications } from '../../lib/applicationsService';
+import { getMyApplications, approveApplicationByUser } from '../../lib/applicationsService';
+import { createNotification } from '../../lib/notificationsService';
+import { fetchCompanyByEmail } from '../../lib/jobsService';
 
 const Applications = () => {
   const { t } = useTranslation();
@@ -16,6 +18,12 @@ const Applications = () => {
   const navigate = useNavigate();
 
   const [applications, setApplications] = useState<any[]>([]);
+  const [loadingApproval, setLoadingApproval] = useState<number | null>(null);
+  const [toast, setToast] = useState<{ show: boolean; type: 'success' | 'error' | 'info'; message: string }>({ 
+    show: false, 
+    type: 'info', 
+    message: '' 
+  });
 
   const mapStatusToUi = (status: string) => {
     switch (status) {
@@ -24,8 +32,9 @@ const Applications = () => {
       case 'in_review':
         return { text: t('applications:inReview'), color: 'bg-yellow-100 text-yellow-800' };
       case 'accepted':
-      case 'approved':
         return { text: t('applications:accepted'), color: 'bg-green-100 text-green-800' };
+      case 'approved':
+        return { text: 'Onaylandı', color: 'bg-emerald-100 text-emerald-800' };
       case 'rejected':
         return { text: t('applications:rejected'), color: 'bg-red-100 text-red-800' };
       default:
@@ -70,6 +79,115 @@ const Applications = () => {
     load();
   }, []);
 
+  const handleApproveApplication = async (applicationId: number) => {
+    try {
+      setLoadingApproval(applicationId);
+      
+      // Başvuruyu onayla
+      await approveApplicationByUser(applicationId);
+      
+      // UI'da durumu güncelle
+      setApplications(prev => prev.map(app => 
+        app.id === applicationId 
+          ? { ...app, status: 'Onaylandı', statusColor: 'bg-emerald-100 text-emerald-800' }
+          : app
+      ));
+      
+      // Başarı mesajı göster
+      setToast({
+        show: true,
+        type: 'success',
+        message: '🎉 Başvuru başarıyla onaylandı! / Application successfully approved!'
+      });
+      
+      // 5 saniye sonra toast'ı kapat
+      setTimeout(() => {
+        setToast({ show: false, type: 'info', message: '' });
+      }, 5000);
+      
+      // Kurumsal tarafına bildirim gönder
+      try {
+        const { data: auth } = await supabase.auth.getUser();
+        const user = auth.user;
+        if (user) {
+          // Başvuru bilgilerini al
+          const application = applications.find(app => app.id === applicationId);
+          if (application) {
+            // Job bilgilerini al
+            const { data: jobData } = await supabase
+              .from('jobs')
+              .select('company_id, title')
+              .eq('id', application.jobId)
+              .single();
+            
+            if (jobData) {
+              // Şirket bilgilerini al
+              const { data: companyData } = await supabase
+                .from('companies')
+                .select('name, email')
+                .eq('id', jobData.company_id)
+                .single();
+              
+              if (companyData) {
+                // Şirketin kurumsal kullanıcısını bul
+                const company = await fetchCompanyByEmail(companyData.email);
+                if (company) {
+                  // Kurumsal kullanıcıya bildirim gönder
+                  await createNotification({
+                    company_id: company.id,
+                    title: '🎉 Başvuru Onaylandı! / Application Approved!',
+                    message: `✅ ${application.position} pozisyonu için başvuru onaylandı!\n\n👤 Aday: ${user.user_metadata?.name || user.email?.split('@')[0] || 'Aday'}\n📅 Onay Tarihi: ${new Date().toLocaleDateString('tr-TR')}\n\n✅ Application approved for ${application.position} position!\n\n👤 Candidate: ${user.user_metadata?.name || user.email?.split('@')[0] || 'Aday'}\n📅 Approval Date: ${new Date().toLocaleDateString('en-US')}\n\n🚀 Aday işe başlamaya hazır! / Candidate is ready to start!`,
+                    type: 'success',
+                    data: { 
+                      application_id: applicationId,
+                      job_title: jobData.title,
+                      applicant_name: user.user_metadata?.name || user.email?.split('@')[0] || 'Aday'
+                    }
+                  });
+                }
+              }
+            }
+          }
+        }
+      } catch (notificationError) {
+        console.warn('Kurumsal tarafına bildirim gönderilemedi:', notificationError);
+      }
+      
+    } catch (error: any) {
+      console.error('Onaylama hatası:', error);
+      
+      // Daha spesifik hata mesajları - Türkçe ve İngilizce
+      let errorMessage = '';
+      
+      if (error.message?.includes('Başvuru bulunamadı')) {
+        errorMessage = '❌ Başvuru bulunamadı!\n\nLütfen sayfayı yenileyin ve tekrar deneyin.\n\n❌ Application not found!\n\nPlease refresh the page and try again.';
+      } else if (error.message?.includes('Sadece kabul edilmiş başvurular')) {
+        errorMessage = '⚠️ Bu başvuru henüz kabul edilmemiş!\n\nKurumsal tarafın önce başvurunuzu kabul etmesi gerekiyor.\n\n⚠️ This application has not been accepted yet!\n\nThe corporate side needs to accept your application first.';
+      } else if (error.message?.includes('user_approved')) {
+        errorMessage = '🔧 Veritabanı hatası!\n\nLütfen yöneticiye başvurun veya daha sonra tekrar deneyin.\n\n🔧 Database error!\n\nPlease contact the administrator or try again later.';
+      } else if (error.message?.includes('permission') || error.message?.includes('yetki')) {
+        errorMessage = '🚫 Yetkiniz yok!\n\nBu işlemi gerçekleştirmek için gerekli izinlere sahip değilsiniz.\n\n🚫 No permission!\n\nYou do not have the necessary permissions to perform this action.';
+      } else if (error.message?.includes('network') || error.message?.includes('internet')) {
+        errorMessage = '🌐 Bağlantı hatası!\n\nİnternet bağlantınızı kontrol edin ve tekrar deneyin.\n\n🌐 Connection error!\n\nPlease check your internet connection and try again.';
+      } else {
+        errorMessage = '❌ Onaylama işlemi başarısız oldu!\n\nLütfen tekrar deneyin veya yöneticiye başvurun.\n\n❌ Approval process failed!\n\nPlease try again or contact the administrator.';
+      }
+      
+      setToast({
+        show: true,
+        type: 'error',
+        message: errorMessage
+      });
+      
+      // 8 saniye sonra toast'ı kapat
+      setTimeout(() => {
+        setToast({ show: false, type: 'info', message: '' });
+      }, 8000);
+    } finally {
+      setLoadingApproval(null);
+    }
+  };
+
   const filteredApplications = applications.filter(app => {
     const matchesSearch = app.position.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          app.company.toLowerCase().includes(searchTerm.toLowerCase());
@@ -93,6 +211,9 @@ const Applications = () => {
       case t('applications:inReview'):
         return 50;
       case t('applications:accepted'):
+        return 75;
+      case 'Onaylandı':
+        return 100;
       case t('applications:rejected'):
         return 100;
       default:
@@ -172,6 +293,7 @@ const Applications = () => {
                   <option value="Beklemede">{t('common:pending')}</option>
                   <option value="İncelemede">{t('common:inReview')}</option>
                   <option value="Kabul Edildi">{t('common:accepted')}</option>
+                  <option value="Onaylandı">Onaylandı</option>
                   <option value="Reddedildi">{t('common:rejected')}</option>
                 </select>
               </div>
@@ -227,6 +349,36 @@ const Applications = () => {
                         >
                           {t('applications:viewJobPosting')}
                         </Button>
+                        
+                        {/* Onaylama Butonu - Sadece kabul edilmiş başvurular için */}
+                        {application.status === t('applications:accepted') && (
+                          <Button 
+                            variant="primary" 
+                            size="sm"
+                            onClick={() => {
+                              const confirmMessage = '🎯 Başvurunuzu onaylamak istediğinizden emin misiniz?\n\n✅ Bu işlem sonrasında:\n• Başvuru durumu "Onaylandı" olacak\n• Kurumsal tarafa bildirim gönderilecek\n• İşe başlama süreciniz tamamlanacak\n\n🎯 Are you sure you want to approve your application?\n\n✅ After this action:\n• Application status will be "Approved"\n• Notification will be sent to corporate side\n• Your job start process will be completed';
+                              
+                              if (window.confirm(confirmMessage)) {
+                                handleApproveApplication(application.id);
+                              }
+                            }}
+                            disabled={loadingApproval === application.id}
+                            className="bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                            title="Başvurunuzu onaylayın - Approve your application"
+                          >
+                            {loadingApproval === application.id ? (
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                <span>Onaylanıyor... / Approving...</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <Check size={16} />
+                                <span>Onayla / Approve</span>
+                              </div>
+                            )}
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -317,6 +469,58 @@ const Applications = () => {
       </main>
       
       <Footer />
+      
+      {/* Toast Notification */}
+      {toast.show && (
+        <div className="fixed top-4 right-4 z-50 max-w-md">
+          <div className={`rounded-lg shadow-lg p-4 flex items-start gap-3 ${
+            toast.type === 'success' 
+              ? 'bg-green-50 border border-green-200' 
+              : toast.type === 'error'
+              ? 'bg-red-50 border border-red-200'
+              : 'bg-blue-50 border border-blue-200'
+          }`}>
+            <div className={`flex-shrink-0 ${
+              toast.type === 'success' 
+                ? 'text-green-500' 
+                : toast.type === 'error'
+                ? 'text-red-500'
+                : 'text-blue-500'
+            }`}>
+              {toast.type === 'success' ? (
+                <CheckCircle size={20} />
+              ) : toast.type === 'error' ? (
+                <X size={20} />
+              ) : (
+                <CheckCircle size={20} />
+              )}
+            </div>
+            <div className="flex-1">
+              <p className={`text-sm font-medium ${
+                toast.type === 'success' 
+                  ? 'text-green-800' 
+                  : toast.type === 'error'
+                  ? 'text-red-800'
+                  : 'text-blue-800'
+              }`}>
+                {toast.message}
+              </p>
+            </div>
+            <button
+              onClick={() => setToast({ show: false, type: 'info', message: '' })}
+              className={`flex-shrink-0 ${
+                toast.type === 'success' 
+                  ? 'text-green-400 hover:text-green-600' 
+                  : toast.type === 'error'
+                  ? 'text-red-400 hover:text-red-600'
+                  : 'text-blue-400 hover:text-blue-600'
+              }`}
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

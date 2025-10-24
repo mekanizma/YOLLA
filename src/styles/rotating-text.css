@@ -2,8 +2,8 @@
 
 .rotating-text-container {
   font-family: 'Roboto';
-  background-color: #131417;
-  color: #e5e5e5;
+  background-color: transparent;
+  color: #000;
   font-size: 1.8rem;
   text-transform: uppercase;
   height: 80px;
@@ -17,7 +17,6 @@
 }
 
 .rotating-text-container p {
-  text-shadow: 0 0 7px rgba(255,255,255,.3), 0 0 3px rgba(255,255,255,.3);
   margin: 0;
   font-weight: 700;
 }
@@ -46,55 +45,69 @@
   font-weight: 700;
   white-space: nowrap;
   flex-shrink: 0;
+  background-color: transparent;
+  color: #000;
 }
 
 
-.first div {
-  background-color: #20a7d8;
+.first {
+  background-color: transparent;
+  color: #000;
 }
 
-.second div {
-  background-color: #CD921E;
+.second {
+  background-color: transparent;
+  color: #000;
 }
 
-.third div {
-  background-color: #c10528;
+.third {
+  background-color: transparent;
+  color: #000;
 }
 
-.fourth div {
-  background-color: #28a745;
+.fourth {
+  background-color: transparent;
+  color: #000;
 }
 
-.fifth div {
-  background-color: #6f42c1;
+.fifth {
+  background-color: transparent;
+  color: #000;
 }
 
-.sixth div {
-  background-color: #fd7e14;
+.sixth {
+  background-color: transparent;
+  color: #000;
 }
 
-.seventh div {
-  background-color: #e83e8c;
+.seventh {
+  background-color: transparent;
+  color: #000;
 }
 
-.eighth div {
-  background-color: #20c997;
+.eighth {
+  background-color: transparent;
+  color: #000;
 }
 
-.ninth div {
-  background-color: #dc3545;
+.ninth {
+  background-color: transparent;
+  color: #000;
 }
 
-.tenth div {
-  background-color: #ffc107;
+.tenth {
+  background-color: transparent;
+  color: #000;
 }
 
-.eleventh div {
-  background-color: #17a2b8;
+.eleventh {
+  background-color: transparent;
+  color: #000;
 }
 
-.twelfth div {
-  background-color: #6c757d;
+.twelfth {
+  background-color: transparent;
+  color: #000;
 }
 
 @keyframes text-animation {

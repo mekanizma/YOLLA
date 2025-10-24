@@ -102,5 +102,9 @@
   "emptyStar": "☆",
   "showingRange": "arası gösteriliyor",
   "start": "başlangıç",
-  "end": "bitiş"
+  "end": "bitiş",
+  "new": "YENİ",
+  "postedDaysAgo": "{{days}} gün önce yayınlandı",
+  "applicationClosed": "Başvuru Kapanmıştır",
+  "applicationDeadlinePassed": "Son başvuru tarihi geçmiştir"
 }

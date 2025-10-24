@@ -1,155 +1,142 @@
-import { Page, Text, View, Document, StyleSheet, Font, Image } from '@react-pdf/renderer';
-import roboto from '../../assets/Roboto-Regular.ttf';
-
-Font.register({ family: 'Roboto', src: roboto });
+import { Page, Text, View, Document, StyleSheet, Image } from '@react-pdf/renderer';
 
 const styles = StyleSheet.create({
   page: {
-    backgroundColor: '#fef7ff',
-    padding: 20,
+    padding: 25,
     fontSize: 10,
-    fontFamily: 'Roboto',
-    color: '#2d1b69',
+    fontFamily: 'Helvetica',
   },
   header: {
-    backgroundColor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    background: '#667eea',
-    color: 'white',
-    padding: 25,
-    borderRadius: 15,
-    marginBottom: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    boxShadow: '0 8px 16px rgba(102, 126, 234, 0.3)',
-  },
-  photo: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    objectFit: 'cover',
-    marginRight: 20,
-    border: '4 solid #fff',
-    backgroundColor: '#f3f4f6',
+    backgroundColor: '#667eea',
+    padding: 20,
+    marginBottom: 15,
+    borderRadius: 8,
   },
   headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  photo: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    marginRight: 15,
+    border: '2 solid #ffffff',
+  },
+  headerText: {
     flex: 1,
   },
   name: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: 'bold',
-    fontFamily: 'Roboto',
-    marginBottom: 5,
-    color: '#fff',
+    color: '#ffffff',
+    marginBottom: 4,
+    fontFamily: 'Helvetica-Bold',
   },
   title: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#e0e7ff',
-    fontFamily: 'Roboto',
     marginBottom: 8,
     fontWeight: 'bold',
+    fontFamily: 'Helvetica-Bold',
   },
   contact: {
     fontSize: 9,
-    color: '#c7d2fe',
-    fontFamily: 'Roboto',
-    lineHeight: 1.3,
+    color: '#ffffff',
+    marginBottom: 2,
+    fontFamily: 'Helvetica',
   },
   section: {
-    marginBottom: 18,
-    backgroundColor: '#fff',
-    padding: 18,
-    borderRadius: 12,
-    boxShadow: '0 2px 8px rgba(102, 126, 234, 0.1)',
-    border: '1 solid #e0e7ff',
+    marginBottom: 15,
+    backgroundColor: '#ffffff',
+    padding: 15,
+    borderRadius: 8,
+    border: '1 solid #e2e8f0',
   },
   sectionTitle: {
     fontSize: 11,
     fontWeight: 'bold',
-    marginBottom: 10,
+    marginBottom: 8,
     color: '#667eea',
     textTransform: 'uppercase',
-    fontFamily: 'Roboto',
-    letterSpacing: 1,
-    borderBottom: '2 solid #667eea',
+    borderBottom: '1 solid #667eea',
     paddingBottom: 3,
+    fontFamily: 'Helvetica-Bold',
   },
   text: {
     marginBottom: 4,
-    color: '#4c1d95',
-    fontFamily: 'Roboto',
-    lineHeight: 1.5,
+    lineHeight: 1.4,
+    fontFamily: 'Helvetica',
   },
   listItem: {
-    marginLeft: 12,
-    marginBottom: 3,
-    fontFamily: 'Roboto',
-    color: '#4c1d95',
-    lineHeight: 1.4,
+    marginLeft: 10,
+    marginBottom: 2,
+    fontFamily: 'Helvetica',
   },
   experienceItem: {
-    marginBottom: 12,
-    paddingBottom: 12,
-    borderBottom: '1 solid #e0e7ff',
+    marginBottom: 8,
+    padding: 10,
+    backgroundColor: '#f8fafc',
+    borderRadius: 6,
+    borderLeft: '3 solid #667eea',
   },
   experienceTitle: {
     fontWeight: 'bold',
-    fontFamily: 'Roboto',
-    fontSize: 11,
-    color: '#2d1b69',
+    fontSize: 10,
     marginBottom: 2,
+    fontFamily: 'Helvetica-Bold',
   },
   experienceCompany: {
-    fontSize: 10,
+    fontSize: 9,
     color: '#667eea',
-    fontFamily: 'Roboto',
     marginBottom: 2,
     fontWeight: 'bold',
+    fontFamily: 'Helvetica-Bold',
   },
   experienceDate: {
-    fontSize: 9,
-    color: '#8b5cf6',
-    fontFamily: 'Roboto',
-    marginBottom: 4,
+    fontSize: 8,
+    marginBottom: 3,
     fontStyle: 'italic',
+    fontFamily: 'Helvetica-Oblique',
   },
 });
 
-const defaultAvatar = 'https://ui-avatars.com/api/?name=CV&background=667eea&color=fff&size=128';
+const defaultAvatar = 'https://ui-avatars.com/api/?name=CV&background=667eea&color=fff&size=120';
 
 export const CreativeCV = ({ profile }: { profile: any }) => (
   <Document>
     <Page size="A4" style={styles.page}>
       <View style={styles.header}>
-        <Image style={styles.photo} src={profile.photo || defaultAvatar} />
         <View style={styles.headerContent}>
-          <Text style={styles.name}>{profile.name || 'Ad Soyad'}</Text>
-          <Text style={styles.title}>{profile.title || 'Meslek Unvanı'}</Text>
-          <Text style={styles.contact}>{profile.email || 'email@example.com'}</Text>
-          <Text style={styles.contact}>{profile.phone || '+90 555 123 45 67'}</Text>
-          <Text style={styles.contact}>{profile.location || 'Şehir, Ülke'}</Text>
+          <Image style={styles.photo} src={profile.photo || defaultAvatar} />
+          <View style={styles.headerText}>
+            <Text style={styles.name}>{profile.name || 'Ad Soyad'}</Text>
+            <Text style={styles.title}>{profile.title || 'Meslek Unvanı'}</Text>
+            <Text style={styles.contact}>{profile.email || 'email@example.com'}</Text>
+            <Text style={styles.contact}>{profile.phone || '+90 555 123 45 67'}</Text>
+            <Text style={styles.contact}>{profile.location || 'Şehir, Ülke'}</Text>
+          </View>
         </View>
       </View>
-      
+
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Hakkımda</Text>
-        <Text style={styles.text}>{profile.about || 'Kendiniz hakkında kısa bir açıklama yazın. Deneyimlerinizi, hedeflerinizi ve kişisel özelliklerinizi özetleyin.'}</Text>
+        <Text style={styles.text}>{profile.about || 'Kendiniz hakkında kısa bir açıklama yazın.'}</Text>
       </View>
-      
+
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Beceriler</Text>
-        <View>
-          {(profile.skills || ['JavaScript', 'React', 'Node.js', 'Python', 'SQL', 'Git', 'Problem Çözme', 'Takım Çalışması']).slice(0, 8).map((s: string, i: number) => (
-            <Text key={i} style={styles.listItem}>• {s}</Text>
-          ))}
-        </View>
+        {(profile.skills || ['JavaScript', 'React', 'Node.js', 'Python', 'SQL', 'Git']).slice(0, 6).map((s: string, i: number) => (
+          <Text key={i} style={styles.listItem}>• {s}</Text>
+        ))}
       </View>
       
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>İş Deneyimi</Text>
         {(profile.experiences || [
-          { title: 'Yazılım Geliştirici', company: 'ABC Teknoloji', date: '2022-2024', desc: 'Web uygulamaları geliştirme ve proje yönetimi' },
-          { title: 'Stajyer', company: 'XYZ Şirketi', date: '2021-2022', desc: 'Frontend geliştirme ve test süreçleri' }
-        ]).slice(0, 3).map((exp: any, i: number) => (
+          { title: 'Yazılım Geliştirici', company: 'ABC Teknoloji', date: '2022-2024', desc: 'Web uygulamaları geliştirme' },
+          { title: 'Stajyer', company: 'XYZ Şirketi', date: '2021-2022', desc: 'Frontend geliştirme' }
+        ]).slice(0, 2).map((exp: any, i: number) => (
           <View key={i} style={styles.experienceItem}>
             <Text style={styles.experienceTitle}>{exp.title}</Text>
             <Text style={styles.experienceCompany}>{exp.company}</Text>
@@ -162,9 +149,8 @@ export const CreativeCV = ({ profile }: { profile: any }) => (
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Eğitim</Text>
         {(profile.educations || [
-          { degree: 'Bilgisayar Mühendisliği', school: 'Üniversite Adı', date: '2018-2022', desc: 'Lisans derecesi' },
-          { degree: 'Lise Diploması', school: 'Lise Adı', date: '2014-2018', desc: 'Fen Lisesi' }
-        ]).slice(0, 2).map((edu: any, i: number) => (
+          { degree: 'Bilgisayar Mühendisliği', school: 'Üniversite Adı', date: '2018-2022', desc: 'Lisans derecesi' }
+        ]).slice(0, 1).map((edu: any, i: number) => (
           <View key={i} style={styles.experienceItem}>
             <Text style={styles.experienceTitle}>{edu.degree}</Text>
             <Text style={styles.experienceCompany}>{edu.school}</Text>
@@ -178,12 +164,11 @@ export const CreativeCV = ({ profile }: { profile: any }) => (
         <Text style={styles.sectionTitle}>Diller</Text>
         {(profile.languages || [
           { name: 'Türkçe', level: 'Ana Dil' },
-          { name: 'İngilizce', level: 'İleri' },
-          { name: 'Almanca', level: 'Orta' }
-        ]).slice(0, 4).map((lang: any, i: number) => (
+          { name: 'İngilizce', level: 'İleri' }
+        ]).slice(0, 2).map((lang: any, i: number) => (
           <Text key={i} style={styles.listItem}>• {lang.name} ({lang.level})</Text>
         ))}
       </View>
     </Page>
   </Document>
-); 
+);
