@@ -1,23 +1,18 @@
 version: '3.8'
 services:
   yollabi:
-    build: .
+    build:
+      context: .
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
+        VITE_APP_URL: ${VITE_APP_URL}
+        VITE_APP_DOMAIN: ${VITE_APP_DOMAIN}
     ports:
       - "3000:80"
-    environment:
-      - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
-      - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
-      - VITE_APP_URL=${VITE_APP_URL}
-      - VITE_APP_DOMAIN=${VITE_APP_DOMAIN}
-    restart: unless-stopped
-    healthcheck:
-      test: "wget -qO- http://127.0.0.1:80/ || exit 1"
-      interval: 10s
-      timeout: 3s
-      retries: 5
-      start_period: 10s
     networks:
       - yollabi-network
+    restart: always
 networks:
   yollabi-network:
     driver: bridge
