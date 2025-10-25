@@ -44,7 +44,8 @@ export async function fetchPublishedJobs(params?: { search?: string; city?: stri
       )
     `)
     .eq('status', 'published')
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .limit(50); // Limit ekle
 
   if (params?.city) query.ilike('location', `%${params.city}%`);
   if (params?.search) {

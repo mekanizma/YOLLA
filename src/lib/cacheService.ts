@@ -3,7 +3,35 @@ import supabase from './supabaseClient';
 
 // Cache için basit bir Map
 const cache = new Map();
-const CACHE_DURATION = 5 * 60 * 1000; // 5 dakika
+const CACHE_DURATION = 2 * 60 * 1000; // 2 dakika (daha kısa süre)
+const MAX_CACHE_SIZE = 100; // Maksimum cache boyutu
+
+// Cache temizleme fonksiyonu
+function cleanupCache() {
+  const now = Date.now();
+  const entries = Array.from(cache.entries());
+  
+  // Eski cache'leri temizle
+  for (const [key, value] of entries) {
+    if (now - value.timestamp > CACHE_DURATION) {
+      cache.delete(key);
+    }
+  }
+  
+  // Cache boyutu çok büyükse en eski olanları sil
+  if (cache.size > MAX_CACHE_SIZE) {
+    const sortedEntries = entries
+      .sort((a, b) => a[1].timestamp - b[1].timestamp)
+      .slice(0, cache.size - MAX_CACHE_SIZE);
+    
+    for (const [key] of sortedEntries) {
+      cache.delete(key);
+    }
+  }
+}
+
+// Periyodik temizlik (her 30 saniyede bir)
+setInterval(cleanupCache, 30 * 1000);
 
 // Cache kontrolü
 function getCachedData(key: string) {
@@ -11,11 +39,18 @@ function getCachedData(key: string) {
   if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
     return cached.data;
   }
+  // Eski cache'i sil
+  if (cached) {
+    cache.delete(key);
+  }
   return null;
 }
 
 // Cache'e veri kaydetme
 function setCachedData(key: string, data: any) {
+  // Cache temizliği yap
+  cleanupCache();
+  
   cache.set(key, {
     data,
     timestamp: Date.now()
@@ -100,5 +135,14 @@ export async function preloadCriticalData() {
 // Cache temizleme
 export function clearCache() {
   cache.clear();
+}
+
+// Cache istatistikleri
+export function getCacheStats() {
+  return {
+    size: cache.size,
+    maxSize: MAX_CACHE_SIZE,
+    duration: CACHE_DURATION
+  };
 }
 

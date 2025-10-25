@@ -3,12 +3,13 @@ import supabase from './supabaseClient';
 // Mevcut "Bilinmeyen Kullanıcı" kayıtlarını temizlemek için yardımcı fonksiyon
 export async function cleanupUnknownUsers() {
   try {
-    // "Bilinmeyen Kullanıcı" kayıtlarını bul
+    // "Bilinmeyen Kullanıcı" kayıtlarını bul (limit ekle)
     const { data: unknownUsers, error: selectError } = await supabase
       .from('users')
       .select('id, auth_user_id, user_id')
       .eq('first_name', 'Bilinmeyen')
-      .eq('last_name', 'Kullanıcı');
+      .eq('last_name', 'Kullanıcı')
+      .limit(10); // Maksimum 10 kullanıcı işle
     
     if (selectError) {
       console.error('Bilinmeyen kullanıcılar sorgulanamadı:', selectError);
@@ -22,10 +23,10 @@ export async function cleanupUnknownUsers() {
     
     console.log(`${unknownUsers.length} adet bilinmeyen kullanıcı bulundu, temizleniyor...`);
     
-    // Her bilinmeyen kullanıcı için auth.users'dan bilgi almaya çalış
-    for (const user of unknownUsers) {
+    // Batch processing ile performansı artır
+    const updatePromises = unknownUsers.map(async (user) => {
       const userId = user.auth_user_id || user.user_id;
-      if (!userId) continue;
+      if (!userId) return null;
       
       try {
         const { data: authUser } = await supabase.auth.admin.getUserById(userId);
@@ -87,7 +88,14 @@ export async function cleanupUnknownUsers() {
       } catch (authError) {
         console.error(`Kullanıcı ${user.id} için auth sorgusu başarısız:`, authError);
       }
-    }
+      
+      return null;
+    });
+    
+    // Tüm güncellemeleri paralel olarak bekle
+    await Promise.allSettled(updatePromises);
+    
+    console.log('Bilinmeyen kullanıcılar temizleme işlemi tamamlandı');
   } catch (error) {
     console.error('Bilinmeyen kullanıcılar temizlenirken hata:', error);
   }

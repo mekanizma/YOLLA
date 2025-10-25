@@ -11,7 +11,47 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('Supabase env değişkenleri eksik: VITE_SUPABASE_URL ve/veya VITE_SUPABASE_ANON_KEY');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    flowType: 'pkce'
+  },
+  db: {
+    schema: 'public',
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'yollabi-web',
+    },
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 10,
+    },
+  },
+});
+
+// Connection health check
+export async function checkSupabaseConnection() {
+  try {
+    const { error } = await supabase
+      .from('users')
+      .select('count')
+      .limit(1);
+    
+    if (error) {
+      console.error('Supabase connection error:', error);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Supabase connection check failed:', error);
+    return false;
+  }
+}
 
 export default supabase;
 
