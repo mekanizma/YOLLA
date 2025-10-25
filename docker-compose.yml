@@ -6,7 +6,6 @@ services:
       - "3000:80"
     networks:
       - yollabi-network
-    restart: always
     environment:
       - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
       - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
