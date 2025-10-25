@@ -2,8 +2,8 @@ services:
   yollabi:
     build:
       context: .
-    expose:
-      - "80"
+    ports:
+      - "3000:80"
     networks:
       - yollabi-network
     restart: always
