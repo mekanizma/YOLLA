@@ -12,6 +12,7 @@ services:
       - "3000:80"
     networks:
       - yollabi-network
+    restart: always
 networks:
   yollabi-network:
     driver: bridge
