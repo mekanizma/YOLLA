@@ -1,18 +1,37 @@
-version: '3.8'
 services:
   yollabi:
     build:
       context: .
-      args:
-        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
-        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
-        VITE_APP_URL: ${VITE_APP_URL}
-        VITE_APP_DOMAIN: ${VITE_APP_DOMAIN}
     ports:
       - "3000:80"
     networks:
       - yollabi-network
     restart: always
+    environment:
+      - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
+      - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
+      - VITE_APP_URL=${VITE_APP_URL}
+      - VITE_APP_DOMAIN=${VITE_APP_DOMAIN}
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
 networks:
   yollabi-network:
     driver: bridge
